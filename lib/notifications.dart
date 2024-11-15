@@ -1,6 +1,9 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:math' show Random;
+
+// Conditional import
+import 'notification_permission.dart'
+    if (dart.library.html) 'notification_permission_web.dart';
 
 class NotificationHelper {
   static final NotificationHelper _instance = NotificationHelper._internal();
@@ -10,10 +13,7 @@ class NotificationHelper {
       FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
-    var permission = await Permission.notification.status;
-    if (!permission.isGranted) {
-      await Permission.notification.request();
-    }
+    await requestNotificationPermission();
 
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
