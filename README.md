@@ -28,3 +28,18 @@
 - 不可以色色
 
 项目中引用的所有图片版权归属Nexon
+
+### 开发
+
+```shell
+flutter pub get
+flutter run
+```
+
+### 部署
+
+```shell
+flutter build web
+docker build -t misonotalk .
+docker run -d -p 80:80 misonotalk
+```
