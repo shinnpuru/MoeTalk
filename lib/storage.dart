@@ -138,6 +138,34 @@ Future<String> convertToJson() async {
   return jsonEncode(allPrefs);
 }
 
+Future<String> getStudentName({bool isDefault=false}) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? name = prefs.getString("student_name");
+  if (name == null || isDefault) {
+    return "未花";
+  }
+  return name;
+}
+
+Future<void> setStudentName(String name) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("student_name", name);
+}
+
+Future<String> getOriginalMsg({bool isDefault=false}) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? msg = prefs.getString("original_msg");
+  if (msg == null || isDefault) {
+    return "Sensei你终于来啦！\\我可是个乖乖看家的好孩子哦";
+  }
+  return msg;
+}
+
+Future<void> setOriginalMsg(String msg) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("original_msg", msg);
+} 
+
 Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExternal=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("custom_prompt");

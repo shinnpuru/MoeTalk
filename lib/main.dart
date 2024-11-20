@@ -51,8 +51,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   final textController = TextEditingController();
   final scrollController = ScrollController();
   final notification = NotificationHelper();
-  static const String studentName = "未花";
-  static const String originalMsg = "Sensei你终于来啦！\\我可是个乖乖看家的好孩子哦";
+  late String studentName;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
   int splitCount = 0;
@@ -61,15 +60,21 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   bool keyboardOn = false;
   bool isForeground = true;
   bool isAutoNotification = false;
-  List<Message> messages = [
-    Message(message: originalMsg, type: Message.assistant),
-  ];
+  List<Message> messages = [];
   List<Message>? lastMessages;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    getStudentName().then((name){
+        studentName = name;
+      });
+    getOriginalMsg().then((originalMsg) {
+      setState(() {
+        messages.add(Message(message: originalMsg, type: Message.assistant));
+      });
+    });
     getTempHistory().then((msg) {
       if (msg != null) {
         loadHistory(msg);
@@ -352,7 +357,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     lastMessages = null;
     setState(() {
       messages.clear();
-      messages.add(Message(message: originalMsg, type: Message.assistant));
+      getStudentName().then((name){
+        studentName = name;
+      });
+      getOriginalMsg().then((originalMsg) {
+        setState(() {
+          messages.add(Message(message: originalMsg, type: Message.assistant));
+        });
+      });
       setTempHistory(msgListToJson(messages));
     });
   }
