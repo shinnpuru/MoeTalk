@@ -6,6 +6,7 @@ import 'chatview.dart';
 import 'configpage.dart';
 import 'notifications.dart';
 import 'popups.dart';
+import 'prompteditor.dart';
 import 'theme.dart';
 import 'history.dart';
 import 'openai.dart';
@@ -516,11 +517,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                 ),
                 const PopupMenuItem(
                   value: 'Time',
-                  child: Text('Time'),
+                  child: Text('AddTime'),
                 ),
                 const PopupMenuItem(
                   value: 'System',
-                  child: Text('System'),
+                  child: Text('AddSysPrompt...'),
                 ),
                 PopupMenuItem(
                   value: 'ExtPrompt',
@@ -545,6 +546,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                 const PopupMenuItem(
                   value: 'Settings',
                   child: Text('Settings...'),
+                ),
+                const PopupMenuItem(
+                  value: 'Customize',
+                  child: Text('Customize...'),
                 ),
               ],
               onSelected: (String value) async {
@@ -590,6 +595,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                       context,
                       MaterialPageRoute(
                           builder: (context) => ConfigPage(updateFunc: updateConfig)));
+                } else if (value == 'Customize') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PromptEditor()));
                 } else if (value == 'Backup'){
                   Navigator.push(
                       context,

@@ -308,15 +308,6 @@ class ConfigPageState extends State<ConfigPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  child: const Text('编辑Prompt'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PromptEditor()),
-                    );
-                  },
-                ),
-                ElevatedButton(
                   child: const Text('备份'),
                   onPressed: () async {
                     String j = await convertToJson();
