@@ -12,12 +12,16 @@ class PromptEditorState extends State<PromptEditor> {
   TextEditingController controller = TextEditingController();
   TextEditingController studentNameController = TextEditingController();
   TextEditingController originMsgController = TextEditingController();
+  TextEditingController studentAvatarController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     getPrompt(isRaw: true).then((String value) {
       controller.text = value;
+    });
+    getAvatar().then((String value) {
+      studentAvatarController.text = value;
     });
     getStudentName().then((String value) {
       studentNameController.text = value;
@@ -53,11 +57,19 @@ class PromptEditorState extends State<PromptEditor> {
                   setPrompt(controller.text);
                   setStudentName(studentNameController.text);
                   setOriginalMsg(originMsgController.text);
+                  setAvatar(studentAvatarController.text);
                   Navigator.pop(context);
                 },
                 child: const Text('保存'),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: studentAvatarController,
+            decoration: const InputDecoration(
+              labelText: 'Student Avatar',
+            ),
           ),
           const SizedBox(height: 8),
           TextField(

@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'storage.dart';
-import 'prompteditor.dart';
+
 import 'utils.dart' show snackBarAlert, Config, DecimalTextInputFormatter;
 
 class ConfigPage extends StatefulWidget {

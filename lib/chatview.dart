@@ -6,7 +6,8 @@ class ChatElement extends StatelessWidget {
   final String message;
   final int type;
   final String stuName;
-  const ChatElement({super.key, required this.message, required this.type, required this.stuName});
+  final String avatar;
+  const ChatElement({super.key, required this.message, required this.type, required this.stuName, required this.avatar});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +15,7 @@ class ChatElement extends StatelessWidget {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           for(var m in message.split("\\\\")) 
             if(m.isNotEmpty) 
-              ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\")),
+              ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\"), avatar: avatar),
           const SizedBox(height: 10),
         ]);
     } else if (type == Message.user) {
@@ -33,7 +34,7 @@ class ChatElement extends StatelessWidget {
     } else if (type == Message.system) {
       return centerBubble("System Instruction Here");
     } else if (type == Message.image) {
-      return ChatBubbleImage(name: stuName, imageUrl: message);
+      return ChatBubbleImage(name: stuName, imageUrl: message, avatar: avatar);
     }
     else {
       return const SizedBox.shrink();
@@ -67,11 +68,13 @@ Widget centerBubble(String msg) {
 class ChatBubbleLayoutLeft extends StatelessWidget {
   final String name;
   final List<String> messages;
+  final String avatar;
 
   const ChatBubbleLayoutLeft({
     super.key,
     required this.name,
     required this.messages,
+    required this.avatar,
   });
 
   @override
@@ -79,12 +82,13 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-            padding: EdgeInsets.only(top: 7),
+        Padding(
+            padding: const EdgeInsets.only(top: 7),
             child: CircleAvatar(
-              backgroundImage: AssetImage("assets/head.webp"),
               radius: 25,
-            )),
+              backgroundImage: NetworkImage(avatar),
+            )
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -129,11 +133,13 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
 class ChatBubbleImage extends StatelessWidget {
   final String name;
   final String imageUrl;
+  final String avatar;
 
   const ChatBubbleImage({
     super.key,
     required this.name,
     required this.imageUrl,
+    required this.avatar,
   });
 
   @override
@@ -141,12 +147,13 @@ class ChatBubbleImage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-            padding: EdgeInsets.only(top: 7),
+        Padding(
+            padding: const EdgeInsets.only(top: 7),
             child: CircleAvatar(
-              backgroundImage: AssetImage("assets/head.webp"),
               radius: 25,
-            )),
+              backgroundImage: NetworkImage(avatar),
+            )
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(

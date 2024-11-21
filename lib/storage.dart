@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -115,6 +115,18 @@ void deleteHistory(String key) async {
   } else {
     debugPrint("key not found: $key");
   }
+}
+
+void setAvatar(String imgUri) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("avatar", imgUri);
+}
+
+Future<String> getAvatar() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? avatar = prefs.getString("avatar");
+  avatar ??= "assets/head.webp";
+  return avatar;
 }
 
 void setTempHistory(String msg) async {

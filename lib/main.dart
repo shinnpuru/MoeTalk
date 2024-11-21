@@ -52,6 +52,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   final scrollController = ScrollController();
   final notification = NotificationHelper();
   late String studentName;
+  late String avatar;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
   int splitCount = 0;
@@ -70,6 +71,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     getStudentName().then((name){
         studentName = name;
       });
+    getAvatar().then((avt){
+      avatar = avt;
+    });
     getOriginalMsg().then((originalMsg) {
       setState(() {
         messages.add(Message(message: originalMsg, type: Message.assistant));
@@ -359,6 +363,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       messages.clear();
       getStudentName().then((name){
         studentName = name;
+      });
+      getAvatar().then((avt){
+        avatar = avt;
       });
       getOriginalMsg().then((originalMsg) {
         setState(() {
@@ -673,6 +680,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                                         message: message.message,
                                         type: message.type,
                                         stuName: studentName,
+                                        avatar: avatar,
                                       )
                                     )
                                   ],
@@ -684,9 +692,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                                   fn.unfocus();
                                 },
                                 child: ChatElement(
-                                  message: message.message, 
-                                  type: message.type,
-                                  stuName: studentName)
+                                    message: message.message, 
+                                    type: message.type,
+                                    stuName: studentName,
+                                    avatar: avatar,
+                                  )
                                 );
                             },
                           )))),
