@@ -122,10 +122,12 @@ void setAvatar(String imgUri) async {
   await prefs.setString("avatar", imgUri);
 }
 
-Future<String> getAvatar() async {
+Future<String> getAvatar({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? avatar = prefs.getString("avatar");
-  avatar ??= "assets/head.webp";
+  if (avatar == null || isDefault){
+     return "https://files.catbox.moe/nm8lgv.webp";
+  }
   return avatar;
 }
 

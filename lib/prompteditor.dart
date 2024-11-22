@@ -48,6 +48,7 @@ class PromptEditorState extends State<PromptEditor> {
                   controller.text = await getPrompt(isDefault: true, isRaw: true);
                   studentNameController.text = await getStudentName(isDefault: true);
                   originMsgController.text = await getOriginalMsg(isDefault: true);
+                  studentAvatarController.text = await getAvatar(isDefault: true);
                 },
                 child: const Text('恢复'),
               ),
