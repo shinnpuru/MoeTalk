@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'utils.dart' show Config, SdConfig;
 
 
@@ -145,16 +146,21 @@ Future<String> convertToJson() async {
   final prefs = await SharedPreferences.getInstance();
   final keys = prefs.getKeys();
   
-  Map<String, dynamic> allPrefs = {};
+  Map<String, dynamic> allPrefs = {"data":{}};
   for (String key in keys) {
-    allPrefs[key] = prefs.get(key);
+    // "name" "avatar" "first_mes" "description" save to data
+    if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
+      allPrefs["data"][key] = prefs.get(key);
+    } else {
+      allPrefs[key] = prefs.get(key);
+    }
   }
   return jsonEncode(allPrefs);
 }
 
 Future<String> getStudentName({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? name = prefs.getString("student_name");
+  String? name = prefs.getString("name");
   if (name == null || isDefault) {
     return "未花";
   }
@@ -163,12 +169,12 @@ Future<String> getStudentName({bool isDefault=false}) async {
 
 Future<void> setStudentName(String name) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString("student_name", name);
+  await prefs.setString("name", name);
 }
 
 Future<String> getOriginalMsg({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? msg = prefs.getString("original_msg");
+  String? msg = prefs.getString("first_mes");
   if (msg == null || isDefault) {
     return "Sensei你终于来啦！\\我可是个乖乖看家的好孩子哦";
   }
@@ -177,12 +183,12 @@ Future<String> getOriginalMsg({bool isDefault=false}) async {
 
 Future<void> setOriginalMsg(String msg) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString("original_msg", msg);
+  await prefs.setString("first_mes", msg);
 } 
 
 Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExternal=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? prompt = prefs.getString("custom_prompt");
+  String? prompt = prefs.getString("description");
   if (prompt == null || prompt.length < 200 || isDefault) {
     prompt = await rootBundle.loadString('assets/prompt.txt');
   }
@@ -202,7 +208,7 @@ Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExterna
 
 Future<void> setPrompt(String prompt) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString("custom_prompt", prompt);
+  await prefs.setString("description", prompt);
 }
 
 Future<List<String>> getWebdav() async {
@@ -266,6 +272,16 @@ Future<void> restoreFromJson(jsonString) async {
       await prefs.setStringList(key, value.map((item) => item.toString()).toList());
     }
   }
+
+  if (allPrefs.containsKey("data")) {
+    Map<String, dynamic> data = allPrefs["data"];
+    for (String key in data.keys) {
+      if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
+        prefs.setString(key, data[key]);
+      }
+    }
+  }
+
 }
 
 Future<bool> writeFileAndroid(String data) async {
