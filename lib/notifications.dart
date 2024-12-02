@@ -26,7 +26,7 @@ class NotificationHelper {
   Future<void> showNotification(
       {required String title, required String body, bool showAvator=true}) async {
     AndroidNotificationDetails androidNotificationDetails =
-        AndroidNotificationDetails('k96e.momotalk.notification', 'notification',
+        AndroidNotificationDetails('shinnpuru.momotalk.notification', 'notification',
             channelDescription: 'Message notifications',
             importance: Importance.max,
             priority: Priority.high,

@@ -339,7 +339,7 @@ class ConfigPageState extends State<ConfigPage> {
                 ),
               ],
             ),
-            const Center(child: Opacity(opacity: 0.3,child: Text("@k96e"))),
+            const Center(child: Opacity(opacity: 0.3,child: Text("@shinnpuru"))),
           ],
         ),
         )
