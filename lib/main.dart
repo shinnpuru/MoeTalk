@@ -447,21 +447,28 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     });
     List<List<String>> msg = parseMsg(await getPrompt(withExternal: externalPrompt), messages);
     logMsg(msg.sublist(1));
-    bool firstSplit = true;
+    bool notificationSent= false;
     try {
       String response = "";
       await completion(config, msg, 
-        (resp){
-          if(resp.toString().contains("\\")){
-            resp = randomizeBackslashes(resp.replaceAll("\\\\", "\\"));
-          }
-          response += resp.replaceAll("\n", '');
+        (String resp){
+          resp = resp.replaceAll(RegExp(r'[\n\\]+'), r'\');
+          resp = randomizeBackslashes(resp);
+          response += resp;
           updateResponse(response);
-          if(firstSplit && response.contains("\\")){
-            firstSplit = false;
-            if(!isForeground){
-              isAutoNotification = true;
-              notification.showNotification(title: studentName, body: response.split("\\")[0]);
+          if(!isForeground && !notificationSent && response.contains("\\")){
+            List<String> msgs = response.split("\\");
+            for(int i=0;i<msgs.length;i++){
+              if(msgs[i].isEmpty || msgs[i].startsWith("*")||
+                msgs[i].startsWith("（")||msgs[i].startsWith("我无法继续")){
+                continue;
+              }
+              if(i!=msgs.length-1){
+                notification.showNotification(title: studentName, body: msgs[i]);
+                isAutoNotification = true;
+                notificationSent = true;
+                break;
+              }
             }
           }
         }, (){
@@ -473,7 +480,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
             inputLock = false;
           });
           debugPrint("inputUnlocked");
-          setTempHistory(msgListToJson(messages));
+          if(messages.last.message.contains("\\")){
+            setTempHistory(msgListToJson(messages));
+          }
+          if(!isForeground && !notificationSent){
+            isAutoNotification = true;
+            notificationSent = true;
+            notification.showNotification(title: "Done", body: "" ,showAvator: false);
+          }
           lastMessages = null;
         }, (err){
           setState(() {
@@ -613,7 +627,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => ConfigPage(updateFunc: updateConfig)));
+                          builder: (context) => 
+                            ConfigPage(updateFunc: updateConfig, currentConfig: config)));
                 } else if (value == 'Customize') {
                     Navigator.push(
                       context,
