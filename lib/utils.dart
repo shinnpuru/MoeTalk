@@ -90,7 +90,13 @@ String timestampToSystemMsg(String timestr) {
 
 List<List<String>> parseMsg(String prompt, List<Message> messages) {
   List<List<String>> msg = [];
-  msg.add(["system",prompt]);
+  String flag = "prompt_split";
+  int ind = prompt.indexOf(flag);
+  if (ind != -1) {
+    msg.add(["system",prompt.substring(0, ind)]);
+  } else {
+    msg.add(["system",prompt]);
+  }
   for (var m in messages) {
     if (m.type == Message.assistant) {
       msg.add(["assistant",m.message.replaceAll("\\\\", "\\")]);
@@ -102,6 +108,9 @@ List<List<String>> parseMsg(String prompt, List<Message> messages) {
       var timestr = timestampToSystemMsg(m.message);
       msg.add(["system","下面的对话开始于$timestr"]);
     }
+  }
+  if (ind != -1) {
+    msg.add(["system",prompt.substring(ind+flag.length)]);
   }
   return msg;
 }

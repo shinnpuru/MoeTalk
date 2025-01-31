@@ -22,8 +22,12 @@ max_tokens 生成文本的最大长度，比如8192
 ### 备份
  在设置页点击备份会默认导出备份文件到设备的下载目录，备份中文件除了保存的对话外还有api密钥等敏感信息，请勿轻易分享到公开平台
 
-#### 关于AI绘画
- 使用[这个HuggingFace Space](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
+### 关于AI绘画
+使用[这个HuggingFace Space](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
+
+### 关于ExtPrompt
+
+ExtPrompt会使用prompt_split分割初始prompt，前边一段prompt作为开始，中间是对话，最后再和后一段prompt拼接起来，这样可以更好的控制对话的方向
 
 ### 恢复
 在设置页点击恢复会默认从设备的下载目录导入备份文件，兼容SillyTavern格式的json。

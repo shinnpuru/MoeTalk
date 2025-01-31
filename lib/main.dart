@@ -446,7 +446,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       debugPrint("inputLocked");
     });
     List<List<String>> msg = parseMsg(await getPrompt(withExternal: externalPrompt), messages);
-    logMsg(msg.sublist(1));
+    logMsg(msg);
     bool notificationSent= false;
     try {
       String response = "";
