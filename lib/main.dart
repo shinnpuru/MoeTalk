@@ -527,9 +527,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   fit: BoxFit.scaleDown)),
           flexibleSpace: Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[Color(0xffff899e), Color(0xfff79bac)],
-              ),
+              color: Color(0xfff2a0ac)
             ),
           ),
           actions: <Widget>[
