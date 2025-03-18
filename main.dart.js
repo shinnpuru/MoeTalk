@@ -94763,7 +94763,7 @@ b=m.ch
 b===$&&A.a()
 a0.sb7(0,"Loading model "+b.c+" ...\n"+a0.a.a)
 b=t.N
-a1=A.ar(["data",A.b([m.ch.c,"None","txt2img","Automatic"],t.s),"fn_index",13,"session_hash",m.y],b,t.X)
+a1=A.ar(["data",A.b([m.ch.c,"None","txt2img"],t.s),"fn_index",12,"session_hash",m.y],b,t.X)
 a3=t.z
 s=6
 return A.p(a.a_x("/queue/join",m.ay,a1,a3),$async$kI)
@@ -94817,7 +94817,7 @@ if(a5==null)a5=1600
 a6=a1.e
 if(a6==null)a6=1024
 a7=t.N
-a1=A.ar(["data",[a0,a3,1,30,7,!0,-1,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,a4,"Automatic","Automatic",a5,a6,a1.c,null,"txt2img",null,null,512,1024,null,null,null,0.55,100,200,0.1,0.1,1,9,1,0,1,!1,"Classic",null,1.2,0,8,30,0.55,"Use same sampler","","",!1,!0,"Use same schedule type",-1,"Automatic",1,!0,!1,!0,!0,!0,"model,seed","./images",!1,!1,!1,!0,1,0.55,!1,!1,!1,!0,!1,"Use same sampler",!1,"","",0.35,!0,!1,!1,4,4,32,!1,"","",0.35,!1,!0,!1,4,4,32,!1,0,null,null,"plus_face","original",0.7,null,null,"base","style",0.7,0,!1,!1,59],"fn_index",14,"session_hash",m.y],a7,t.X)
+a1=A.ar(["data",[a0,a3,1,30,7,!0,-1,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,a4,"Automatic","Automatic",a5,a6,a1.c,null,"txt2img",null,null,512,1024,null,null,null,0.55,100,200,0.1,0.1,1,0,1,!1,"Classic",null,1.2,0,8,30,0.55,"Use same sampler","","",!1,!0,1,!0,!1,!0,!0,!0,"model,seed","./images",!1,!1,!1,!0,1,0.55,!1,!1,!1,!0,!1,"Use same sampler",!1,"","",0.35,!0,!0,!1,4,4,32,!1,"","",0.35,!0,!0,!1,4,4,32,!1,null,null,"plus_face","original",0.7,null,null,"base","style",0.7,0,!1,!1,59],"fn_index",13,"session_hash",m.y],a7,t.X)
 a6=t.z
 s=15
 return A.p(a.a_x("/queue/join",m.ay,a1,a6),$async$kI)
