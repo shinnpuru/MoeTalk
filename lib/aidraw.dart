@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'utils.dart';
 import 'openai.dart';
 import 'notifications.dart';
-import 'storage.dart' show setDrawUrl, getDrawUrl, getSdConfig, setSdConfig;
+import 'storage.dart';
 
 class AiDraw extends StatefulWidget {
   final String? msg;
@@ -18,8 +18,8 @@ class AiDraw extends StatefulWidget {
 }
 
 class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
-  TextEditingController logController = TextEditingController(text: '');
-  TextEditingController promptController = TextEditingController(text: '');
+  TextEditingController logController = TextEditingController();
+  TextEditingController promptController = TextEditingController();
   TextEditingController apiController = TextEditingController();
   String lastModel = "";
   String? imageUrl;
@@ -55,7 +55,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     String result = '';
     await completion(widget.config, messages,
       (String data) {
-        result += data;
+        result += data.replaceAll("\n", " ");
         promptController.text = result;
       },
       () {
@@ -76,8 +76,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   Future<void> makeRequest() async {
     String url = apiController.text;
     if(url.isEmpty) {
-      snackBarAlert(context, "Api url is empty!");
-      return;
+      url = 'https://r3gm-diffusecraft.hf.space';
     }
     setState(() {
       sdBusy = true;
@@ -94,8 +93,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       await dio.post(
         "/queue/join",
         data: {
-          "data": [sdConfig.model, "None", "txt2img"],
-          "fn_index": 12,
+          "data": [sdConfig.model, "None", "txt2img", "Automatic"],
+          "fn_index": 13,
           "session_hash": sessionHash,
         },
         cancelToken: cancelToken,
@@ -140,6 +139,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           0.33,
           null,
           0.33,
+          null,
+          0.33,
+          null,
+          0.33,
           sdConfig.sampler,
           "Automatic",
           "Automatic",
@@ -161,8 +164,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           0.1,
           0.1,
           1,
-          0,
+          9,
           1,
+		      0,
+		      1,
           false,
           "Classic",
           null,
@@ -176,6 +181,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           "",
           false,
           true,
+		      "Use same schedule type",
+          -1,
+          "Automatic",
           1,
           true,
           false,
@@ -201,7 +209,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           "",
           0.35,
           true,
-          true,
+          false,
           false,
           4,
           4,
@@ -210,13 +218,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           "",
           "",
           0.35,
-          true,
+          false,
           true,
           false,
           4,
           4,
           32,
           false,
+		      0,
           null,
           null,
           "plus_face",
@@ -228,11 +237,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           "style",
           0.7,
           0,
+          null,
+          1,
+          0.5,
           false,
           false,
           59
         ],
-        "fn_index": 13,
+        "fn_index": 14,
         "session_hash": sessionHash,
       },
       cancelToken: cancelToken,
@@ -251,15 +263,16 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     await for (var chunk in inferQueue.data!.stream) {
       String data = utf8.decode(chunk);
       logController.text = data + logController.text;
-      final match = regexWebp.firstMatch(data);
-      if (match != null) {
-        lastUrl = match.group(1)!;
+      final match = regexWebp.allMatches(data);
+      if (match.isNotEmpty) {
+        lastUrl = match.last.group(1)!;
       }
       if (data.contains('close_stream')) {
         if(lastUrl.isEmpty) return;
         if(!mounted) return;
         setState(() {
           imageUrl = lastUrl.replaceFirst("https://r3gm-diffusecraft.hf.space/", url);
+          debugPrint(imageUrl);
           sdBusy = false;
           showLog = false;
         });
@@ -405,7 +418,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         memConfig.negativePrompt = 'nsfw, (low quality, worst quality:1.2), very displeasing, 3d, watermark, signatrue, ugly, poorly drawn';
       }
       if(memConfig.model.isEmpty) {
-        memConfig.model = 'John6666/noobai-xl-nai-xl-epsilonpred10version-sdxl';
+        memConfig.model = 'Laxhar/noobai-XL-1.1';
       }
       if(memConfig.sampler.isEmpty) {
         memConfig.sampler = 'DPM++ 2M';
@@ -500,6 +513,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
             TextField(
               controller: promptController,
               decoration: InputDecoration(labelText: gptBusy?'Building prompt':'Prompt'),
+              maxLines: 3,
+              minLines: 1,
             ),
             Expanded(
               child: (imageUrl == null) || showLog
