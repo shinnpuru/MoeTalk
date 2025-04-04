@@ -6,7 +6,7 @@ http://talk.shinnpuru.site
 
 ### 配置
 
-点击右上角×， 选择Settings，配置模型api
+打开左侧菜单，选择模型设置，配置模型api
 ```
 名称       该配置项的名称，自定
 base url   api的base_url，模型文档会提供
@@ -15,42 +15,18 @@ model      使用的模型名
 temperature 生成文本的温度，0-1之间，越大生成的文本越随机
 repetition_penalty 生成文本的重复惩罚，0-1之间，越大生成的文本越不重复
 presence_penalty 生成文本的存在惩罚，0-1之间，越大生成的文本越不重复
-max_tokens 生成文本的最大长度，比如8192
+max_tokens 生成文本的最大长度，比如16384
 ```
 保存后确定即可
 
-### 备份
- 在设置页点击备份会默认导出备份文件到设备的下载目录，备份中文件除了保存的对话外还有api密钥等敏感信息，请勿轻易分享到公开平台
-
-### 关于AI绘画
-使用[这个HuggingFace Space](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
-
-### 关于ExtPrompt
-
-ExtPrompt会使用prompt_split分割初始prompt，前边一段prompt作为开始，中间是对话，最后再和后一段prompt拼接起来，这样可以更好的控制对话的方向
-
-### 恢复
+### 导入
 在设置页点击恢复会默认从设备的下载目录导入备份文件，兼容SillyTavern格式的json。
 
-### 个性化
+### 备份
+在设置页点击备份会默认导出备份文件到设备的下载目录，备份中文件除了保存的对话外还有api密钥等敏感信息，请勿轻易分享到公开平台
 
-点击右上角×， 选择Customize，配置个性化选项
-```
-student avatar  学生头像
-student name    学生名字
-origin message  初始对话
-prompt          提示词
-```
-
-### 修改对话
-
-- 长按对话可以修改对话内容
-- 点击右上角×， 选择Clear，清空对话
-- 点击右上角×， 选择Save，保存对话，会存在History中
-- 点击右上角×， 选择Add Time，添加时间戳
-- 点击右上角×， 选择AddSysPrompt，添加系统提示
-- 点击右上角×， 选择Msgs，批量修改当前对话
-- 点击右上角×， 选择History，查看历史对话
+### AI绘画
+使用[这个HuggingFace Space](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
 
 ### 叠甲
 - 自用项目能跑就行，代码很烂
