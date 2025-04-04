@@ -56,13 +56,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
   int splitCount = 0;
-  bool externalPrompt = false;
   bool inputLock = false;
   bool keyboardOn = false;
   bool isForeground = true;
   bool isAutoNotification = false;
   List<Message> messages = [];
   List<Message>? lastMessages;
+  List<List<String>> historys = [];
 
   @override
   void initState() {
@@ -88,6 +88,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       if (configs.isNotEmpty) {
         config = configs[0];
       }
+    });
+    getHistorys().then((List<List<String>> results) {
+      setState(() {
+        historys = results;
+        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+      });
     });
   }
 
@@ -260,13 +266,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     showDialog(context: context, builder: (context){
       return StatefulBuilder(builder: (context, setState) {
         return AlertDialog(
-          title: const Text("AiDraw"),
+          title: const Text("绘图提示词"),
           content: TextField(
             maxLines: null,
             minLines: 1,
             controller: controller,
             decoration: const InputDecoration(
-              hintText: "Build prompt?",
+              hintText: "请输入提示词...",
             ),
           ),
           actions: [
@@ -274,17 +280,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Skip'),
+              child: const Text('跳过'),
             ),
             TextButton(
               onPressed: () async {
                 if(isBuild){
                   Navigator.of(context).pop(controller.text);
                 } else {
-                  controller.text = "Building...";
+                  controller.text = "正在生成...";
                   String prompt = "";
-                  List<List<String>> msg = parseMsg(await getPrompt(withExternal: externalPrompt), messages);
-                  msg.add(["user", "system instruction:暂停角色扮演，根据上下文，详细描述$studentName给Sensei发送的图片内容或是当前Sensei所看到的场景"]);
+                  List<List<String>> msg = parseMsg(await getPrompt(), messages);
+                  msg.add(["user", "system instruction:暂停角色扮演，根据上下文，详细描述$studentName给Sensei发送的图片内容"]);
                   completion(config, msg, (resp){
                     const String a="我无法继续作为",b="代替玩家言行";
                     prompt += resp;
@@ -302,7 +308,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   });
                 }
               },
-              child: Text(isBuild? 'Done':'Build'),
+              child: Text(isBuild? '继续':'生成'),
             ),
           ],
         );
@@ -445,7 +451,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       inputLock = true;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = parseMsg(await getPrompt(withExternal: externalPrompt), messages);
+    List<List<String>> msg = parseMsg(await getPrompt(), messages);
     logMsg(msg);
     bool notificationSent= false;
     try {
@@ -515,11 +521,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     }
   }
 
+  String getTimeStr(int index) {
+    int timeStamp = int.parse(historys[index][1]);
+    DateTime t = DateTime.fromMillisecondsSinceEpoch(timeStamp);
+    const weekday = ["", "一", "二", "三", "四", "五", "六", "日"];
+    return "${t.year}年${t.month}月${t.day}日星期${weekday[t.weekday]}"
+        "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          toolbarHeight: 50,
+          leading: Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                color: Colors.white,
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              );
+            },
+          ),
           title: const SizedBox(
               height: 22,
               child: Image(
@@ -531,63 +555,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
             ),
           ),
           actions: <Widget>[
-            PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 40,
-              ),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'Clear',
-                  child: Text('Clear'),
-                ),
-                const PopupMenuItem(
-                  value: 'Save',
-                  child: Text('Save'),
-                ),
-                const PopupMenuItem(
-                  value: 'Time',
-                  child: Text('AddTime'),
-                ),
-                const PopupMenuItem(
-                  value: 'System',
-                  child: Text('AddSysPrompt...'),
-                ),
-                PopupMenuItem(
-                  value: 'ExtPrompt',
-                  child: Text('ExtPrompt ${externalPrompt?"√":"×"}'),
-                ),
-                const PopupMenuItem(
-                  value: 'Backup',
-                  child: Text('Backup...'),
-                ),
-                const PopupMenuItem(
-                  value: 'Draw',
-                  child: Text('AiDraw...'),
-                ),
-                const PopupMenuItem(
-                  value: 'History',
-                  child: Text('History...'),
-                ),
-                const PopupMenuItem(
-                  value: 'Msgs',
-                  child: Text('Msgs...'),
-                ),
-                const PopupMenuItem(
-                  value: 'Settings',
-                  child: Text('Settings...'),
-                ),
-                const PopupMenuItem(
-                  value: 'Customize',
-                  child: Text('Customize...'),
-                ),
-              ],
-              onSelected: (String value) async {
-                if (value == 'Clear') {
-                  clearMsg();
-                } else if (value == 'Save') {
-                  String prompt = await getPrompt(withExternal: externalPrompt);
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              color: Colors.white,
+              onPressed: () {
+                clearMsg();
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.save),
+              color: Colors.white,
+              onPressed: () async {
+                  String prompt = await getPrompt();
                   if(!context.mounted) return;
                   String? value = await namingHistory(context, "", config, studentName, parseMsg(prompt, messages));
                   if (value != null) {
@@ -595,10 +574,38 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     addHistory(msgListToJson(messages),value);
                     if(!context.mounted) return;
                     snackBarAlert(context, "已保存");
+                    getHistorys().then((List<List<String>> results) {
+                      setState(() {
+                        historys = results;
+                        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                      });
+                    });
                   } else {
                     debugPrint("cancel");
                   }
-                } else if (value == 'Time') {
+              },
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.edit,
+                color: Colors.white,
+              ),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'Time',
+                  child: Text('时间戳'),
+                ),
+                const PopupMenuItem(
+                  value: 'System',
+                  child: Text('系统消息'),
+                ),
+                const PopupMenuItem(
+                  value: 'Msgs',
+                  child: Text('编辑消息'),
+                ),
+              ],
+              onSelected: (String value) async {
+                if (value == 'Time') {
                   if(messages.last.type != Message.timestamp){
                     setState(() {
                       messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
@@ -621,35 +628,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                       }
                     });
                   });
-                } else if (value == 'Settings') {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => 
-                            ConfigPage(updateFunc: updateConfig, currentConfig: config)));
-                } else if (value == 'Customize') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PromptEditor()));
-                } else if (value == 'Backup'){
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => WebdavPage(
-                            currentMessages: msgListToJson(messages),
-                            onRefresh: loadHistory)));
-
-                }else if (value == 'History') {
-                  showModalBottomSheet(
-                      context: context,
-                      showDragHandle: true,
-                      scrollControlDisabledMaxHeightRatio: 0.9,
-                      builder: (BuildContext context) => HistoryPage(updateFunc: loadHistory));
-                }else if (value == 'ExtPrompt') {
-                  setState(() {
-                    externalPrompt = !externalPrompt;
-                  });
-                  snackBarAlert(context, "ExtPrompt ${externalPrompt?"on":"off"}");
                 }else if (value == 'Msgs') {
                   Navigator.push(
                     context,
@@ -657,12 +635,133 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                       builder: (context) => MsgEditor(msgs: messages)
                     )
                   ).then((msgs){setState(() {});});
-                }else if (value == 'Draw') {
-                  sdWorkflow();
                 }
               },
             ),
           ],
+        ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Color(0xfff2a0ac),
+                ),
+                child: SizedBox(
+                  height: 50, // Set fixed height
+                  child: Text(
+                    'MisonoTalk',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+              ),
+              // History button
+              ExpansionTile(
+                leading: const Icon(Icons.history),
+                title: const Text('历史记录'),
+                children: historys.map((history) {
+                  int index = historys.indexOf(history);
+                  return ListTile(
+                    title: Text(getTimeStr(index)),
+                    subtitle: Text(history[0]),
+                    onTap: () {
+                      loadHistory(history[2]);
+                      Navigator.pop(context);
+                    },
+                    onLongPress: () => showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('删除历史记录'),
+                        content: const Text('你确定要删除这条历史记录吗？'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              deleteHistory("history_${history[1]}");
+                              setState(() {
+                                historys.removeAt(index);
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('删除'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+// Customize button
+              ListTile(
+                leading: const Icon(Icons.accessibility),
+                title: const Text('角色设置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PromptEditor(),
+                    ),
+                  );
+                },
+              ),
+              // Backup button
+              ListTile(
+                leading: const Icon(Icons.backup),
+                title: const Text('备份设置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WebdavPage(
+                        currentMessages: msgListToJson(messages),
+                        onRefresh: loadHistory,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Settings button
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('模型设置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                    ),
+                  );
+                },
+              ),
+              // About button
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text('关于'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('关于 MisonoTalk'),
+                      content: const Text('MisonoTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         body: GestureDetector(
           onTap: () {
@@ -717,6 +816,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                 padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
                 child: Row(
                   children: [
+                    // text input field
                     Expanded(
                         child: TextField(
                             focusNode: fn,
@@ -737,9 +837,24 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                                 horizontal: 10,
                                 vertical: 8,
                               ),
-                              hintText: inputLock ? 'Responding' : 'Type a message',
+                              hintText: inputLock ? '回复中' : '请输入您的消息...',
                             ))),
                     const SizedBox(width: 5),
+                    // drawing button
+                    ElevatedButton(
+                      onPressed: () => sdWorkflow(),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(0),
+                        backgroundColor: const Color(0xffff899e),
+                        foregroundColor: const Color(0xffffffff),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      child: const Text('绘图'),
+                    ),
+                    const SizedBox(width: 5),
+                    // send button
                     ElevatedButton(
                       onPressed: () => sendMsg(true),
                       style: ElevatedButton.styleFrom(
@@ -750,7 +865,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                           borderRadius: BorderRadius.circular(5),
                         ),
                       ),
-                      child: const Text('Send'),
+                      child: const Text('发送'),
                     )
                   ],
                 ),

@@ -33,7 +33,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 
   Future<void> buildPrompt() async {
     if(widget.msg == null) {
-      snackBarAlert(context, "No message to build prompt!");
+      snackBarAlert(context, "没有输入内容！");
       return;
     }
     setState(() {
@@ -69,7 +69,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           gptBusy = false;
         });
         logController.text = '$error\n${logController.text}';
-        snackBarAlert(context, "error!");
+        snackBarAlert(context, "出错了！$error");
       });
   }
 
@@ -89,7 +89,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     if(sessionHash==null || lastModel != sdConfig.model) {
       sessionHash = const Uuid().v4();
       logController.text = '$sessionHash\n${logController.text}';
-      logController.text = 'Loading model ${sdConfig.model} ...\n${logController.text}';
+      logController.text = '正在加载 ${sdConfig.model} ...\n${logController.text}';
       await dio.post(
         "/queue/join",
         data: {
@@ -111,10 +111,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       }
       cancelToken = CancelToken();
     } else {
-      logController.text = 'session already exists\nsession hash:$sessionHash';
+      logController.text = '会话已经存在\n绘画哈希值:$sessionHash';
     }
     lastModel = sdConfig.model;
-    logController.text = 'Drawing...\n${logController.text}';
+    logController.text = '正在绘画...\n${logController.text}';
     if(!sdConfig.prompt.contains("VERB")){
       sdConfig.prompt+= ", VERB";
     }
@@ -278,8 +278,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         });
         if(!isForeground) {
           notification.showNotification(
-            title: 'AiDraw',
-            body: 'Drawing completed',
+            title: '绘画',
+            body: '绘画完成！',
             showAvator: false
           );
         }
@@ -305,33 +305,33 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     TextEditingController sdStep = TextEditingController(text:sdConfig.steps.toString());
     TextEditingController sdCFG = TextEditingController(text:sdConfig.cfg.toString());
     return AlertDialog(
-      title: const Text('Config'),
+      title: const Text('配置'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text("add 'VERB' tag to place built prompt"),
+          const Text("输入 VERB 作为占位符"),
           TextField(
             controller: sdPrompt,
-            decoration: const InputDecoration(labelText: "Positive Prompt"),
+            decoration: const InputDecoration(labelText: "正向提示词"),
           ),
           TextField(
             controller: sdNegative,
-            decoration: const InputDecoration(labelText: "Negative Prompt"),
+            decoration: const InputDecoration(labelText: "负向提示词"),
           ),
           TextField(
             controller: sdModel,
-            decoration: const InputDecoration(labelText: "Model"),
+            decoration: const InputDecoration(labelText: "模型"),
           ),
           TextField(
             controller: sdSampler,
-            decoration: const InputDecoration(labelText: "Sampler"),
+            decoration: const InputDecoration(labelText: "采样器"),
           ),
           Row(children: [
             Expanded(
               child: TextField(
                 controller: sdWidth,
                 inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "Width"),
+                decoration: const InputDecoration(labelText: "宽度"),
               ),
             ),
             const SizedBox(width: 8),
@@ -339,7 +339,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
               child: TextField(
                 controller: sdHeight,
                 inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "Height"),
+                decoration: const InputDecoration(labelText: "高度"),
               ),
             ),
           ]),
@@ -348,14 +348,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
               child: TextField(
                 controller: sdStep,
                 inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "Steps"),
+                decoration: const InputDecoration(labelText: "步数"),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
                 controller: sdCFG,
-                decoration: const InputDecoration(labelText: "CFG Scale"),
+                decoration: const InputDecoration(labelText: "CFG"),
               ),
             ),
           ]),
@@ -452,25 +452,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           ),
           IconButton(
             onPressed: () {
-              cancelToken.cancel();
-              cancelToken = CancelToken();
-              sessionHash = null;
-              logController.text = '';
-              setState(() {
-                gptBusy = false;
-                sdBusy = false;
-              });
-            },
-            icon: const Icon(Icons.autorenew)
-          ),
-          IconButton(
-            onPressed: () {
               Navigator.pop(context,imageUrl);
             },
-            icon: const Icon(Icons.arrow_right_alt)
+            icon: const Icon(Icons.arrow_forward)
           )
         ],
-        title: const Text('AiDraw')
+        title: const Text('绘画'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -479,43 +466,59 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           children: [
             TextField(
               controller: apiController,
-              decoration: const InputDecoration(labelText: "api url"),
+              decoration: const InputDecoration(labelText: "请输入绘画API地址..."),
               onSubmitted: (value) => setDrawUrl(value),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: promptController,
+              decoration: InputDecoration(labelText: gptBusy?'生成中...':'请输入提示词...'),
+              maxLines: 3,
+              minLines: 1,
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     if(gptBusy) return;
                     buildPrompt();
                   },
-                  child: Text(gptBusy?'Building':'Build Prompt'),
+                  child: const Text('重新生成提示词'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     showDialog(context: context, builder: sdConfigDialog);
                   },
-                  child: const Text("Config"),
+                  child: const Text("绘画配置"),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     if(sdBusy) return;
                     makeRequest().catchError((e) {
                       snackBarAlert(context, "error! $e");
                     });
                   },
-                  child: Text(sdBusy?'Drawing':'Draw')
-                )
+                  child: Text(sdBusy?'处理中...':'开始绘画' ),
+                ),
+                // CancelButton
+                ElevatedButton(
+                  onPressed: () {
+                    cancelToken.cancel();
+                    cancelToken = CancelToken();
+                    sessionHash = null;
+                    logController.text = '';
+                    setState(() {
+                      gptBusy = false;
+                      sdBusy = false;
+                    });
+                  },
+                  child: const Text('取消绘画'),
+                ),
               ]
             ),
-            TextField(
-              controller: promptController,
-              decoration: InputDecoration(labelText: gptBusy?'Building prompt':'Prompt'),
-              maxLines: 3,
-              minLines: 1,
-            ),
+            const SizedBox(height: 8),
             Expanded(
               child: (imageUrl == null) || showLog
                 ? TextField(

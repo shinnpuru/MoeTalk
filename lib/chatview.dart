@@ -32,7 +32,7 @@ class ChatElement extends StatelessWidget {
         "${t.minute.toString().padLeft(2,'0')}";
       return centerBubble(timestr);
     } else if (type == Message.system) {
-      return centerBubble("System Instruction Here");
+      return centerBubble("系统消息：$message");
     } else if (type == Message.image) {
       return ChatBubbleImage(name: stuName, imageUrl: message, avatar: avatar);
     }

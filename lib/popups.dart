@@ -151,7 +151,7 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
   TextEditingController controller = TextEditingController(text: msg);
   showDialog(context: context, builder: (context) {
     return AlertDialog(
-      title: const Text('编辑System Instruction'),
+      title: const Text('编辑系统指令'),
       content: TextField(
         maxLines: null,
         minLines: 1,

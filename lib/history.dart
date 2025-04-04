@@ -1,91 +1,13 @@
 import 'package:flutter/material.dart';
-import 'storage.dart';
 import 'openai.dart' show completion;
 import 'utils.dart' show snackBarAlert, Config;
-
-class HistoryPage extends StatefulWidget {
-  final Function(String) updateFunc;
-  const HistoryPage({super.key, required this.updateFunc});
-
-  @override
-  HistoryPageState createState() => HistoryPageState();
-}
-
-class HistoryPageState extends State<HistoryPage> {
-
-  List<List<String>> historys = [];
-  @override
-  void initState() {
-    super.initState();
-    getHistorys().then((List<List<String>> results) {
-      setState(() {
-        historys = results;
-        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-      });
-    });
-  }
-
-  String getTimeStr(int index){
-    int timeStamp = int.parse(historys[index][1]);
-    DateTime t = DateTime.fromMillisecondsSinceEpoch(timeStamp);
-    const weekday = ["", "一", "二", "三", "四", "五", "六", "日"];
-    return "${t.year}年${t.month}月${t.day}日星期${weekday[t.weekday]}"
-        "${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}";
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-          child: ListView.builder(
-        itemCount: historys.length,
-        itemBuilder: (context, index) {
-          return Card(
-            child: ListTile(
-              title: Text(getTimeStr(index)),
-              subtitle: Text(historys[index][0]),
-              isThreeLine: true,
-              onTap: () {
-                widget.updateFunc(historys[index][2]);
-                Navigator.pop(context);
-              },
-              onLongPress: ()=> showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Item'),
-                  content: const Text('Are you sure you want to delete this item?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: (){
-                        deleteHistory("history_${historys[index][1]}");
-                        setState(() {
-                          historys.removeAt(index);
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      )),
-    );
-  }
-}
 
 Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
                               String stuName, List<List<String>> msg) async {
   return showDialog(context: context, builder: (context) {
     final TextEditingController controller = TextEditingController(text: timeStr);
     return AlertDialog(
-      title: const Text('Save History'),
+      title: const Text('命名历史'),
       content: TextField(
         maxLines: null,
         minLines: 1,

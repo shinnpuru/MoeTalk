@@ -35,7 +35,7 @@ class PromptEditorState extends State<PromptEditor> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prompt Editor'),
+        title: const Text('角色编辑器'),
       ),
       body:  Column(
         children: <Widget>[
@@ -69,21 +69,21 @@ class PromptEditorState extends State<PromptEditor> {
           TextField(
             controller: studentAvatarController,
             decoration: const InputDecoration(
-              labelText: 'Student Avatar',
+              labelText: '角色头像',
             ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: studentNameController,
             decoration: const InputDecoration(
-              labelText: 'Student Name',
+              labelText: '角色名',
             ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: originMsgController,
             decoration: const InputDecoration(
-              labelText: 'Origin Message',
+              labelText: '初始对话',
             ),
           ),
           Expanded(child:
@@ -92,7 +92,7 @@ class PromptEditorState extends State<PromptEditor> {
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(
-                  labelText: 'Prompt（可通过添加prompt_split标记分隔ExternalPrompt）',
+                  labelText: '提示词（可通过添加prompt_split标记分离，分离后的内容出现在对话之后）',
                 ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
                 maxLines: null,

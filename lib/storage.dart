@@ -186,7 +186,7 @@ Future<void> setOriginalMsg(String msg) async {
   await prefs.setString("first_mes", msg);
 } 
 
-Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExternal=false}) async {
+Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExternal=true}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("description");
   if (prompt == null || prompt.length < 200 || isDefault) {
@@ -197,7 +197,7 @@ Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExterna
   }
   String flag = "prompt_split";
   if (withExternal) {
-    return prompt;
+    return prompt.trimLeft().replaceAll(flag, "").trimLeft();
   }
   int ind = prompt.indexOf(flag);
   if (ind != -1) {

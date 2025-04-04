@@ -33,7 +33,7 @@ class MsgEditorState extends State<MsgEditor> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Msg Editor'),
+        title: const Text('消息编辑器'),
       ),
       body: Column(
         children: <Widget>[
