@@ -606,6 +606,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
               ],
               onSelected: (String value) async {
                 if (value == 'Time') {
+                  if(messages.isEmpty){
+                    return;
+                  }
                   if(messages.last.type != Message.timestamp){
                     setState(() {
                       messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
@@ -841,31 +844,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                             ))),
                     const SizedBox(width: 5),
                     // drawing button
-                    ElevatedButton(
+                    IconButton(
                       onPressed: () => sdWorkflow(),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(0),
-                        backgroundColor: const Color(0xffff899e),
-                        foregroundColor: const Color(0xffffffff),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      child: const Text('绘图'),
+                      icon: const Icon(Icons.draw),
+                      color: const Color(0xffff899e),
                     ),
                     const SizedBox(width: 5),
                     // send button
-                    ElevatedButton(
+                    IconButton(
                       onPressed: () => sendMsg(true),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(0),
-                        backgroundColor: const Color(0xffff899e),
-                        foregroundColor: const Color(0xffffffff),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      child: const Text('发送'),
+                      icon: const Icon(Icons.send),
+                      color: const Color(0xffff899e),
                     )
                   ],
                 ),

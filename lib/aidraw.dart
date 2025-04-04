@@ -444,6 +444,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         actions: [
           IconButton(
             onPressed: () {
+                    showDialog(context: context, builder: sdConfigDialog);
+            },
+            icon: const Icon(Icons.settings)
+          ),
+          IconButton(
+            onPressed: () {
               setState(() {
                 showLog = !showLog;
               });
@@ -485,14 +491,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                     if(gptBusy) return;
                     buildPrompt();
                   },
-                  child: const Text('重新生成提示词'),
+                  child: const Text('生成提示'),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    showDialog(context: context, builder: sdConfigDialog);
-                  },
-                  child: const Text("绘画配置"),
-                ),
+                const SizedBox(width: 5),
                 ElevatedButton(
                   onPressed: () {
                     if(sdBusy) return;
@@ -500,8 +501,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                       snackBarAlert(context, "error! $e");
                     });
                   },
-                  child: Text(sdBusy?'处理中...':'开始绘画' ),
+                  child: Text(sdBusy?'处理中...':'开始' ),
                 ),
+                const SizedBox(width: 5),
                 // CancelButton
                 ElevatedButton(
                   onPressed: () {
@@ -514,7 +516,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                       sdBusy = false;
                     });
                   },
-                  child: const Text('取消绘画'),
+                  child: const Text('取消'),
                 ),
               ]
             ),

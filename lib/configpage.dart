@@ -103,7 +103,7 @@ class ConfigPageState extends State<ConfigPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置'),
+        title: const Text('模型配置'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -311,14 +311,14 @@ class ConfigPageState extends State<ConfigPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  child: const Text('备份'),
+                  child: const Text('下载'),
                   onPressed: () async {
                     String j = await convertToJson();
                     debugPrint(j);
                     if(await writeFile(j)){
-                      snackBarAlert(context, "备份成功");
+                      snackBarAlert(context, "下载成功");
                     } else {
-                      snackBarAlert(context, "备份失败");
+                      snackBarAlert(context, "下载失败");
                     }
                   },
                 ),
