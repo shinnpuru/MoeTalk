@@ -197,7 +197,7 @@ Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExterna
   }
   String flag = "prompt_split";
   if (withExternal) {
-    return prompt.trimLeft().replaceAll(flag, "").trimLeft();
+    return prompt;
   }
   int ind = prompt.indexOf(flag);
   if (ind != -1) {
