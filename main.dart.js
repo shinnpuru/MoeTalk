@@ -95287,7 +95287,7 @@ a16(){var s=0,r=A.y(t.H),q=this,p,o,n,m,l,k,j
 var $async$$0=A.z(function(a,b){if(a===1)return A.v(b,r)
 while(true)switch(s){case 0:k={}
 j=q.a
-j.push(A.b(["system","\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u6839\u636e\u4e0a\u4e0b\u6587\u7528\u4e00\u53e5\u8bdd\u603b\u7ed3\u8be5\u5bf9\u8bdd\u3002"],t.s))
+j.push(A.b(["user","system instruction:\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u6839\u636e\u4e0a\u4e0b\u6587\uff0c\u7528\u4e00\u53e5\u8bdd\u603b\u7ed3\u8be5\u5bf9\u8bdd\u3002"],t.s))
 k.a=""
 for(p=j.length,o=0;o<j.length;j.length===p||(0,A.Q)(j),++o){n=j[o]
 A.cD().$1(n[0]+": "+n[1])}p=q.b
@@ -95626,7 +95626,7 @@ return A.t(A.pZ(!1,!1),$async$$0)
 case 5:n=j.aKM(b,o.ch)
 m=o.w
 m===$&&A.a()
-n.push(A.b(["system","\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u8be6\u7ec6\u63cf\u8ff0"+m+"\u73b0\u5728\u7684\u7a7f\u7740\u4e0e\u72b6\u6001\u3002"],t.s))
+n.push(A.b(["user","system instruction:\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u6839\u636e\u4e0a\u4e0b\u6587\uff0c\u8be6\u7ec6\u63cf\u8ff0"+m+"\u73b0\u5728\u7684\u7a7f\u7740\u4e0e\u72b6\u6001\u3002"],t.s))
 A.Le(o.y,n,new A.agy(p,k),new A.agz(l,q.e),new A.agA(o))
 case 3:return A.w(null,r)}})
 return A.x($async$$0,r)},
