@@ -5,7 +5,9 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'storage.dart';
 
 import 'utils.dart' show snackBarAlert, Config, DecimalTextInputFormatter;
-
+// Conditional import
+import 'non_web_utils.dart'
+    if (dart.library.html) 'web_utils.dart';
 class ConfigPage extends StatefulWidget {
   final Function(Config) updateFunc;
   final Config currentConfig;

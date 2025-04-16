@@ -4,12 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
 import 'utils.dart' show Config, SdConfig;
-
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
@@ -282,53 +278,6 @@ Future<void> restoreFromJson(jsonString) async {
     }
   }
 
-}
-
-Future<bool> writeFileAndroid(String data) async {
-  var status = await Permission.manageExternalStorage.status;
-  if (!status.isGranted) {
-    status = await Permission.manageExternalStorage.request();
-    if (!status.isGranted) {
-      debugPrint('MANAGE_EXTERNAL_STORAGE permission denied');
-      return false;
-    }
-  }
-  try {
-    String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-    File file = File('/storage/emulated/0/Download/momoBackup_$timeStamp.json');
-    await file.writeAsString(data);
-    debugPrint('write file: ${file.path}');
-    return true;
-  } catch (e) {
-    debugPrint('Error writing file: $e');
-    return false;
-  }
-}
-
-Future<bool> writeFileWindows(String data) async {
-  try {
-    Directory? directory = await getDownloadsDirectory();
-    String path = directory?.path ?? '';
-    String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-    File file = File('$path/momoBackup_$timeStamp.json');
-    await file.writeAsString(data);
-    debugPrint('write file: ${file.path}');
-    return true;
-  } catch (e) {
-    debugPrint('Error writing file: $e');
-    return false;
-  }
-}
-
-Future<bool> writeFile(String data) async {
-  if (Platform.isAndroid) {
-    return await writeFileAndroid(data);
-  } else if (Platform.isWindows) {
-    return await writeFileWindows(data);
-  } else {
-    debugPrint('Unsupported platform');
-    return false;
-  }
 }
 
 Future<String?> pickFile() async{

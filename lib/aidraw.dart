@@ -47,7 +47,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 注意：
 - 画风应该是二次元风格，但不需要在提示词中写明画风。
 - 不要加入1girl, masterpiece等过于宽泛的词汇。
-- 如果内容涉及丸子头，请默认为单侧丸子头，即single side bun。
 
 示例：blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table
 图像描述：${widget.msg}''';
@@ -415,7 +414,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         memConfig.prompt = '1girl, mika (blue archive), misono mika, blue archive, halo, pink halo, pink hair, yellow eyes, angel, angel wings, feathered wings, white wings, VERB, masterpiece, best quality, newest, absurdres, highres, sensitive';
       }
       if(memConfig.negativePrompt.isEmpty) {
-        memConfig.negativePrompt = 'nsfw, (low quality, worst quality:1.2), very displeasing, 3d, watermark, signatrue, ugly, poorly drawn';
+        memConfig.negativePrompt = '(low quality, worst quality:1.2), very displeasing, 3d, watermark, signatrue, ugly, poorly drawn';
       }
       if(memConfig.model.isEmpty) {
         memConfig.model = 'Laxhar/noobai-XL-1.1';
@@ -486,14 +485,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    if(gptBusy) return;
-                    buildPrompt();
-                  },
-                  child: const Text('生成提示'),
-                ),
-                const SizedBox(width: 5),
                 ElevatedButton(
                   onPressed: () {
                     if(sdBusy) return;

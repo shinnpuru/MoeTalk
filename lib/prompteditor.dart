@@ -36,35 +36,32 @@ class PromptEditorState extends State<PromptEditor> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('角色编辑器'),
+        actions: [
+          // 初始化
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              controller.text = await getPrompt(isDefault: true, isRaw: true);
+              studentNameController.text = await getStudentName(isDefault: true);
+              originMsgController.text = await getOriginalMsg(isDefault: true);
+              studentAvatarController.text = await getAvatar(isDefault: true);
+            },
+          ),
+          // 保存
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: () {
+              setPrompt(controller.text);
+              setStudentName(studentNameController.text);
+              setOriginalMsg(originMsgController.text);
+              setAvatar(studentAvatarController.text);
+              Navigator.pop(context);
+            },
+          ),
+        ],
       ),
       body:  Column(
         children: <Widget>[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () async{
-                  controller.text = await getPrompt(isDefault: true, isRaw: true);
-                  studentNameController.text = await getStudentName(isDefault: true);
-                  originMsgController.text = await getOriginalMsg(isDefault: true);
-                  studentAvatarController.text = await getAvatar(isDefault: true);
-                },
-                child: const Text('恢复'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  setPrompt(controller.text);
-                  setStudentName(studentNameController.text);
-                  setOriginalMsg(originMsgController.text);
-                  setAvatar(studentAvatarController.text);
-                  Navigator.pop(context);
-                },
-                child: const Text('保存'),
-              ),
-            ],
-          ),
           const SizedBox(height: 8),
           TextField(
             controller: studentAvatarController,

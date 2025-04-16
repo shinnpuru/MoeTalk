@@ -22,13 +22,13 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
         ),
         TextButton(
           onPressed: () async {
-            msg.add(["system","上面的对话暂时结束，现在为了记住这次对话，你需要继续模仿$stuName的语气，用一句话总结该对话，不分隔句子或换行，尽量简短"]);
+            msg.add(["system","根据上下文，用一句话总结该对话，不分隔句子或换行，尽量简短。"]);
             String result = "";
             for (var m in msg) {
               debugPrint("${m[0]}: ${m[1]}");
             }
             debugPrint("model: ${config.model}");
-            controller.text = "Generating...";
+            controller.text = "生成中...";
             await completion(config, msg, (chunk){
               result += chunk;
               controller.text = result;

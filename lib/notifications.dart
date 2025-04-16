@@ -2,8 +2,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:math' show Random;
 
 // Conditional import
-import 'notification_permission.dart'
-    if (dart.library.html) 'notification_permission_web.dart';
+import 'non_web_utils.dart'
+    if (dart.library.html) 'web_utils.dart';
 
 class NotificationHelper {
   static final NotificationHelper _instance = NotificationHelper._internal();
