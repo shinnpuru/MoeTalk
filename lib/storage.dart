@@ -243,9 +243,26 @@ Future<void> setSdConfig(SdConfig config) async {
 Future<SdConfig> getSdConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','',''];
-  return SdConfig(prompt: configList[0], negativePrompt: configList[1], model: configList[2],
+  final memConfig = SdConfig(prompt: configList[0], negativePrompt: configList[1], model: configList[2],
     sampler: configList[3], width: int.tryParse(configList[4]), height: int.tryParse(configList[5]),
     steps: int.tryParse(configList[6]), cfg: int.tryParse(configList[7]));
+  if(memConfig.prompt.isEmpty) {
+    memConfig.prompt = '1girl, mika (blue archive), misono mika, blue archive, halo, pink halo, pink hair, yellow eyes, angel, angel wings, feathered wings, white wings, VERB, masterpiece, best quality, newest, absurdres, highres, sensitive';
+  }
+  if(memConfig.negativePrompt.isEmpty) {
+    memConfig.negativePrompt = '(low quality, worst quality:1.2), very displeasing, 3d, watermark, signatrue, ugly, poorly drawn';
+  }
+  if(memConfig.model.isEmpty) {
+    memConfig.model = 'Laxhar/noobai-XL-1.1';
+  }
+  if(memConfig.sampler.isEmpty) {
+    memConfig.sampler = 'DPM++ 2M';
+  }
+  memConfig.width ??= 1024;
+  memConfig.height ??= 1600;
+  memConfig.steps ??= 30;
+  memConfig.cfg ??= 7;
+  return memConfig;
 }
 
 Future<void> restoreFromJson(jsonString) async {

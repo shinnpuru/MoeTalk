@@ -294,100 +294,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     cancelToken = CancelToken();
   }
 
-  Widget sdConfigDialog(BuildContext context){
-    TextEditingController sdPrompt = TextEditingController(text:sdConfig.prompt);
-    TextEditingController sdNegative = TextEditingController(text:sdConfig.negativePrompt);
-    TextEditingController sdModel = TextEditingController(text:sdConfig.model);
-    TextEditingController sdSampler = TextEditingController(text:sdConfig.sampler);
-    TextEditingController sdWidth = TextEditingController(text:sdConfig.width.toString());
-    TextEditingController sdHeight = TextEditingController(text:sdConfig.height.toString());
-    TextEditingController sdStep = TextEditingController(text:sdConfig.steps.toString());
-    TextEditingController sdCFG = TextEditingController(text:sdConfig.cfg.toString());
-    return AlertDialog(
-      title: const Text('配置'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text("输入 VERB 作为占位符"),
-          TextField(
-            controller: sdPrompt,
-            decoration: const InputDecoration(labelText: "正向提示词"),
-          ),
-          TextField(
-            controller: sdNegative,
-            decoration: const InputDecoration(labelText: "负向提示词"),
-          ),
-          TextField(
-            controller: sdModel,
-            decoration: const InputDecoration(labelText: "模型"),
-          ),
-          TextField(
-            controller: sdSampler,
-            decoration: const InputDecoration(labelText: "采样器"),
-          ),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: sdWidth,
-                inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "宽度"),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: sdHeight,
-                inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "高度"),
-              ),
-            ),
-          ]),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: sdStep,
-                inputFormatters: [DecimalTextInputFormatter()],
-                decoration: const InputDecoration(labelText: "步数"),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: sdCFG,
-                decoration: const InputDecoration(labelText: "CFG"),
-              ),
-            ),
-          ]),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            if(int.parse(sdWidth.text)%8!=0){
-              sdWidth.text = (int.parse(sdWidth.text)~/8*8).toString();
-            }
-            if(int.parse(sdHeight.text)%8!=0){
-              sdHeight.text = (int.parse(sdHeight.text)~/8*8).toString();
-            }
-            sdConfig = SdConfig(
-              prompt: sdPrompt.text,
-              negativePrompt: sdNegative.text,
-              model: sdModel.text,
-              sampler: sdSampler.text,
-              width: int.parse(sdWidth.text),
-              height: int.parse(sdHeight.text),
-              steps: int.parse(sdStep.text),
-              cfg: int.parse(sdCFG.text),
-            );
-            setSdConfig(sdConfig);
-            Navigator.of(context).pop();
-          },
-          child: const Text('OK')
-        )
-      ],
-    );
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -410,22 +316,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       buildPrompt();
     }
     getSdConfig().then((memConfig) {
-      if(memConfig.prompt.isEmpty) {
-        memConfig.prompt = '1girl, mika (blue archive), misono mika, blue archive, halo, pink halo, pink hair, yellow eyes, angel, angel wings, feathered wings, white wings, VERB, masterpiece, best quality, newest, absurdres, highres, sensitive';
-      }
-      if(memConfig.negativePrompt.isEmpty) {
-        memConfig.negativePrompt = '(low quality, worst quality:1.2), very displeasing, 3d, watermark, signatrue, ugly, poorly drawn';
-      }
-      if(memConfig.model.isEmpty) {
-        memConfig.model = 'Laxhar/noobai-XL-1.1';
-      }
-      if(memConfig.sampler.isEmpty) {
-        memConfig.sampler = 'DPM++ 2M';
-      }
-      memConfig.width ??= 1024;
-      memConfig.height ??= 1600;
-      memConfig.steps ??= 30;
-      memConfig.cfg ??= 7;
       sdConfig = memConfig;
     });
   }
@@ -441,12 +331,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     return Scaffold(
       appBar: AppBar(
         actions: [
-          IconButton(
-            onPressed: () {
-                    showDialog(context: context, builder: sdConfigDialog);
-            },
-            icon: const Icon(Icons.settings)
-          ),
           IconButton(
             onPressed: () {
               setState(() {
@@ -487,12 +371,20 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
               children: [
                 ElevatedButton(
                   onPressed: () {
+                    if(gptBusy) return;
+                    buildPrompt();
+                  },
+                  child: const Text('重新提示'),
+                ),
+                const SizedBox(width: 5),
+                ElevatedButton(
+                  onPressed: () {
                     if(sdBusy) return;
                     makeRequest().catchError((e) {
                       snackBarAlert(context, "error! $e");
                     });
                   },
-                  child: Text(sdBusy?'处理中...':'开始' ),
+                  child: Text(sdBusy?'处理中...':'开始绘画' ),
                 ),
                 const SizedBox(width: 5),
                 // CancelButton
@@ -507,7 +399,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                       sdBusy = false;
                     });
                   },
-                  child: const Text('取消'),
+                  child: const Text('取消绘画'),
                 ),
               ]
             ),

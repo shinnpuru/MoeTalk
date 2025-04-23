@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:momotalk/aidrawconfig.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'dart:io' show Platform;
 import 'chatview.dart';
@@ -261,7 +262,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   }
 
   void sdWorkflow() async {
-    bool isBuild = false;
     TextEditingController controller = TextEditingController();
     showDialog(context: context, builder: (context){
       return StatefulBuilder(builder: (context, setState) {
@@ -278,15 +278,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(controller.text);
               },
-              child: const Text('跳过'),
+              child: const Text('继续'),
             ),
             TextButton(
               onPressed: () async {
-                if(isBuild){
-                  Navigator.of(context).pop(controller.text);
-                } else {
                   controller.text = "正在生成...";
                   String prompt = "";
                   List<List<String>> msg = parseMsg(await getPrompt(), messages);
@@ -300,21 +297,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     controller.text = prompt;
                   }, (){
                     debugPrint("done.");
-                    setState(() {
-                      isBuild = true;
-                    });
                   }, (err){
                     errDialog(err.toString(),canRetry: false);
                   });
-                }
               },
-              child: Text(isBuild? '继续':'生成'),
+              child: const Text('生成'),
             ),
           ],
         );
       });
     }).then((res){
       debugPrint("res: $res");
+      if(controller.text.isEmpty){
+        return;
+      }
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -739,6 +735,30 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     context,
                     MaterialPageRoute(
                       builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                    ),
+                  );
+                },
+              ),
+              // SdConfig button
+              ListTile(
+                leading: const Icon(Icons.draw),
+                title: const Text('绘图配置'), 
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FutureBuilder(
+                        future: getSdConfig(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (snapshot.hasError) {
+                            return Center(child: Text('Error: ${snapshot.error}'));
+                          } else {
+                            return SdConfigPage(sdConfig: snapshot.data!);
+                          }
+                        },
+                      ),
                     ),
                   );
                 },
