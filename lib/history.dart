@@ -22,7 +22,7 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
         ),
         TextButton(
           onPressed: () async {
-            msg.add(["system","根据上下文，用一句话总结该对话，不分隔句子或换行，尽量简短。"]);
+            msg.add(["user","system instruction:暂停角色扮演，根据上下文，以$stuName的口吻用一句话总结该对话。"]);
             String result = "";
             for (var m in msg) {
               debugPrint("${m[0]}: ${m[1]}");
