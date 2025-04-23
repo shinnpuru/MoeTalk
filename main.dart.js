@@ -27805,20 +27805,23 @@ a7C:function a7C(a){this.a=a},
 a7D:function a7D(a){this.a=a},
 aKL(a,b,c,d,e){var s=0,r=A.y(t.T),q
 var $async$aKL=A.z(function(f,g){if(f===1)return A.v(g,r)
-while(true)switch(s){case 0:q=A.hB(null,null,!0,null,new A.aGN(b,e,c),a,null,!0,t.N)
+while(true)switch(s){case 0:q=A.hB(null,null,!0,null,new A.aGN(b,e,d,c),a,null,!0,t.N)
 s=1
 break
 case 1:return A.w(q,r)}})
 return A.x($async$aKL,r)},
-aGN:function aGN(a,b,c){this.a=a
-this.b=b
-this.c=c},
-aGK:function aGK(a){this.a=a},
-aGL:function aGL(a,b,c,d){var _=this
+aGN:function aGN(a,b,c,d){var _=this
 _.a=a
 _.b=b
 _.c=c
 _.d=d},
+aGK:function aGK(a){this.a=a},
+aGL:function aGL(a,b,c,d,e){var _=this
+_.a=a
+_.b=b
+_.c=c
+_.d=d
+_.e=e},
 aGH:function aGH(a,b){this.a=a
 this.b=b},
 aGI:function aGI(a){this.a=a},
@@ -95275,8 +95278,8 @@ case 2:return A.v(o.at(-1),r)}})
 return A.x($async$$0,r)},
 $S:10}
 A.aGN.prototype={
-$1(a){var s=null,r=new A.cj(new A.bQ(this.a,B.ad,B.O),$.al()),q=A.cK(!0,B.S,!1,s,!0,B.o,s,A.cT(),r,s,s,s,s,s,2,B.eW,B.u,!0,s,!0,s,!1,s,B.T,s,s,s,s,s,s,s,s,1,s,!1,"\u2022",s,s,s,s,s,!1,s,s,!1,s,!0,s,B.a0,s,s,B.R,B.P,s,s,s,s,s,s,s,!0,B.G,s,B.a1,s,s,s,s)
-return A.ie(A.b([A.cR(B.el,new A.aGK(a),s),A.cR(B.Yc,new A.aGL(this.b,this.c,r,a),s),A.cR(B.ct,new A.aGM(r,a),s)],t.p),q,B.Yb)},
+$1(a){var s=this,r=null,q=new A.cj(new A.bQ(s.a,B.ad,B.O),$.al()),p=A.cK(!0,B.S,!1,r,!0,B.o,r,A.cT(),q,r,r,r,r,r,2,B.eW,B.u,!0,r,!0,r,!1,r,B.T,r,r,r,r,r,r,r,r,1,r,!1,"\u2022",r,r,r,r,r,!1,r,r,!1,r,!0,r,B.a0,r,r,B.R,B.P,r,r,r,r,r,r,r,!0,B.G,r,B.a1,r,r,r,r)
+return A.ie(A.b([A.cR(B.el,new A.aGK(a),r),A.cR(B.Yc,new A.aGL(s.b,s.c,s.d,q,a),r),A.cR(B.ct,new A.aGM(q,a),r)],t.p),p,B.Yb)},
 $S:27}
 A.aGK.prototype={
 $0(){A.bM(this.a,!1).cv()},
@@ -95287,14 +95290,14 @@ a16(){var s=0,r=A.y(t.H),q=this,p,o,n,m,l,k,j
 var $async$$0=A.z(function(a,b){if(a===1)return A.v(b,r)
 while(true)switch(s){case 0:k={}
 j=q.a
-j.push(A.b(["user","system instruction:\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u6839\u636e\u4e0a\u4e0b\u6587\uff0c\u7528\u4e00\u53e5\u8bdd\u603b\u7ed3\u8be5\u5bf9\u8bdd\u3002"],t.s))
+j.push(A.b(["user","system instruction:\u6682\u505c\u89d2\u8272\u626e\u6f14\uff0c\u6839\u636e\u4e0a\u4e0b\u6587\uff0c\u4ee5"+q.b+"\u7684\u53e3\u543b\u7528\u4e00\u53e5\u8bdd\u603b\u7ed3\u8be5\u5bf9\u8bdd\u3002"],t.s))
 k.a=""
 for(p=j.length,o=0;o<j.length;j.length===p||(0,A.Q)(j),++o){n=j[o]
-A.cD().$1(n[0]+": "+n[1])}p=q.b
+A.cD().$1(n[0]+": "+n[1])}p=q.c
 A.cD().$1("model: "+p.d)
-m=q.c
+m=q.d
 m.sb5(0,"\u751f\u6210\u4e2d...")
-l=q.d
+l=q.e
 s=2
 return A.t(A.Le(p,j,new A.aGH(k,m),new A.aGI(l),new A.aGJ(l)),$async$$0)
 case 2:return A.w(null,r)}})
