@@ -287,7 +287,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   controller.text = "正在生成...";
                   String prompt = "";
                   List<List<String>> msg = parseMsg(await getPrompt(), messages);
-                  msg.add(["user", "system instruction:暂停角色扮演，根据上下文，详细描述$studentName现在的状态。"]);
+                  msg.add(["user", "system instruction:暂停角色扮演，根据上下文，详细描述$studentName现在的穿着，位置和动作。"]);
                   completion(config, msg, (resp){
                     const String a="我无法继续作为",b="代替玩家言行";
                     prompt += resp;
@@ -886,7 +886,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                           result += chunk;
                           textController.text = result;
                         }, () {
-                          snackBarAlert(context, "完成");
+                          debugPrint("done.");
                         }, (e) {
                           showDialog(
                             context: context,
