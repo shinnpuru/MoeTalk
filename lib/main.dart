@@ -873,6 +873,38 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     // send button
                     IconButton(
                       onPressed: () => sendMsg(true),
+                      onLongPress: () async {
+                        List<List<String>> msg = parseMsg(await getPrompt(), messages);
+                        msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以user的口吻用一句话回复$studentName。"]);
+                        String result = "";
+                        for (var m in msg) {
+                          debugPrint("${m[0]}: ${m[1]}");
+                        }
+                        debugPrint("model: ${config.model}");
+                        textController.text = "生成中...";
+                        await completion(config, msg, (chunk) {
+                          result += chunk;
+                          textController.text = result;
+                        }, () {
+                          snackBarAlert(context, "完成");
+                        }, (e) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Error"),
+                              content: Text(e.toString()),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('确定'),
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                      },
                       icon: const Icon(Icons.send),
                       color: const Color(0xffff899e),
                     )
