@@ -9,6 +9,7 @@ class SdConfigPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    TextEditingController apiController = TextEditingController();
     TextEditingController sdPrompt = TextEditingController(text: sdConfig.prompt);
     TextEditingController sdNegative = TextEditingController(text: sdConfig.negativePrompt);
     TextEditingController sdModel = TextEditingController(text: sdConfig.model);
@@ -17,6 +18,9 @@ class SdConfigPage extends StatelessWidget {
     TextEditingController sdHeight = TextEditingController(text: sdConfig.height.toString());
     TextEditingController sdStep = TextEditingController(text: sdConfig.steps.toString());
     TextEditingController sdCFG = TextEditingController(text: sdConfig.cfg.toString());
+    getDrawUrl().then((value) {
+      apiController.text = value?? '';
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -42,6 +46,7 @@ class SdConfigPage extends StatelessWidget {
                 cfg: int.parse(sdCFG.text),
               );
               setSdConfig(updatedConfig);
+              setDrawUrl(apiController.text);
               Navigator.of(context).pop();
             },
           ),
@@ -52,6 +57,10 @@ class SdConfigPage extends StatelessWidget {
         child: Column(
           children: [
             const Text("输入 VERB 作为占位符"),
+            TextField(
+              controller: apiController,
+              decoration: const InputDecoration(labelText: "绘画API地址"),
+            ),
             TextField(
               controller: sdPrompt,
               decoration: const InputDecoration(labelText: "正向提示词"),

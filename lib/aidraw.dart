@@ -18,9 +18,9 @@ class AiDraw extends StatefulWidget {
 }
 
 class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
+  TextEditingController descriptionController = TextEditingController();
   TextEditingController logController = TextEditingController();
   TextEditingController promptController = TextEditingController();
-  TextEditingController apiController = TextEditingController();
   String lastModel = "";
   String? imageUrl;
   String? imageUrlRaw;
@@ -32,7 +32,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   late SdConfig sdConfig;
 
   Future<void> buildPrompt() async {
-    if(widget.msg == null) {
+    if(descriptionController.text == '') {
       snackBarAlert(context, "没有输入内容！");
       return;
     }
@@ -49,7 +49,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 - 不要加入1girl, masterpiece等过于宽泛的词汇。
 
 示例：blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table
-图像描述：${widget.msg}''';
+图像描述：${descriptionController.text}''';
     List<List<String>> messages = [['user', prompt]];
     String result = '';
     await completion(widget.config, messages,
@@ -73,10 +73,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   }
 
   Future<void> makeRequest() async {
-    String url = apiController.text;
+    String url = '';
+    getDrawUrl().then((value) {
+      url = value?? '';
+    });
     if(url.isEmpty) {
       url = 'https://r3gm-diffusecraft.hf.space';
     }
+    debugPrint(url);
     setState(() {
       sdBusy = true;
       showLog = true;
@@ -308,10 +312,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    getDrawUrl().then((value) {
-        if(value == null) return;
-        apiController.text = value;
-    });
+    descriptionController.text = widget.msg ?? '';
     if(widget.msg != null) {
       buildPrompt();
     }
@@ -352,16 +353,17 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         padding: const EdgeInsets.all(8.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          children: [            
             TextField(
-              controller: apiController,
-              decoration: const InputDecoration(labelText: "请输入绘画API地址..."),
-              onSubmitted: (value) => setDrawUrl(value),
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: "图像描述"),
+              maxLines: 3,
+              minLines: 1,
             ),
             const SizedBox(height: 8),
             TextField(
               controller: promptController,
-              decoration: InputDecoration(labelText: gptBusy?'生成中...':'请输入提示词...'),
+              decoration: InputDecoration(labelText: gptBusy?'生成中...':'提示词'),
               maxLines: 3,
               minLines: 1,
             ),
