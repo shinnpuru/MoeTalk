@@ -22,6 +22,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   TextEditingController logController = TextEditingController();
   TextEditingController promptController = TextEditingController();
   String lastModel = "";
+  String url="";
   String? imageUrl;
   String? imageUrlRaw;
   String? sessionHash;
@@ -73,10 +74,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   }
 
   Future<void> makeRequest() async {
-    String url = '';
-    getDrawUrl().then((value) {
-      url = value?? '';
-    });
     if(url.isEmpty) {
       url = 'https://r3gm-diffusecraft.hf.space';
     }
@@ -274,7 +271,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         if(lastUrl.isEmpty) return;
         if(!mounted) return;
         setState(() {
-          imageUrl = lastUrl.replaceFirst("https://r3gm-diffusecraft.hf.space/", url);
+          imageUrl = lastUrl;
           debugPrint(imageUrl);
           sdBusy = false;
           showLog = false;
@@ -312,6 +309,11 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    getDrawUrl().then((value) {
+      debugPrint(value);
+      url = value?? '';
+    });
+    debugPrint(url);
     descriptionController.text = widget.msg ?? '';
     if(widget.msg != null) {
       buildPrompt();
