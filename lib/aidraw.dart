@@ -258,12 +258,13 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       cancelToken: cancelToken,
     );
     String lastUrl = '';
-    final regexWebp = RegExp(r'"(https?://[^"]+)"');
-    final regexPng = RegExp(r'file=.+?\"');
+    final regexWebp = RegExp(r'download=\\"(.+?)\\"');
+    final regexPng = RegExp(r'href=\\"(.+?)\\"');
     await for (var chunk in inferQueue.data!.stream) {
       String data = utf8.decode(chunk);
       logController.text = data + logController.text;
       final match = regexWebp.allMatches(data);
+      debugPrint(match.toString());
       if (match.isNotEmpty) {
         lastUrl = match.last.group(1)!;
       }
@@ -271,7 +272,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         if(lastUrl.isEmpty) return;
         if(!mounted) return;
         setState(() {
-          imageUrl = lastUrl;
+          imageUrl = "${url}file=images/$lastUrl";
           debugPrint(imageUrl);
           sdBusy = false;
           showLog = false;
