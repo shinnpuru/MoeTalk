@@ -266,7 +266,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     showDialog(context: context, builder: (context){
       return StatefulBuilder(builder: (context, setState) {
         return AlertDialog(
-          title: const Text("绘图提示词"),
+          title: const Text("绘图描述"),
           content: TextField(
             maxLines: null,
             minLines: 1,
@@ -278,9 +278,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(controller.text);
+                controller.text = "";
+                Navigator.of(context).pop();
               },
-              child: const Text('继续'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () async {
@@ -301,7 +302,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     errDialog(err.toString(),canRetry: false);
                   });
               },
-              child: const Text('生成'),
+              child: const Text('AI'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(controller.text);
+              },
+              child: const Text('确定'),
             ),
           ],
         );
