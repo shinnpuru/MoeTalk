@@ -28374,7 +28374,7 @@ n=J
 s=3
 return A.t(A.dG(),$async$zo)
 case 3:p=o.cp(n.aL(c.a,"avatar"))
-if(p==null||a){q="https://files.catbox.moe/nm8lgv.webp"
+if(p==null||a){q="https://files.catbox.moe/3hz1aj.png"
 s=1
 break}q=p
 s=1
@@ -28425,7 +28425,7 @@ n=J
 s=3
 return A.t(A.dG(),$async$zq)
 case 3:p=o.cp(n.aL(c.a,"name"))
-if(p==null||a){q="\u672a\u82b1"
+if(p==null||a){q="\u6615\u84b2"
 s=1
 break}q=p
 s=1
@@ -28447,7 +28447,7 @@ n=J
 s=3
 return A.t(A.dG(),$async$zp)
 case 3:p=o.cp(n.aL(c.a,"first_mes"))
-if(p==null||a){q="Sensei\u4f60\u7ec8\u4e8e\u6765\u5566\uff01\\\u6211\u53ef\u662f\u4e2a\u4e56\u4e56\u770b\u5bb6\u7684\u597d\u5b69\u5b50\u54e6"
+if(p==null||a){q="Sensei\u4f60\u7ec8\u4e8e\u6765\u5566\uff01\\\u4eca\u5929\u662f\u4ec0\u4e48\u65e5\u5b50\u4f60\u8fd8\u8bb0\u5f97\u5417\uff1f"
 s=1
 break}q=p
 s=1
@@ -28567,7 +28567,7 @@ k=A.h9(g[5],null)
 j=A.h9(g[6],null)
 i=A.h9(g[7],null)
 h=new A.jn(p,o,n,m,l,k,j,i)
-if(p.length===0)h.a="1girl, mika (blue archive), misono mika, blue archive, halo, pink halo, pink hair, yellow eyes, angel, angel wings, feathered wings, white wings, VERB, masterpiece, high score, great score, absurdres"
+if(p.length===0)h.a="1girl, animal ears, solo, skirt, necktie, tail, blue eyes, shirt, cat ears, red hair, heart, cat tail, smile, pleated skirt, white shirt, long sleeves, animal ear fluff, blue necktie, cat girl, collared shirt, sweater vest, grey skirt, school uniform, hair bow, short hair, VERB, masterpiece, high score, great score, absurdres"
 if(o.length===0)h.b="lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
 if(n.length===0)h.c="cagliostrolab/animagine-xl-4.0"
 if(m.length===0)h.d="Euler a"
@@ -95440,7 +95440,7 @@ A.Qd.prototype={
 K(a){return new A.CK(B.Nb,"MomoTalk",$.aWS(),$.aWO(),B.AW,null)}}
 A.CD.prototype={
 ad(){var s=null,r=A.k1(!0,s,!0,!0,s,s,!1)
-return new A.CE(r,new A.ce(B.an,$.al()),A.wW(0,s,s),$.a4y(),new A.fj("","","","",s,s,s,s),A.b([],t.n_),A.b([],t.rj))}}
+return new A.CE(r,new A.ce(B.an,$.al()),A.wW(0,s,s),$.a4y(),new A.fj("deepseek","https://api.deepseek.com/v1","sk-6165e09bbd574eb3ba3d4186c0ac4af7","deepseek-chat","1","0","0","1024"),A.b([],t.n_),A.b([],t.rj))}}
 A.CE.prototype={
 ao(){var s,r=this
 r.aJ()
