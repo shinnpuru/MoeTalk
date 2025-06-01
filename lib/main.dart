@@ -261,81 +261,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     }
   }
 
-  void sdWorkflow() async {
-    TextEditingController controller = TextEditingController();
-    showDialog(context: context, builder: (context){
-      return StatefulBuilder(builder: (context, setState) {
-        return AlertDialog(
-          title: const Text("绘图描述"),
-          content: TextField(
-            maxLines: null,
-            minLines: 1,
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: "请输入提示词...",
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                controller.text = "";
-                Navigator.of(context).pop();
-              },
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () async {
-                  controller.text = "正在生成...";
-                  String prompt = "";
-                  List<List<String>> msg = parseMsg(await getPrompt(), messages);
-                  msg.add(["user", "system instruction:暂停角色扮演，根据上下文，详细描述$studentName现在的穿着，位置和动作。"]);
-                  completion(config, msg, (resp){
-                    const String a="我无法继续作为",b="代替玩家言行";
-                    prompt += resp;
-                    if(prompt.startsWith(a) && prompt.contains(b)){
-                      prompt = prompt.replaceAll(RegExp('^$a.*?$b'), "");
-                    }
-                    controller.text = prompt;
-                  }, (){
-                    debugPrint("done.");
-                  }, (err){
-                    errDialog(err.toString(),canRetry: false);
-                  });
-              },
-              child: const Text('AI'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(controller.text);
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      });
-    }).then((res){
-      debugPrint("res: $res");
-      if(controller.text.isEmpty){
-        return;
-      }
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AiDraw(msg:res, config: config)
-        )
-      ).then((imageUrl){
-        if(imageUrl!=null){
-          setState(() {
-            messages.add(Message(message: imageUrl, type: Message.image));
-          });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setScrollPercent(1.0);
-          });
-        }
-      });
-    });
-  }
-
   void loadHistory(String msg) {
     List<Message> msgs = jsonToMsg(msg);
     setState(() {
@@ -872,7 +797,24 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     const SizedBox(width: 5),
                     // drawing button
                     IconButton(
-                      onPressed: () => sdWorkflow(),
+                      onPressed: () async {
+                        List<List<String>> msg = parseMsg(await getPrompt(), messages);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AiDraw(msg:msg, config: config)
+                          )
+                        ).then((imageUrl){
+                          if(imageUrl!=null){
+                            setState(() {
+                              messages.add(Message(message: imageUrl, type: Message.image));
+                            });
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              setScrollPercent(1.0);
+                            });
+                          }
+                        });
+                      },
                       icon: const Icon(Icons.draw),
                       color: const Color(0xffff899e),
                     ),
