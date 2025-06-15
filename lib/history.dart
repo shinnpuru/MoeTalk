@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:momotalk/storage.dart';
 import 'openai.dart' show completion;
 import 'utils.dart' show snackBarAlert, Config;
 
@@ -29,9 +30,9 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
             }
             debugPrint("model: ${config.model}");
             controller.text = "生成中...";
-            await completion(config, msg, (chunk){
+            await completion(config, msg, (chunk) async {
               result += chunk;
-              controller.text = result;
+              controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
             }, (){
               snackBarAlert(context, "完成");
             }, (e){

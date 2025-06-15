@@ -16,6 +16,7 @@ import 'utils.dart';
 import 'webdav.dart';
 import 'msgeditor.dart';
 import 'aidraw.dart';
+import 'formatconfig.dart';
 
 
 main() async {
@@ -55,6 +56,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   late String studentName;
   late String avatar;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
+  String userName = "Sensei";
   String userMsg = "";
   int splitCount = 0;
   bool inputLock = false;
@@ -168,7 +170,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
         edited = edited.replaceAll("\n", "\\");
         if(edited=="FORMAT"){
           String msg = messages[index].message.replaceAll(":", "：");
-          String var1="$studentName：",var2="Sensei：";
+          String var1="$studentName：",var2="$userName：";
           List<String> msgs = splitString(msg, [var1,var2]);
           debugPrint("msgs: $msgs");
           setState(() {
@@ -379,17 +381,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       inputLock = true;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = parseMsg(await getPrompt(), messages);
+    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
     logMsg(msg);
     bool notificationSent= false;
     try {
       String response = "";
       await completion(config, msg, 
-        (String resp){
+        (String resp) async {
           resp = resp.replaceAll(RegExp(r'[\n\\]+'), r'\');
           resp = randomizeBackslashes(resp);
           response += resp;
-          updateResponse(response);
+          updateResponse(response.replaceAll(RegExp(await getResponseRegex()), ''));
           if(!isForeground && !notificationSent && response.contains("\\")){
             List<String> msgs = response.split("\\");
             for(int i=0;i<msgs.length;i++){
@@ -494,9 +496,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
               icon: const Icon(Icons.save),
               color: Colors.white,
               onPressed: () async {
-                  String prompt = await getPrompt();
                   if(!context.mounted) return;
-                  String? value = await namingHistory(context, "", config, studentName, parseMsg(prompt, messages));
+                  String? value = await namingHistory(context, "", config, studentName, parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
                   if (value != null) {
                     debugPrint(value);
                     addHistory(msgListToJson(messages),value);
@@ -671,6 +672,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   );
                 },
               ),
+              // FormatConfig button
+              ListTile(
+                leading: const Icon(Icons.format_shapes),
+                title: const Text('格式配置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FormatConfigPage(),
+                    ),
+                  );
+                },
+              ),
               // SdConfig button
               ListTile(
                 leading: const Icon(Icons.draw),
@@ -798,7 +812,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     // drawing button
                     IconButton(
                       onPressed: () async {
-                        List<List<String>> msg = parseMsg(await getPrompt(), messages);
+                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -823,17 +837,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     IconButton(
                       onPressed: () => sendMsg(true),
                       onLongPress: () async {
-                        List<List<String>> msg = parseMsg(await getPrompt(), messages);
-                        msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以user的口吻用一句话回复$studentName。"]);
+                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+                        msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
                         String result = "";
                         for (var m in msg) {
                           debugPrint("${m[0]}: ${m[1]}");
                         }
                         debugPrint("model: ${config.model}");
                         textController.text = "生成中...";
-                        await completion(config, msg, (chunk) {
+                        await completion(config, msg, (chunk) async {
                           result += chunk;
-                          textController.text = result;
+                          textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
                         }, () {
                           debugPrint("done.");
                         }, (e) {

@@ -182,22 +182,11 @@ Future<void> setOriginalMsg(String msg) async {
   await prefs.setString("first_mes", msg);
 } 
 
-Future<String> getPrompt({bool isDefault=false,bool isRaw=false,bool withExternal=true}) async {
+Future<String> getPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("description");
   if (prompt == null || prompt.length < 200 || isDefault) {
     prompt = await rootBundle.loadString('assets/prompt.txt');
-  }
-  if (isRaw) {
-    return prompt;
-  }
-  String flag = "prompt_split";
-  if (withExternal) {
-    return prompt;
-  }
-  int ind = prompt.indexOf(flag);
-  if (ind != -1) {
-    prompt = prompt.substring(0, ind);
   }
   return prompt.trimLeft();
 }
@@ -230,6 +219,49 @@ Future<void> setDrawUrl(String url) async {
 Future<String?> getDrawUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   return prefs.getString("draw_url");
+}
+
+Future<void> setStartPrompt(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("start_prompt", format);
+}
+
+Future<String> getStartPrompt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("start_prompt");
+  if (format == null || format.isEmpty) {
+    return "现在开始角色扮演。";
+  }
+  return format;
+}
+
+Future<void> setEndPrompt(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("system_prompt", format);
+}
+
+Future<String> getEndPrompt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("system_prompt");
+  if (format == null || format.isEmpty) {
+    String? name = await getStudentName(isDefault: true);
+    return "你可以开始扮演$name。";
+  }
+  return format;
+}
+
+Future<void> setResponseRegex(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("response_regex", format);
+}
+
+Future<String> getResponseRegex() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("response_regex");
+  if (format == null || format.isEmpty) {
+    return "<think>.*?<\/think>";
+  }
+  return format;
 }
 
 Future<void> setSdConfig(SdConfig config) async {

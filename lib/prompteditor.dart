@@ -17,7 +17,7 @@ class PromptEditorState extends State<PromptEditor> {
   @override
   void initState() {
     super.initState();
-    getPrompt(isRaw: true).then((String value) {
+    getPrompt().then((String value) {
       controller.text = value;
     });
     getAvatar().then((String value) {
@@ -41,7 +41,7 @@ class PromptEditorState extends State<PromptEditor> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () async {
-              controller.text = await getPrompt(isDefault: true, isRaw: true);
+              controller.text = await getPrompt(isDefault: true);
               studentNameController.text = await getStudentName(isDefault: true);
               originMsgController.text = await getOriginalMsg(isDefault: true);
               studentAvatarController.text = await getAvatar(isDefault: true);
@@ -89,7 +89,7 @@ class PromptEditorState extends State<PromptEditor> {
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(
-                  labelText: '提示词（可通过添加prompt_split标记分离，分离后的内容出现在对话之后）',
+                  labelText: '提示词',
                 ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
                 maxLines: null,

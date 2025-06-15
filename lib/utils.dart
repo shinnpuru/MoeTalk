@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:momotalk/storage.dart';
 
 
 // type 1:asstant 2:user 3:system 4:timestamp
@@ -88,15 +89,10 @@ String timestampToSystemMsg(String timestr) {
   return "下面的对话开始于 $result";
 }
 
-List<List<String>> parseMsg(String prompt, List<Message> messages) {
+List<List<String>> parseMsg(String start, String prompt, List<Message> messages, String end) {
   List<List<String>> msg = [];
-  String flag = "prompt_split";
-  int ind = prompt.indexOf(flag);
-  if (ind != -1) {
-    msg.add(["system",prompt.substring(0, ind)]);
-  } else {
-    msg.add(["system",prompt]);
-  }
+  msg.add(["system", start]);
+  msg.add(["system",prompt]);
   for (var m in messages) {
     if (m.type == Message.assistant) {
       msg.add(["assistant",m.message.replaceAll("\\\\", "\\")]);
@@ -109,9 +105,7 @@ List<List<String>> parseMsg(String prompt, List<Message> messages) {
       msg.add(["system","下面的对话开始于$timestr"]);
     }
   }
-  if (ind != -1) {
-    msg.add(["system",prompt.substring(ind+flag.length)]);
-  }
+  msg.add(["system", end]);
   return msg;
 }
 

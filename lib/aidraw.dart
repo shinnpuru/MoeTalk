@@ -51,15 +51,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     messages.add(['user', prompt]);
     String result = '';
     await completion(widget.config, messages,
-      (String data) {
+      (String data) async{
         result += data.replaceAll("\n", " ");
-        promptController.text = result;
+        promptController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
       },
       () {
         setState(() {
           gptBusy = false;
         });
-        promptController.text = result;
       },
       (String error) {
         setState(() {
