@@ -26,7 +26,10 @@ max_tokens 生成文本的最大长度，比如16384
 在设置页点击备份会默认导出备份文件到设备的下载目录，备份中文件除了保存的对话外还有api密钥等敏感信息，请勿轻易分享到公开平台
 
 ### AI绘画
-使用[这个HuggingFace Space](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
+使用[diffusecraft](https://r3gm-diffusecraft.hf.space/)作为api，你需要Duplicate this Space，获取自己的hf space url
+
+### AI语音
+使用[vits-models](https://shinnpuru-vits-models.hf.space)作为api，你需要Duplicate this Space，获取自己的hf space url
 
 ### 叠甲
 - 自用项目能跑就行，代码很烂

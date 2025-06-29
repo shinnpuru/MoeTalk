@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'notifications.dart';
-import 'dart:async' show Timer;
+import 'utils.dart';
+import 'vits.dart';
 
 void assistantPopup(BuildContext context, String msg, LongPressStartDetails details,
                     String stuName, Function(String) onEdited) {
@@ -16,7 +16,7 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     position: position,
     items: [
       const PopupMenuItem(value: 2, child: Text('编辑')),
-      const PopupMenuItem(value: 1, child: Text('创建通知')),
+      const PopupMenuItem(value: 1, child: Text('创建语音')),
       if (msg.split("$stuName：").length > 3) 
         const PopupMenuItem(value: 3, child: Text('格式化')),
     ],
@@ -24,7 +24,7 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     if (value == 1) {
       showDialog(context: context, builder: (context) {
         return AlertDialog(
-          title: const Text('创建通知'),
+          title: const Text('创建语音'),
           content: TextField(
             maxLines: null,
             minLines: 1,
@@ -39,20 +39,16 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
             ),
             TextButton(
               onPressed: () {
-                final NotificationHelper notification = NotificationHelper();
-                Future.delayed(const Duration(seconds: 5), () {
-                  List<String> msgs = controller.text.split("\\");
-                  int index = 0;
-                  Timer.periodic(const Duration(milliseconds: 500), (timer) {
-                    if (index < msgs.length) {
-                      if (msgs[index].isNotEmpty) {
-                        notification.showNotification(title: stuName, body: msgs[index]);
-                      }
-                      index++;
-                    } else {
-                      timer.cancel();
-                    }
-                  });
+                if (controller.text.isEmpty) {
+                  snackBarAlert(context, "语音内容不能为空");
+                  return;
+                }
+                queryAndPlayAudio(context,controller.text).then((_) {
+                  // ignore: use_build_context_synchronously
+                  snackBarAlert(context, "语音创建成功");
+                }).catchError((e) {
+                  // ignore: use_build_context_synchronously
+                  snackBarAlert(context, "语音创建失败: $e");
                 });
                 Navigator.of(context).pop();
               },

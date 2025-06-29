@@ -56,6 +56,22 @@ class Config {
   }
 }
 
+class VitsConfig {
+  String model;
+  String language;
+  double? noiseScale;
+  double? noiseScaleW;
+  double? lengthScale;
+
+  VitsConfig({
+    required this.model,
+    required this.language,
+    this.noiseScale,
+    this.noiseScaleW,
+    this.lengthScale
+  });
+}
+
 class SdConfig {
   String prompt;
   String negativePrompt;

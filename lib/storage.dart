@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
-import 'utils.dart' show Config, SdConfig;
+import 'utils.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
@@ -211,6 +211,16 @@ Future<void> setWebdav(String url, String username, String password) async {
   await prefs.setStringList("webdav", [url,username,password]);
 }
 
+Future<void> setVitsUrl(String url) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("vits_url", url);
+}
+
+Future<String?> getVitsUrl() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("vits_url");
+}
+
 Future<void> setDrawUrl(String url) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("draw_url", url);
@@ -262,6 +272,32 @@ Future<String> getResponseRegex() async {
     return "<think>.*?<\/think>";
   }
   return format;
+}
+
+Future<void> setVitsConfig(VitsConfig config) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  List<String> configList = [config.model, config.language, 
+    config.noiseScale?.toString() ?? '', config.noiseScaleW?.toString() ?? '', 
+    config.lengthScale?.toString() ?? ''];
+  await prefs.setStringList("vits_config", configList);
+}
+
+Future<VitsConfig> getVitsConfig() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  List<String> configList = prefs.getStringList("vits_config") ?? ['','','','',''];
+  final memConfig = VitsConfig(model: configList[0], language: configList[1],
+    noiseScale: double.tryParse(configList[2]), noiseScaleW: double.tryParse(configList[3]),
+    lengthScale: double.tryParse(configList[4]));
+  if(memConfig.model.isEmpty) {
+    memConfig.model = 'tts-Misono%20Mika';
+  }
+  if(memConfig.language.isEmpty) {
+    memConfig.language = 'Chinese';
+  }
+  memConfig.noiseScale ??= 0.6;
+  memConfig.noiseScaleW ??= 0.7;
+  memConfig.lengthScale ??= 1.2;
+  return memConfig;
 }
 
 Future<void> setSdConfig(SdConfig config) async {

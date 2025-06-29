@@ -17,6 +17,7 @@ import 'webdav.dart';
 import 'msgeditor.dart';
 import 'aidraw.dart';
 import 'formatconfig.dart';
+import 'vitsconfig.dart';
 
 
 main() async {
@@ -709,6 +710,30 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   );
                 },
               ),
+              // VitsConfig button
+              ListTile(
+                leading: const Icon(Icons.speaker),
+                title: const Text('语音配置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FutureBuilder(
+                        future: getVitsConfig(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (snapshot.hasError) {
+                            return Center(child: Text('Error: ${snapshot.error}'));
+                          } else {
+                            return VitsConfigPage(vitsConfig: snapshot.data!);
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
               // About button
               ListTile(
                 leading: const Icon(Icons.info),
@@ -851,21 +876,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                         }, () {
                           debugPrint("done.");
                         }, (e) {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text("Error"),
-                              content: Text(e.toString()),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: const Text('确定'),
-                                ),
-                              ],
-                            ),
-                          );
+                          snackBarAlert(context, e.toString());
                         });
                       },
                       icon: const Icon(Icons.send),
