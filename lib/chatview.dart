@@ -5,9 +5,10 @@ import 'utils.dart' show Message;
 class ChatElement extends StatelessWidget {
   final String message;
   final int type;
+  final String userName;
   final String stuName;
   final String avatar;
-  const ChatElement({super.key, required this.message, required this.type, required this.stuName, required this.avatar});
+  const ChatElement({super.key, required this.message, required this.type, required this.userName, required this.stuName, required this.avatar});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +23,7 @@ class ChatElement extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          ChatBubbleLayoutRight(messages: message.split("\\")),
+          ChatBubbleLayoutRight(name: userName, messages: message.split("\\")),
           const SizedBox(height: 10),
         ],
       );
@@ -211,10 +212,12 @@ class ChatBubbleImage extends StatelessWidget {
 
 // No name and avatar
 class ChatBubbleLayoutRight extends StatelessWidget {
+  final String name;
   final List<String> messages;
 
   const ChatBubbleLayoutRight({
     super.key,
+    required this.name,
     required this.messages,
   });
 
@@ -225,6 +228,11 @@ class ChatBubbleLayoutRight extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+              Text(
+                name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
           ...messages.asMap().entries.map((entry) {
             int idx = entry.key;
             String message = entry.value;

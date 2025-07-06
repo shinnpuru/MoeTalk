@@ -154,6 +154,20 @@ Future<String> convertToJson() async {
   return jsonEncode(allPrefs);
 }
 
+Future<void> setUserName(String name) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("user_name", name);
+}
+
+Future<String> getUserName() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? name = prefs.getString("user_name");
+  if (name == null || name.isEmpty) {
+    return "Sensei";
+  }
+  return name;
+}
+
 Future<String> getStudentName({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("name");

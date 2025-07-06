@@ -56,8 +56,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   final notification = NotificationHelper();
   late String studentName;
   late String avatar;
+  late String userName;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
-  String userName = "Sensei";
   String userMsg = "";
   int splitCount = 0;
   bool inputLock = false;
@@ -72,6 +72,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    getUserName().then((name) {
+      userName = name;
+    });
     getStudentName().then((name){
         studentName = name;
       });
@@ -298,6 +301,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     lastMessages = null;
     setState(() {
       messages.clear();
+      getUserName().then((name) {
+        userName = name;
+      });
       getStudentName().then((name){
         studentName = name;
       });
@@ -785,6 +791,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                                       child: ChatElement(
                                         message: message.message,
                                         type: message.type,
+                                        userName: userName,
                                         stuName: studentName,
                                         avatar: avatar,
                                       )
@@ -800,6 +807,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                                 child: ChatElement(
                                     message: message.message, 
                                     type: message.type,
+                                    userName: userName,
                                     stuName: studentName,
                                     avatar: avatar,
                                   )
