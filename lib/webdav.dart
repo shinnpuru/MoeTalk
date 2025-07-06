@@ -8,6 +8,10 @@ import 'package:webdav_client/webdav_client.dart';
 import 'storage.dart';
 import 'utils.dart' show snackBarAlert;
 
+// Conditional import
+import 'non_web_utils.dart'
+    if (dart.library.html) 'web_utils.dart';
+
 class WebdavPage extends StatefulWidget {
   final String currentMessages;
   final Function(String) onRefresh;
@@ -54,48 +58,10 @@ class WebdavPageState extends State<WebdavPage> {
     }
   }
 
-  Future<void> backupTemp() async {
-    try {
-      var client = newClient(urlController.text, user: usernameController.text, password: passwordController.text);
-      Uint8List data = utf8.encode(widget.currentMessages);
-      await client.write("momotalk/temp.json", data);
-      if(!context.mounted) return;
-      snackBarAlert(context, "Backup OK");
-    } catch (e) {
-      errDialog(e.toString());
-    }
-  }
-
-  Future<void> restoreTemp() async {
-    try {
-      var client = newClient(urlController.text, user: usernameController.text, password: passwordController.text);
-      setState(() {
-        progress = 0;
-      });
-      client.read("momotalk/temp.json",onProgress: (count, total) {
-        setState(() {
-          progress = count / total;
-        });
-      },).then((data) {
-        setState(() {
-          progress = 1;
-        });
-        String msg = utf8.decode(data);
-        setTempHistory(msg);
-        widget.onRefresh(msg);
-        if(!context.mounted) return;
-        snackBarAlert(context, "Restore OK");
-        Navigator.of(context).pop();
-      });
-    } catch (e) {
-      errDialog(e.toString());
-    }
-  }
-
   Future<void> backupCurrent() async {
     try {
       var client = newClient(urlController.text, user: usernameController.text, password: passwordController.text);
-      Uint8List data = utf8.encode(widget.currentMessages);
+      Uint8List data = utf8.encode(await convertToJson());
       int timestamp = DateTime.now().millisecondsSinceEpoch;
       setState(() {
         progress = 0;
@@ -207,7 +173,16 @@ class WebdavPageState extends State<WebdavPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WebDAV备份'),
+        title: const Text('备份设置'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: () async {
+                  await setWebdav(urlController.text, usernameController.text, passwordController.text);
+                  if(!context.mounted) return;
+                  snackBarAlert(context, 'Saved');
+                }),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -235,17 +210,16 @@ class WebdavPageState extends State<WebdavPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton(child: const Text('保存'), onPressed: () async {
-                  await setWebdav(urlController.text, usernameController.text, passwordController.text);
-                  if(!context.mounted) return;
-                  snackBarAlert(context, 'Saved');
-                }),
                 ElevatedButton(
                   onPressed: testWebdav, 
                   child: const Text('测试')),
                 ElevatedButton(
                   onPressed: freshList,
-                  child: const Text('刷新列表'),
+                  child: const Text('刷新'),
+                ),
+                ElevatedButton(
+                  onPressed: () => backupCurrent(),
+                  child: const Text('备份'),
                 ),
               ]
             ),
@@ -260,16 +234,34 @@ class WebdavPageState extends State<WebdavPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  onPressed: () => backupCurrent(),
-                  child: const Text('备份当前'),
+                  child: const Text('下载配置'),
+                  onPressed: () async {
+                    String j = await convertToJson();
+                    debugPrint(j);
+                    if(await writeFile(j)){
+                      snackBarAlert(context, "下载成功");
+                    } else {
+                      snackBarAlert(context, "下载失败");
+                    }
+                  },
                 ),
                 ElevatedButton(
-                  onPressed: () => backupTemp(),
-                  child: const Text('临时备份'),
-                ),
-                ElevatedButton(
-                  onPressed: () => restoreTemp(),
-                  child: const Text('恢复临时'),
+                  child: const Text('文件恢复'),
+                  onPressed: () async {
+                    String? j = await pickFile();
+                    if (j != null) {
+                      try {
+                        debugPrint(j);
+                        await restoreFromJson(j);
+                        snackBarAlert(context, "恢复成功");
+                      } catch (e) {
+                        snackBarAlert(context, "恢复失败");
+                        return;
+                      }
+                    } else {
+                      snackBarAlert(context, "未选择文件");
+                    }
+                  },
                 ),
               ],
             ),

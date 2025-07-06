@@ -660,7 +660,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                     MaterialPageRoute(
                       builder: (context) => WebdavPage(
                         currentMessages: msgListToJson(messages),
-                        onRefresh: loadHistory,
+                        onRefresh: restoreFromJson,
                       ),
                     ),
                   );
