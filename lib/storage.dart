@@ -218,7 +218,11 @@ Future<void> setVitsUrl(String url) async {
 
 Future<String?> getVitsUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString("vits_url");
+  String? url = prefs.getString("vits_url");
+  if (url == null || url.isEmpty) {
+    return "https://shinnpuru-vits-models.hf.space/";
+  }
+  return url;
 }
 
 Future<void> setDrawUrl(String url) async {
@@ -228,7 +232,11 @@ Future<void> setDrawUrl(String url) async {
 
 Future<String?> getDrawUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString("draw_url");
+  String? url = prefs.getString("draw_url");
+  if (url == null || url.isEmpty) {
+    return "https://r3gm-diffusecraft.hf.space";
+  }
+  return url;
 }
 
 Future<void> setStartPrompt(String format) async {
