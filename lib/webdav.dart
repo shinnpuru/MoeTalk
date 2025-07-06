@@ -24,6 +24,7 @@ class WebdavPageState extends State<WebdavPage> {
   TextEditingController urlController = TextEditingController();
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+  TextEditingController nameController = TextEditingController();
   double progress = 0;
   List<List<String>> messageRecords = [];
 
@@ -58,15 +59,14 @@ class WebdavPageState extends State<WebdavPage> {
     }
   }
 
-  Future<void> backupCurrent() async {
+  Future<void> backupCurrent(String name) async {
     try {
       var client = newClient(urlController.text, user: usernameController.text, password: passwordController.text);
       Uint8List data = utf8.encode(await convertToJson());
-      int timestamp = DateTime.now().millisecondsSinceEpoch;
       setState(() {
         progress = 0;
       });
-      await client.write("momotalk/$timestamp.json", data, onProgress: (count, total) {
+      await client.write(name, data, onProgress: (count, total) {
         setState(() {
           progress = count / total;
         });
@@ -107,12 +107,22 @@ class WebdavPageState extends State<WebdavPage> {
             child: Text(loadedMessage),
           ),
           actions: <Widget>[
+            // 取消
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
               child: const Text('取消'),
             ),
+            // 覆盖
+            TextButton(
+              onPressed: () async {
+                backupCurrent("momotalk/${messageRecords[index][1]}");
+                Navigator.of(context).pop();
+              }, 
+              child: const Text('覆盖')
+            ),
+            // 恢复
             TextButton(
               onPressed: () {
                 widget.onRefresh(loadedMessage);
@@ -218,7 +228,10 @@ class WebdavPageState extends State<WebdavPage> {
                   child: const Text('刷新'),
                 ),
                 ElevatedButton(
-                  onPressed: () => backupCurrent(),
+                  onPressed: () async {
+                    int timestamp = DateTime.now().millisecondsSinceEpoch;
+                    backupCurrent("momotalk/$timestamp.json");
+                  },
                   child: const Text('备份'),
                 ),
               ]
