@@ -84,6 +84,34 @@ Future<List<Config>> getApiConfigs() async {
   return configs;
 }
 
+// 0:name 1:avatar 2:first_mes 3:description 4:timestamp
+Future<List<List<String>>> getStudents() async{
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  List<List<String>> students = [];
+  Set<String> keys = prefs.getKeys();
+  for (String key in keys) {
+    if (key.startsWith("student_")) {
+      students.add(prefs.getStringList(key) ?? ["","","","",""]);
+    }
+  }
+  return students;
+}
+
+Future<void> addStudent(String name, String avatar, String first_mes, String description) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
+  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,first_mes,description,timeStamp]);
+}
+
+Future<void> deleteStudent(String key) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  if (prefs.containsKey(key)) {
+    await prefs.remove(key);
+  } else {
+    debugPrint("key not found: $key");
+  }
+}
+
 // 0:intro 1:timestamp 2:msg
 Future<List<List<String>>> getHistorys() async{
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -123,7 +151,7 @@ Future<String> getAvatar({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? avatar = prefs.getString("avatar");
   if (avatar == null || isDefault){
-     return "https://files.catbox.moe/nm8lgv.webp";
+     return "assets/head.webp";
   }
   return avatar;
 }
@@ -163,7 +191,7 @@ Future<String> getUserName() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("user_name");
   if (name == null || name.isEmpty) {
-    return "Sensei";
+    return "用户";
   }
   return name;
 }
@@ -172,7 +200,7 @@ Future<String> getStudentName({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("name");
   if (name == null || isDefault) {
-    return "未花";
+    return "昕蒲";
   }
   return name;
 }
@@ -186,7 +214,7 @@ Future<String> getOriginalMsg({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? msg = prefs.getString("first_mes");
   if (msg == null || isDefault) {
-    return "Sensei你终于来啦！\\我可是个乖乖看家的好孩子哦";
+    return "你好，我是昕蒲。请问有什么可以帮助你的吗？";
   }
   return msg;
 }
@@ -199,8 +227,8 @@ Future<void> setOriginalMsg(String msg) async {
 Future<String> getPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("description");
-  if (prompt == null || prompt.length < 200 || isDefault) {
-    prompt = await rootBundle.loadString('assets/prompt.txt');
+  if (prompt == null || isDefault) {
+    prompt = "你是一个AI助手，名叫昕蒲。你可以回答用户的问题，提供帮助和建议。请使用中文与用户交流。";
   }
   return prompt.trimLeft();
 }
@@ -337,7 +365,7 @@ Future<SdConfig> getSdConfig() async {
     sampler: configList[3], width: int.tryParse(configList[4]), height: int.tryParse(configList[5]),
     steps: int.tryParse(configList[6]), cfg: int.tryParse(configList[7]));
   if(memConfig.prompt.isEmpty) {
-    memConfig.prompt = '1girl, mika (blue archive), misono mika, blue archive, halo, pink halo, pink hair, yellow eyes, angel, angel wings, feathered wings, white wings, VERB, masterpiece, high score, great score, absurdres';
+    memConfig.prompt = '1girl, VERB, masterpiece, high score, great score, absurdres';
   }
   if(memConfig.negativePrompt.isEmpty) {
     memConfig.negativePrompt = 'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry';
@@ -390,10 +418,11 @@ Future<void> restoreFromJson(jsonString) async {
 Future<String?> pickFile() async{
   FilePickerResult? result = await FilePicker.platform.pickFiles(type:FileType.custom, allowedExtensions: ['json']);
   if(result != null) {
-    File file = File(result.files.single.path!);
-    String content = await file.readAsString();
+    debugPrint("File selected: ${result.files.single}");
+    String content = utf8.decode(result.files.single.bytes!);
     return content;
   } else {
+    debugPrint("No file selected, $result");
     return null;
   }
 }

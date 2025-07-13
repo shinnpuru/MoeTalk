@@ -67,6 +67,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
   List<Message> messages = [];
   List<Message>? lastMessages;
   List<List<String>> historys = [];
+  List<List<String>> students = [];
 
   @override
   void initState() {
@@ -100,6 +101,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
       setState(() {
         historys = results;
         historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+      });
+    });
+    getStudents().then((List<List<String>> results) {
+      setState(() {
+        students = results;
+        students.sort((a, b) => a[0].compareTo(b[0]));
       });
     });
   }
@@ -637,7 +644,53 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   );
                 }).toList(),
               ),
-// Customize button
+              // Students button
+              ExpansionTile(
+                leading: const Icon(Icons.people),
+                title: const Text('角色列表'),
+                children: students.map((student) {
+                  int index = students.indexOf(student);
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: student[1].isNotEmpty ? NetworkImage(student[1]) : const AssetImage("assets/head.webp") as ImageProvider,
+                    ),
+                    title: Text(student[0]),
+                    subtitle: Text(student[2]),
+                    onTap: () {
+                      setStudentName(student[0]);
+                      setAvatar(student[1]);
+                      setOriginalMsg(student[2]);
+                      setPrompt(student[3]);
+                      clearMsg();
+                      Navigator.pop(context);
+                    },
+                    onLongPress: () => showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('删除角色'),
+                        content: const Text('你确定要删除这个角色吗？'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              deleteStudent("student_${student[4]}_${student[0]}");
+                              setState(() {
+                                students.removeAt(index);
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('删除'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              // Customize button
               ListTile(
                 leading: const Icon(Icons.accessibility),
                 title: const Text('角色设置'),
@@ -880,9 +933,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                         textController.text = "生成中...";
                         await completion(config, msg, (chunk) async {
                           result += chunk;
-                          textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-                        }, () {
+                        }, () async {
                           debugPrint("done.");
+                          textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
                         }, (e) {
                           snackBarAlert(context, e.toString());
                         });
