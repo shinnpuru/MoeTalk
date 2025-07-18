@@ -1,4 +1,4 @@
-# MisonoTalk Web
+# MoeTalk
 
 ### 地址
 
@@ -31,15 +31,6 @@ max_tokens 生成文本的最大长度，比如16384
 ### AI语音
 使用[vits-models](https://shinnpuru-vits-models.hf.space)作为api，你需要Duplicate this Space，获取自己的hf space url
 
-### 叠甲
-- 自用项目能跑就行，代码很烂
-- 未花的设定基于个人偏好肯定有失偏颇，想要修改提示词可以直接覆盖`assets/prompt.txt`
-- 没有对提示词攻击做任何防范，钓鱼铁上钩
-- 本地部署版暂时没做联网搜索和事实核查能力，涉及游戏设定和具体剧情的内容是肯定会瞎编的
-- 不可以色色
-
-项目中引用的所有图片版权归属Nexon
-
 ### 开发
 
 ```shell
@@ -51,6 +42,6 @@ flutter run
 
 ```shell
 flutter build web
-docker build -t misonotalk .
-docker run -d -p 80:80 misonotalk
+docker build -t MoeTalk .
+docker run -d -p 80:80 MoeTalk
 ```

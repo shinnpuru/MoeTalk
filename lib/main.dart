@@ -597,7 +597,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                 child: SizedBox(
                   height: 50, // Set fixed height
                   child: Text(
-                    'MisonoTalk',
+                    'MoeTalk',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -801,8 +801,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('关于 MisonoTalk'),
-                      content: const Text('MisonoTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
+                      title: const Text('关于 MoeTalk'),
+                      content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
