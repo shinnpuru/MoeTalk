@@ -121,7 +121,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           sdConfig.prompt.replaceAll("VERB", promptController.text),
           sdConfig.negativePrompt,
           1,
-          30,
+          sdConfig.steps,
           7,
           true,
           -1,
