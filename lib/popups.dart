@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'utils.dart';
-import 'vits.dart';
 
 void assistantPopup(BuildContext context, String msg, LongPressStartDetails details,
                     String stuName, Function(String) onEdited) {
@@ -16,48 +14,11 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     position: position,
     items: [
       const PopupMenuItem(value: 2, child: Text('编辑')),
-      const PopupMenuItem(value: 1, child: Text('创建语音')),
       if (msg.split("$stuName：").length > 3) 
         const PopupMenuItem(value: 3, child: Text('格式化')),
     ],
   ).then((value) {
-    if (value == 1) {
-      showDialog(context: context, builder: (context) {
-        return AlertDialog(
-          title: const Text('创建语音'),
-          content: TextField(
-            maxLines: null,
-            minLines: 1,
-            controller: controller,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.isEmpty) {
-                  snackBarAlert(context, "语音内容不能为空");
-                  return;
-                }
-                queryAndPlayAudio(context,controller.text).then((_) {
-                  // ignore: use_build_context_synchronously
-                  snackBarAlert(context, "语音创建成功");
-                }).catchError((e) {
-                  // ignore: use_build_context_synchronously
-                  snackBarAlert(context, "语音创建失败: $e");
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      });
-    } else if (value == 2) {
+    if (value == 2) {
       showDialog(context: context, builder: (context) {
         return AlertDialog(
           title: const Text('编辑'),
