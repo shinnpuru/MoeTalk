@@ -20,7 +20,6 @@ import 'formatconfig.dart';
 import 'vitsconfig.dart';
 import 'vits.dart';
 
-
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
   NotificationHelper notificationHelper = NotificationHelper();
@@ -50,7 +49,10 @@ class MainPage extends StatefulWidget {
   MainPageState createState() => MainPageState();
 }
 
-class MainPageState extends State<MainPage> with WidgetsBindingObserver{
+class MainPageState extends State<MainPage> with WidgetsBindingObserver {
+  int _currentIndex = 0;
+  
+  // Chat page variables
   final fn = FocusNode();
   final textController = TextEditingController();
   final scrollController = ScrollController();
@@ -152,6 +154,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
     }
   }
 
+  void restoreFromJson(List<Message> msgs) {
+    setState(() {
+      messages.clear();
+      messages.addAll(msgs);
+    });
+  }
+
+  // All the existing methods remain the same...
   double getScrollPercent() {
     final maxScroll = scrollController.position.maxScrollExtent;
     final currentScroll = scrollController.position.pixels;
@@ -474,535 +484,585 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver{
         "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // Chat page widget
+  Widget _buildChatPage() {
     return Scaffold(
-        appBar: AppBar(
-          leading: Builder(
-            builder: (context) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                color: Colors.white,
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
+      appBar: AppBar(
+        title: const SizedBox(
+            height: 22,
+            child: Image(
+                image: AssetImage("assets/momotalk.webp"),
+                fit: BoxFit.scaleDown)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xfff2a0ac)
+          ),
+        ),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            color: Colors.white,
+            onPressed: () {
+              clearMsg();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            color: Colors.white,
+            onPressed: () async {
+                if(!context.mounted) return;
+                String? value = await namingHistory(context, "", config, studentName, parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
+                if (value != null) {
+                  debugPrint(value);
+                  addHistory(msgListToJson(messages),value);
+                  if(!context.mounted) return;
+                  snackBarAlert(context, "已保存");
+                  getHistorys().then((List<List<String>> results) {
+                    setState(() {
+                      historys = results;
+                      historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                    });
+                  });
+                } else {
+                  debugPrint("cancel");
+                }
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.edit,
+              color: Colors.white,
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'Time',
+                child: Text('时间戳'),
+              ),
+              const PopupMenuItem(
+                value: 'System',
+                child: Text('系统消息'),
+              ),
+              const PopupMenuItem(
+                value: 'Msgs',
+                child: Text('编辑消息'),
+              ),
+            ],
+            onSelected: (String value) async {
+              if (value == 'Time') {
+                if(messages.isEmpty){
+                  return;
+                }
+                if(messages.last.type != Message.timestamp){
+                  setState(() {
+                    messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    setScrollPercent(1.0);
+                  });
+                }
+              } else if (value == 'System') {
+                systemPopup(context, "", (String edited,bool isSend){
+                  setState(() {
+                    if(edited.isNotEmpty){
+                      messages.add(Message(message: edited, type: Message.system));
+                      if(isSend){
+                        sendMsg(true,forceSend: true);
+                      }
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        setScrollPercent(1.0);
+                      });
+                    }
+                  });
+                });
+              }else if (value == 'Msgs') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MsgEditor(msgs: messages)
+                  )
+                ).then((msgs){setState(() {});});
+              }
+            },
+          ),
+        ],
+      ),
+      body: GestureDetector(
+        onTap: () {
+          fn.unfocus();
+        },
+        child: Column(
+          children: [
+            Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 7),
+                    child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: ListView.builder(
+                          itemCount: messages.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            if (index == 0) {
+                              return Column(
+                                children: [
+                                  const SizedBox(height: 10),
+                                  GestureDetector(
+                                    onLongPressStart: (LongPressStartDetails details) {
+                                      onMsgPressed(index, details);
+                                    },
+                                    child: ChatElement(
+                                      message: message.message,
+                                      type: message.type,
+                                      userName: userName,
+                                      stuName: studentName,
+                                      avatar: avatar,
+                                    )
+                                  )
+                                ],
+                              );
+                            }
+                            return GestureDetector(
+                              onLongPressStart: (LongPressStartDetails details) {
+                                onMsgPressed(index, details);
+                                fn.unfocus();
+                              },
+                              child: ChatElement(
+                                  message: message.message, 
+                                  type: message.type,
+                                  userName: userName,
+                                  stuName: studentName,
+                                  avatar: avatar,
+                                )
+                              );
+                          },
+                        )))),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+              child: Row(
+                children: [
+                  // text input field
+                  Expanded(
+                      child: TextField(
+                          focusNode: fn,
+                          controller: textController,
+                          onEditingComplete: (){
+                            if(textController.text.isEmpty && userMsg.isNotEmpty){
+                              sendMsg(true);
+                            } else if(textController.text.isNotEmpty){
+                              sendMsg(false);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            fillColor: const Color(0xffff899e),
+                            isCollapsed: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            hintText: inputLock ? '回复中' : '请输入您的消息...',
+                          ))),
+                  const SizedBox(width: 5),
+                  // drawing button
+                  IconButton(
+                    onPressed: () async {
+                      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AiDraw(msg:msg, config: config)
+                        )
+                      ).then((imageUrl){
+                        if(imageUrl!=null){
+                          setState(() {
+                            messages.add(Message(message: imageUrl, type: Message.image));
+                          });
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            setScrollPercent(1.0);
+                          });
+                        }
+                      });
+                    },
+                    onLongPress: () async {
+                        final TextEditingController controller = TextEditingController();
+                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+                          msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$studentName的口吻用一句话回复$userName。"]);
+                          String result = "";
+                          for (var m in msg) {
+                            debugPrint("${m[0]}: ${m[1]}");
+                          }
+                          debugPrint("model: ${config.model}");
+                          controller.text = "生成中...";
+                          await completion(config, msg, (chunk) async {
+                            result += chunk;
+                            controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
+                          }, () async {
+                            debugPrint("done.");
+                          }, (e) {
+                            snackBarAlert(context, e.toString());
+                          });
+                        showDialog(context: context, builder: (context) {
+                          return AlertDialog(
+                            title: const Text('创建语音'),
+                            content: TextField(
+                              maxLines: null,
+                              minLines: 1,
+                              controller: controller,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('取消'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  if (controller.text.isEmpty) {
+                                    snackBarAlert(context, "语音内容不能为空");
+                                    return;
+                                  }
+                                  queryAndPlayAudio(context,controller.text).then((_) {
+                                    // ignore: use_build_context_synchronously
+                                    snackBarAlert(context, "语音创建成功");
+                                  }).catchError((e) {
+                                    // ignore: use_build_context_synchronously
+                                    snackBarAlert(context, "语音创建失败: $e");
+                                  });
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('确定'),
+                              ),
+                            ],
+                          );
+                        });
+                    },
+                    icon: const Icon(Icons.draw),
+                    color: const Color(0xffff899e),
+                  ),
+                  const SizedBox(width: 5),
+                  // send button
+                  IconButton(
+                    onPressed: () => sendMsg(true),
+                    onLongPress: () async {
+                      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+                      msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
+                      String result = "";
+                      for (var m in msg) {
+                        debugPrint("${m[0]}: ${m[1]}");
+                      }
+                      debugPrint("model: ${config.model}");
+                      textController.text = "生成中...";
+                      await completion(config, msg, (chunk) async {
+                        result += chunk;
+                        textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
+                      }, () async {
+                        debugPrint("done.");
+                      }, (e) {
+                        snackBarAlert(context, e.toString());
+                      });
+                    },
+                    icon: const Icon(Icons.send),
+                    color: const Color(0xffff899e),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // History and Students page
+  Widget _buildHistoryPage() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('历史记录和角色', style: TextStyle(color: Colors.white)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xfff2a0ac)
+          ),
+        ),
+        actions: [
+          // Edit button to add or edit students
+          IconButton(
+            icon: const Icon(Icons.edit),
+            color: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PromptEditor(),
+                ),
               );
             },
           ),
-          title: const SizedBox(
-              height: 22,
-              child: Image(
-                  image: AssetImage("assets/momotalk.webp"),
-                  fit: BoxFit.scaleDown)),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xfff2a0ac)
-            ),
-          ),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              color: Colors.white,
-              onPressed: () {
-                clearMsg();
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.save),
-              color: Colors.white,
-              onPressed: () async {
-                  if(!context.mounted) return;
-                  String? value = await namingHistory(context, "", config, studentName, parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
-                  if (value != null) {
-                    debugPrint(value);
-                    addHistory(msgListToJson(messages),value);
-                    if(!context.mounted) return;
-                    snackBarAlert(context, "已保存");
-                    getHistorys().then((List<List<String>> results) {
-                      setState(() {
-                        historys = results;
-                        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-                      });
-                    });
-                  } else {
-                    debugPrint("cancel");
-                  }
-              },
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.edit,
-                color: Colors.white,
-              ),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'Time',
-                  child: Text('时间戳'),
-                ),
-                const PopupMenuItem(
-                  value: 'System',
-                  child: Text('系统消息'),
-                ),
-                const PopupMenuItem(
-                  value: 'Msgs',
-                  child: Text('编辑消息'),
-                ),
-              ],
-              onSelected: (String value) async {
-                if (value == 'Time') {
-                  if(messages.isEmpty){
-                    return;
-                  }
-                  if(messages.last.type != Message.timestamp){
-                    setState(() {
-                      messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
-                    });
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      setScrollPercent(1.0);
-                    });
-                  }
-                } else if (value == 'System') {
-                  systemPopup(context, "", (String edited,bool isSend){
-                    setState(() {
-                      if(edited.isNotEmpty){
-                        messages.add(Message(message: edited, type: Message.system));
-                        if(isSend){
-                          sendMsg(true,forceSend: true);
-                        }
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          setScrollPercent(1.0);
-                        });
-                      }
-                    });
+        ],
+      ),
+      body: ListView(
+        children: [
+          ExpansionTile(
+            leading: const Icon(Icons.history),
+            title: const Text('历史记录'),
+            children: historys.map((history) {
+              int index = historys.indexOf(history);
+              return ListTile(
+                title: Text(getTimeStr(index)),
+                subtitle: Text(history[0]),
+                onTap: () {
+                  loadHistory(history[2]);
+                  setState(() {
+                    _currentIndex = 0; // Switch to chat page
                   });
-                }else if (value == 'Msgs') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MsgEditor(msgs: messages)
-                    )
-                  ).then((msgs){setState(() {});});
-                }
-              },
-            ),
-          ],
-        ),
-        drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Color(0xfff2a0ac),
-                ),
-                child: SizedBox(
-                  height: 50, // Set fixed height
-                  child: Text(
-                    'MoeTalk',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                    ),
+                },
+                onLongPress: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('删除历史记录'),
+                    content: const Text('你确定要删除这条历史记录吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          deleteHistory("history_${history[1]}");
+                          setState(() {
+                            historys.removeAt(index);
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('删除'),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              // History button
-              ExpansionTile(
-                leading: const Icon(Icons.history),
-                title: const Text('历史记录'),
-                children: historys.map((history) {
-                  int index = historys.indexOf(history);
-                  return ListTile(
-                    title: Text(getTimeStr(index)),
-                    subtitle: Text(history[0]),
-                    onTap: () {
-                      loadHistory(history[2]);
-                      Navigator.pop(context);
-                    },
-                    onLongPress: () => showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('删除历史记录'),
-                        content: const Text('你确定要删除这条历史记录吗？'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('取消'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              deleteHistory("history_${history[1]}");
-                              setState(() {
-                                historys.removeAt(index);
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('删除'),
-                          ),
-                        ],
+              );
+            }).toList(),
+          ),
+          ExpansionTile(
+            leading: const Icon(Icons.people),
+            title: const Text('角色列表'),
+            children: students.map((student) {
+              int index = students.indexOf(student);
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: student[1].isNotEmpty ? NetworkImage(student[1]) : const AssetImage("assets/head.webp") as ImageProvider,
+                ),
+                title: Text(student[0]),
+                subtitle: Text(student[2]),
+                onTap: () {
+                  setStudentName(student[0]);
+                  setAvatar(student[1]);
+                  setOriginalMsg(student[2]);
+                  setPrompt(student[3]);
+                  clearMsg();
+                  setState(() {
+                    _currentIndex = 0; // Switch to chat page
+                  });
+                },
+                onLongPress: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('删除角色'),
+                    content: const Text('你确定要删除这个角色吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              // Students button
-              ExpansionTile(
-                leading: const Icon(Icons.people),
-                title: const Text('角色列表'),
-                children: students.map((student) {
-                  int index = students.indexOf(student);
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: student[1].isNotEmpty ? NetworkImage(student[1]) : const AssetImage("assets/head.webp") as ImageProvider,
-                    ),
-                    title: Text(student[0]),
-                    subtitle: Text(student[2]),
-                    onTap: () {
-                      setStudentName(student[0]);
-                      setAvatar(student[1]);
-                      setOriginalMsg(student[2]);
-                      setPrompt(student[3]);
-                      clearMsg();
-                      Navigator.pop(context);
-                    },
-                    onLongPress: () => showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('删除角色'),
-                        content: const Text('你确定要删除这个角色吗？'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('取消'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              deleteStudent("student_${student[4]}_${student[0]}");
-                              setState(() {
-                                students.removeAt(index);
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('删除'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              // Customize button
-              ListTile(
-                leading: const Icon(Icons.accessibility),
-                title: const Text('角色设置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PromptEditor(),
-                    ),
-                  );
-                },
-              ),
-              // Backup button
-              ListTile(
-                leading: const Icon(Icons.backup),
-                title: const Text('备份设置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WebdavPage(
-                        currentMessages: msgListToJson(messages),
-                        onRefresh: restoreFromJson,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Settings button
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('模型设置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
-                    ),
-                  );
-                },
-              ),
-              // FormatConfig button
-              ListTile(
-                leading: const Icon(Icons.format_shapes),
-                title: const Text('格式配置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FormatConfigPage(),
-                    ),
-                  );
-                },
-              ),
-              // SdConfig button
-              ListTile(
-                leading: const Icon(Icons.draw),
-                title: const Text('绘图配置'), 
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FutureBuilder(
-                        future: getSdConfig(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          } else if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
-                          } else {
-                            return SdConfigPage(sdConfig: snapshot.data!);
-                          }
+                      TextButton(
+                        onPressed: () {
+                          deleteStudent("student_${student[4]}_${student[0]}");
+                          setState(() {
+                            students.removeAt(index);
+                          });
+                          Navigator.pop(context);
                         },
+                        child: const Text('删除'),
                       ),
-                    ),
-                  );
-                },
-              ),
-              // VitsConfig button
-              ListTile(
-                leading: const Icon(Icons.speaker),
-                title: const Text('语音配置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FutureBuilder(
-                        future: getVitsConfig(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          } else if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
-                          } else {
-                            return VitsConfigPage(vitsConfig: snapshot.data!);
-                          }
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // About button
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('关于'),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('关于 MoeTalk'),
-                      content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Settings page
+  Widget _buildSettingsPage() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('设置', style: TextStyle(color: Colors.white)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xfff2a0ac)
           ),
         ),
-        body: GestureDetector(
-          onTap: () {
-            fn.unfocus();
-          },
-          child: Column(
-            children: [
-              Expanded(
-                  child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 7),
-                      child: SingleChildScrollView(
-                          controller: scrollController,
-                          child: ListView.builder(
-                            itemCount: messages.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              final message = messages[index];
-                              if (index == 0) {
-                                return Column(
-                                  children: [
-                                    const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onLongPressStart: (LongPressStartDetails details) {
-                                        onMsgPressed(index, details);
-                                      },
-                                      child: ChatElement(
-                                        message: message.message,
-                                        type: message.type,
-                                        userName: userName,
-                                        stuName: studentName,
-                                        avatar: avatar,
-                                      )
-                                    )
-                                  ],
-                                );
-                              }
-                              return GestureDetector(
-                                onLongPressStart: (LongPressStartDetails details) {
-                                  onMsgPressed(index, details);
-                                  fn.unfocus();
-                                },
-                                child: ChatElement(
-                                    message: message.message, 
-                                    type: message.type,
-                                    userName: userName,
-                                    stuName: studentName,
-                                    avatar: avatar,
-                                  )
-                                );
-                            },
-                          )))),
-              Padding(
-                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-                child: Row(
-                  children: [
-                    // text input field
-                    Expanded(
-                        child: TextField(
-                            focusNode: fn,
-                            controller: textController,
-                            // enabled: !inputLock,
-                            onEditingComplete: (){
-                              if(textController.text.isEmpty && userMsg.isNotEmpty){
-                                sendMsg(true);
-                              } else if(textController.text.isNotEmpty){
-                                sendMsg(false);
-                              }
-                            },
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              fillColor: const Color(0xffff899e),
-                              isCollapsed: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              hintText: inputLock ? '回复中' : '请输入您的消息...',
-                            ))),
-                    const SizedBox(width: 5),
-                    // drawing button
-                    IconButton(
-                      onPressed: () async {
-                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AiDraw(msg:msg, config: config)
-                          )
-                        ).then((imageUrl){
-                          if(imageUrl!=null){
-                            setState(() {
-                              messages.add(Message(message: imageUrl, type: Message.image));
-                            });
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              setScrollPercent(1.0);
-                            });
-                          }
-                        });
-                      },
-                      onLongPress: () async {
-                          final TextEditingController controller = TextEditingController();
-                          List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                            msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$studentName的口吻用一句话回复$userName。"]);
-                            String result = "";
-                            for (var m in msg) {
-                              debugPrint("${m[0]}: ${m[1]}");
-                            }
-                            debugPrint("model: ${config.model}");
-                            controller.text = "生成中...";
-                            await completion(config, msg, (chunk) async {
-                              result += chunk;
-                              controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-                            }, () async {
-                              debugPrint("done.");
-                            }, (e) {
-                              snackBarAlert(context, e.toString());
-                            });
-                          showDialog(context: context, builder: (context) {
-                            return AlertDialog(
-                              title: const Text('创建语音'),
-                              content: TextField(
-                                maxLines: null,
-                                minLines: 1,
-                                controller: controller,
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: const Text('取消'),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    if (controller.text.isEmpty) {
-                                      snackBarAlert(context, "语音内容不能为空");
-                                      return;
-                                    }
-                                    queryAndPlayAudio(context,controller.text).then((_) {
-                                      // ignore: use_build_context_synchronously
-                                      snackBarAlert(context, "语音创建成功");
-                                    }).catchError((e) {
-                                      // ignore: use_build_context_synchronously
-                                      snackBarAlert(context, "语音创建失败: $e");
-                                    });
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: const Text('确定'),
-                                ),
-                              ],
-                            );
-                          });
-                      },
-                      icon: const Icon(Icons.draw),
-                      color: const Color(0xffff899e),
+      ),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.backup),
+            title: const Text('备份设置'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WebdavPage(
+                    currentMessages: msgListToJson(messages),
+                    onRefresh: (String jsonString) {
+                      restoreFromJson(jsonToMsg(jsonString));
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('模型设置'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.format_shapes),
+            title: const Text('格式配置'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FormatConfigPage(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.draw),
+            title: const Text('绘图配置'), 
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FutureBuilder(
+                    future: getSdConfig(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else {
+                        return SdConfigPage(sdConfig: snapshot.data!);
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.speaker),
+            title: const Text('语音配置'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FutureBuilder(
+                    future: getVitsConfig(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else {
+                        return VitsConfigPage(vitsConfig: snapshot.data!);
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: const Text('关于'),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('关于 MoeTalk'),
+                  content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
                     ),
-                    const SizedBox(width: 5),
-                    // send button
-                    IconButton(
-                      onPressed: () => sendMsg(true),
-                      onLongPress: () async {
-                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                        msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
-                        String result = "";
-                        for (var m in msg) {
-                          debugPrint("${m[0]}: ${m[1]}");
-                        }
-                        debugPrint("model: ${config.model}");
-                        textController.text = "生成中...";
-                        await completion(config, msg, (chunk) async {
-                          result += chunk;
-                          textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-                        }, () async {
-                          debugPrint("done.");
-                        }, (e) {
-                          snackBarAlert(context, e.toString());
-                        });
-                      },
-                      icon: const Icon(Icons.send),
-                      color: const Color(0xffff899e),
-                    )
                   ],
                 ),
-              )
-            ],
+              );
+            },
           ),
-        ));
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget currentPage;
+    switch (_currentIndex) {
+      case 0:
+        currentPage = _buildChatPage();
+        break;
+      case 1:
+        currentPage = _buildHistoryPage();
+        break;
+      case 2:
+        currentPage = _buildSettingsPage();
+        break;
+      default:
+        currentPage = _buildChatPage();
+    }
+
+    return Scaffold(
+      body: currentPage,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xfff2a0ac),
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat),
+            label: '聊天',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: '历史',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: '设置',
+          ),
+        ],
+      ),
+    );
   }
 }
