@@ -67,6 +67,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool keyboardOn = false;
   bool isForeground = true;
   bool isAutoNotification = false;
+  bool _isToolsExpanded = false; // 添加工具栏展开状态
   List<Message> messages = [];
   List<Message>? lastMessages;
   List<List<String>> historys = [];
@@ -476,6 +477,99 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> getVoice() async {
+    final TextEditingController controller = TextEditingController();
+    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+      msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$studentName的口吻用一句话回复$userName。"]);
+      String result = "";
+      for (var m in msg) {
+        debugPrint("${m[0]}: ${m[1]}");
+      }
+      debugPrint("model: ${config.model}");
+      controller.text = "生成中...";
+      await completion(config, msg, (chunk) async {
+        result += chunk;
+        controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
+      }, () async {
+        debugPrint("done.");
+      }, (e) {
+        snackBarAlert(context, e.toString());
+      });
+    showDialog(context: context, builder: (context) {
+      return AlertDialog(
+        title: const Text('创建语音'),
+        content: TextField(
+          maxLines: null,
+          minLines: 1,
+          controller: controller,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isEmpty) {
+                snackBarAlert(context, "语音内容不能为空");
+                return;
+              }
+              queryAndPlayAudio(context,controller.text).then((_) {
+                // ignore: use_build_context_synchronously
+                snackBarAlert(context, "语音创建成功");
+              }).catchError((e) {
+                // ignore: use_build_context_synchronously
+                snackBarAlert(context, "语音创建失败: $e");
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      );
+    });
+  }
+
+  Future<void> getMsg() async {
+    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
+    String result = "";
+    for (var m in msg) {
+      debugPrint("${m[0]}: ${m[1]}");
+    }
+    debugPrint("model: ${config.model}");
+    textController.text = "生成中...";
+    await completion(config, msg, (chunk) async {
+      result += chunk;
+      textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
+    }, () async {
+      debugPrint("done.");
+    }, (e) {
+      snackBarAlert(context, e.toString());
+    });
+  }
+
+  Future<void> getDraw() async {
+    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AiDraw(msg:msg, config: config)
+      )
+    ).then((imageUrl){
+      if(imageUrl!=null){
+        setState(() {
+          messages.add(Message(message: imageUrl, type: Message.image));
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setScrollPercent(1.0);
+        });
+      }
+    });
+  }
+
   String getTimeStr(int index) {
     int timeStamp = int.parse(historys[index][1]);
     DateTime t = DateTime.fromMillisecondsSinceEpoch(timeStamp);
@@ -484,28 +578,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
   }
 
-  // Chat page widget
-  Widget _buildChatPage() {
+Widget _buildChatPage() {
     return Scaffold(
       appBar: AppBar(
         title: const SizedBox(
             height: 22,
             child: Image(
-                image: AssetImage("assets/momotalk.webp"),
-                fit: BoxFit.scaleDown)),
+                image: AssetImage("assets/moetalk.png"),
+                fit: BoxFit.fitHeight)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            color: Colors.white,
-            onPressed: () {
-              clearMsg();
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.save),
             color: Colors.white,
@@ -589,12 +675,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       body: GestureDetector(
         onTap: () {
           fn.unfocus();
+          setState(() {
+            _isToolsExpanded = false;
+          });
         },
         child: Column(
           children: [
             Expanded(
                 child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 7),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                     child: SingleChildScrollView(
                         controller: scrollController,
                         child: ListView.builder(
@@ -637,8 +726,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               );
                           },
                         )))),
-            Padding(
-              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+            Container(
+              padding: const EdgeInsets.all(8.0),
               child: Row(
                 children: [
                   // text input field
@@ -664,116 +753,117 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             hintText: inputLock ? '回复中' : '请输入您的消息...',
                           ))),
                   const SizedBox(width: 5),
-                  // drawing button
+                  // tools button
                   IconButton(
-                    onPressed: () async {
-                      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AiDraw(msg:msg, config: config)
-                        )
-                      ).then((imageUrl){
-                        if(imageUrl!=null){
-                          setState(() {
-                            messages.add(Message(message: imageUrl, type: Message.image));
-                          });
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setScrollPercent(1.0);
-                          });
-                        }
+                    onPressed: () {
+                      setState(() {
+                        _isToolsExpanded = !_isToolsExpanded;
                       });
                     },
-                    onLongPress: () async {
-                        final TextEditingController controller = TextEditingController();
-                        List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                          msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$studentName的口吻用一句话回复$userName。"]);
-                          String result = "";
-                          for (var m in msg) {
-                            debugPrint("${m[0]}: ${m[1]}");
-                          }
-                          debugPrint("model: ${config.model}");
-                          controller.text = "生成中...";
-                          await completion(config, msg, (chunk) async {
-                            result += chunk;
-                            controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-                          }, () async {
-                            debugPrint("done.");
-                          }, (e) {
-                            snackBarAlert(context, e.toString());
-                          });
-                        showDialog(context: context, builder: (context) {
-                          return AlertDialog(
-                            title: const Text('创建语音'),
-                            content: TextField(
-                              maxLines: null,
-                              minLines: 1,
-                              controller: controller,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('取消'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  if (controller.text.isEmpty) {
-                                    snackBarAlert(context, "语音内容不能为空");
-                                    return;
-                                  }
-                                  queryAndPlayAudio(context,controller.text).then((_) {
-                                    // ignore: use_build_context_synchronously
-                                    snackBarAlert(context, "语音创建成功");
-                                  }).catchError((e) {
-                                    // ignore: use_build_context_synchronously
-                                    snackBarAlert(context, "语音创建失败: $e");
-                                  });
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('确定'),
-                              ),
-                            ],
-                          );
-                        });
-                    },
-                    icon: const Icon(Icons.draw),
+                    icon: const Icon(Icons.add_circle),
                     color: const Color(0xffff899e),
                   ),
                   const SizedBox(width: 5),
                   // send button
                   IconButton(
                     onPressed: () => sendMsg(true),
-                    onLongPress: () async {
-                      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-                      msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
-                      String result = "";
-                      for (var m in msg) {
-                        debugPrint("${m[0]}: ${m[1]}");
-                      }
-                      debugPrint("model: ${config.model}");
-                      textController.text = "生成中...";
-                      await completion(config, msg, (chunk) async {
-                        result += chunk;
-                        textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-                      }, () async {
-                        debugPrint("done.");
-                      }, (e) {
-                        snackBarAlert(context, e.toString());
-                      });
-                    },
                     icon: const Icon(Icons.send),
                     color: const Color(0xffff899e),
                   )
                 ],
               ),
-            )
+            ),
+            // 工具栏展开区域
+            if (_isToolsExpanded)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildToolButton(
+                      icon: Icons.refresh,
+                      label: '清空',
+                      onTap: () {
+                        clearMsg();
+                        setState(() {
+                          _isToolsExpanded = false;
+                        });
+                      },
+                    ),
+                    _buildToolButton(
+                      icon: Icons.draw,
+                      label: '绘图',
+                      onTap: () {
+                        getDraw();
+                        setState(() {
+                          _isToolsExpanded = false;
+                        });
+                      },
+                    ),
+                    _buildToolButton(
+                      icon: Icons.speaker,
+                      label: '语音',
+                      onTap: () {
+                        getVoice();
+                        setState(() {
+                          _isToolsExpanded = false;
+                        });
+                      },
+                    ),
+                    _buildToolButton(
+                      icon: Icons.auto_awesome,
+                      label: '生成',
+                      onTap: () {
+                        getMsg();
+                        setState(() {
+                          _isToolsExpanded = false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildToolButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xffff899e),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   // History and Students page
   Widget _buildHistoryPage() {
