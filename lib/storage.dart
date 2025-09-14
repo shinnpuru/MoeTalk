@@ -281,6 +281,20 @@ Future<String?> getDrawUrl() async {
   return url;
 }
 
+Future<void> setStatusPrompt(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("status_prompt", format);
+}
+
+Future<String> getStatusPrompt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("status_prompt");
+  if (format == null || format.isEmpty) {
+    return "暂停角色扮演，描述角色当前的状态，包括好感度、穿着、正在做的事情，内心的想法等，用1-2句话简洁描述。";
+  }
+  return format;
+}
+
 Future<void> setStartPrompt(String format) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("start_prompt", format);
@@ -290,7 +304,7 @@ Future<String> getStartPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("start_prompt");
   if (format == null || format.isEmpty) {
-    return "现在开始角色扮演。";
+    return "现在开始角色扮演游戏。";
   }
   return format;
 }
@@ -305,7 +319,7 @@ Future<String> getEndPrompt() async {
   String? format = prefs.getString("system_prompt");
   if (format == null || format.isEmpty) {
     String? name = await getStudentName(isDefault: true);
-    return "你可以开始扮演$name。";
+    return "请你用一句话回复，可以使用反斜杠来间隔。";
   }
   return format;
 }
@@ -346,7 +360,7 @@ Future<VitsConfig> getVitsConfig() async {
   }
   memConfig.noiseScale ??= 0.6;
   memConfig.noiseScaleW ??= 0.7;
-  memConfig.lengthScale ??= 1.2;
+  memConfig.lengthScale ??= 0.5;
   return memConfig;
 }
 

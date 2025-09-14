@@ -13,12 +13,11 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     context: context,
     position: position,
     items: [
-      const PopupMenuItem(value: 2, child: Text('编辑')),
-      if (msg.split("$stuName：").length > 3) 
-        const PopupMenuItem(value: 3, child: Text('格式化')),
+      const PopupMenuItem(value: 1, child: Text('编辑')),
+      const PopupMenuItem(value: 2, child: Text('删除')),
     ],
   ).then((value) {
-    if (value == 2) {
+    if (value == 1) {
       showDialog(context: context, builder: (context) {
         return AlertDialog(
           title: const Text('编辑'),
@@ -44,8 +43,8 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
           ],
         );
       });
-    } else if (value == 3) {
-      onEdited("FORMAT");
+    } else if (value == 2) {
+      onEdited("DELETE");
     }
   });
 }
@@ -123,18 +122,18 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
         ),
         TextButton(
           onPressed: () {
-            onEdited(controller.text,true);
-            Navigator.of(context).pop();
-          },
-          child: const Text('确定并提交'),
-        ),
-        TextButton(
-          onPressed: () {
             onEdited(controller.text,false);
             Navigator.of(context).pop();
           },
           child: const Text('确定'),
-        )
+        ),
+        TextButton(
+          onPressed: () {
+            onEdited(controller.text,true);
+            Navigator.of(context).pop();
+          },
+          child: const Text('确定并生成'),
+        ),
       ],
     );
   });

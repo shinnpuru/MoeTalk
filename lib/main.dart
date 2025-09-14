@@ -212,7 +212,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           });
           return;
         }
-        if(edited.isEmpty){
+        if(edited=="DELETE"){
           setState(() {
             messages.removeRange(index, messages.length);
           });
@@ -534,21 +534,106 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> getMsg() async {
     List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-    msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。"]);
+    msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
+    
     String result = "";
     for (var m in msg) {
       debugPrint("${m[0]}: ${m[1]}");
     }
     debugPrint("model: ${config.model}");
-    textController.text = "生成中...";
-    await completion(config, msg, (chunk) async {
-      result += chunk;
-      textController.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-    }, () async {
-      debugPrint("done.");
-    }, (e) {
+    
+    // 显示加载对话框
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在生成候选回复'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await completion(config, msg, (chunk) async {
+        result += chunk;
+      }, () async {
+        debugPrint("done.");
+        Navigator.of(context).pop(); // 关闭加载对话框
+        
+        // 解析生成的候选项
+        List<String> candidates = result
+            .replaceAll(RegExp(await getResponseRegex()), '')
+            .split('||')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+        
+        if (candidates.isEmpty) {
+          candidates = [result.replaceAll(RegExp(await getResponseRegex()), '').trim()];
+        }
+        
+        // 显示候选项选择对话框
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('选择回复'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: candidates.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: ListTile(
+                        title: Text(
+                          '选项 ${index + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(candidates[index]),
+                        onTap: () {
+                          textController.text = candidates[index];
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // 重新生成
+                    Navigator.of(context).pop();
+                    getMsg();
+                  },
+                  child: const Text('重新生成'),
+                ),
+              ],
+            );
+          },
+        );
+      }, (e) {
+        Navigator.of(context).pop(); // 关闭加载对话框
+        snackBarAlert(context, e.toString());
+      });
+    } catch (e) {
+      Navigator.of(context).pop(); // 关闭加载对话框
       snackBarAlert(context, e.toString());
-    });
+    }
   }
 
   Future<void> getDraw() async {
@@ -568,6 +653,92 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         });
       }
     });
+  }
+
+  Future<void> getStatus() async {
+    final TextEditingController controller = TextEditingController();
+
+    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
+    
+    String result = "";
+    for (var m in msg) {
+      debugPrint("${m[0]}: ${m[1]}");
+    }
+    debugPrint("model: ${config.model}");
+    
+    // 显示加载对话框
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在分析角色状态'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await completion(config, msg, (chunk) async {
+        result += chunk;
+      }, () async {
+        debugPrint("done.");
+        Navigator.of(context).pop(); // 关闭加载对话框
+        
+        if (result.isNotEmpty) {
+          String cleanResult = result.replaceAll(RegExp(await getResponseRegex()), '');
+          controller.text = cleanResult;
+          
+          // 显示状态信息对话框
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('$studentName 的状态'),
+                content: TextField(
+                  maxLines: null,
+                  minLines: 1,
+                  controller: controller,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('关闭'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        messages.add(Message(message: controller.text, type: Message.system));
+                      });
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        setScrollPercent(1.0);
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('添加到聊天'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      }, (e) {
+        Navigator.of(context).pop(); // 关闭加载对话框
+        snackBarAlert(context, "获取状态失败: $e");
+      });
+    } catch (e) {
+      Navigator.of(context).pop(); // 关闭加载对话框
+      snackBarAlert(context, "获取状态失败: $e");
+    }
   }
 
   String getTimeStr(int index) {
@@ -592,6 +763,16 @@ Widget _buildChatPage() {
           ),
         ),
         actions: <Widget>[
+          // Reset
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            color: Colors.white,
+            onPressed: () {
+              clearMsg();
+              snackBarAlert(context, "已重置");
+            },
+          ),
+          // Save
           IconButton(
             icon: const Icon(Icons.save),
             color: Colors.white,
@@ -781,10 +962,10 @@ Widget _buildChatPage() {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildToolButton(
-                      icon: Icons.refresh,
-                      label: '清空',
+                      icon: Icons.monitor_heart,
+                      label: '状态',
                       onTap: () {
-                        clearMsg();
+                        getStatus();
                         setState(() {
                           _isToolsExpanded = false;
                         });
@@ -864,12 +1045,64 @@ Widget _buildChatPage() {
     );
   }
 
-
-  // History and Students page
+  // 分离历史记录页面
   Widget _buildHistoryPage() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('历史记录和角色', style: TextStyle(color: Colors.white)),
+        title: const Text('历史记录', style: TextStyle(color: Colors.white)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xfff2a0ac)
+          ),
+        ),
+      ),
+      body: ListView.builder(
+        itemCount: historys.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: const Icon(Icons.history),
+            title: Text(getTimeStr(index)),
+            subtitle: Text(historys[index][0]),
+            onTap: () {
+              loadHistory(historys[index][2]);
+              setState(() {
+                _currentIndex = 0; // Switch to chat page
+              });
+            },
+            onLongPress: () => showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('删除历史记录'),
+                content: const Text('你确定要删除这条历史记录吗？'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      deleteHistory("history_${historys[index][1]}");
+                      setState(() {
+                        historys.removeAt(index);
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('删除'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // 分离角色页面
+  Widget _buildStudentsPage() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('角色列表', style: TextStyle(color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
@@ -891,96 +1124,52 @@ Widget _buildChatPage() {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          ExpansionTile(
-            leading: const Icon(Icons.history),
-            title: const Text('历史记录'),
-            children: historys.map((history) {
-              int index = historys.indexOf(history);
-              return ListTile(
-                title: Text(getTimeStr(index)),
-                subtitle: Text(history[0]),
-                onTap: () {
-                  loadHistory(history[2]);
-                  setState(() {
-                    _currentIndex = 0; // Switch to chat page
-                  });
-                },
-                onLongPress: () => showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('删除历史记录'),
-                    content: const Text('你确定要删除这条历史记录吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          deleteHistory("history_${history[1]}");
-                          setState(() {
-                            historys.removeAt(index);
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('删除'),
-                      ),
-                    ],
+      body: ListView.builder(
+        itemCount: students.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundImage: students[index][1].isNotEmpty 
+                ? NetworkImage(students[index][1]) 
+                : const AssetImage("assets/head.webp") as ImageProvider,
+            ),
+            title: Text(students[index][0]),
+            subtitle: Text(students[index][2]),
+            onTap: () {
+              setStudentName(students[index][0]);
+              setAvatar(students[index][1]);
+              setOriginalMsg(students[index][2]);
+              setPrompt(students[index][3]);
+              clearMsg();
+              setState(() {
+                _currentIndex = 0; // Switch to chat page
+              });
+            },
+            onLongPress: () => showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('删除角色'),
+                content: const Text('你确定要删除这个角色吗？'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-          ExpansionTile(
-            leading: const Icon(Icons.people),
-            title: const Text('角色列表'),
-            children: students.map((student) {
-              int index = students.indexOf(student);
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: student[1].isNotEmpty ? NetworkImage(student[1]) : const AssetImage("assets/head.webp") as ImageProvider,
-                ),
-                title: Text(student[0]),
-                subtitle: Text(student[2]),
-                onTap: () {
-                  setStudentName(student[0]);
-                  setAvatar(student[1]);
-                  setOriginalMsg(student[2]);
-                  setPrompt(student[3]);
-                  clearMsg();
-                  setState(() {
-                    _currentIndex = 0; // Switch to chat page
-                  });
-                },
-                onLongPress: () => showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('删除角色'),
-                    content: const Text('你确定要删除这个角色吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          deleteStudent("student_${student[4]}_${student[0]}");
-                          setState(() {
-                            students.removeAt(index);
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('删除'),
-                      ),
-                    ],
+                  TextButton(
+                    onPressed: () {
+                      deleteStudent("student_${students[index][4]}_${students[index][0]}");
+                      setState(() {
+                        students.removeAt(index);
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('删除'),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1120,6 +1309,9 @@ Widget _buildChatPage() {
         currentPage = _buildHistoryPage();
         break;
       case 2:
+        currentPage = _buildStudentsPage();
+        break;
+      case 3:
         currentPage = _buildSettingsPage();
         break;
       default:
@@ -1146,6 +1338,10 @@ Widget _buildChatPage() {
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
             label: '历史',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: '角色',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

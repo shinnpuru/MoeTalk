@@ -14,7 +14,7 @@ class ChatElement extends StatelessWidget {
   Widget build(BuildContext context) {
     if (type == Message.assistant) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for(var m in message.split("\\\\")) 
+          for(var m in message.split("\\")) 
             if(m.isNotEmpty) 
               ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\"), avatar: avatar),
           const SizedBox(height: 10),

@@ -12,6 +12,7 @@ class FormatConfigPage extends StatelessWidget {
     TextEditingController endPrompt = TextEditingController();
     TextEditingController responseRegex = TextEditingController();
     TextEditingController userName = TextEditingController();
+    TextEditingController statusPrompt = TextEditingController();
     getStartPrompt().then((value) {
       startPrompt.text = value;
     });
@@ -23,6 +24,9 @@ class FormatConfigPage extends StatelessWidget {
     });
     getUserName().then((value) {
       userName.text = value;
+    });
+    getStatusPrompt().then((value) {
+      statusPrompt.text = value;
     });
 
     return Scaffold(
@@ -36,6 +40,7 @@ class FormatConfigPage extends StatelessWidget {
               setEndPrompt(endPrompt.text);
               setResponseRegex(responseRegex.text);
               setUserName(userName.text);
+              setStatusPrompt(statusPrompt.text);
               Navigator.of(context).pop();
             },
           ),
@@ -67,7 +72,7 @@ class FormatConfigPage extends StatelessWidget {
             TextField(
                 controller: responseRegex,
                 decoration: const InputDecoration(
-                  labelText: '回复正则表达式提取',
+                  labelText: '删除正则表达式',
                 ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
               ),
@@ -77,6 +82,16 @@ class FormatConfigPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: '用户名称',
                 ),
+                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
+              ),
+            const SizedBox(height: 16),
+            TextField(
+                controller: statusPrompt,
+                decoration: const InputDecoration(
+                  labelText: '状态提示词',
+                ),
+                minLines: 3,
+                maxLines: 3,
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
               ),
           ],
