@@ -73,22 +73,21 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     }
     final dio = Dio(BaseOptions(baseUrl: url));
     if(sessionHash==null || lastModel != sdConfig.model) {
-      sessionHash = const Uuid().v4();
       logController.text = '$sessionHash\n${logController.text}';
       logController.text = '正在加载 ${sdConfig.model} ...\n${logController.text}';
-      await dio.post(
-        "/queue/join",
+      final Response response = await dio.post(
+        "/gradio_api/call/load_new_model",
         data: {
           "data": [sdConfig.model, "None", "txt2img", "Automatic"],
-          "fn_index": 13,
-          "session_hash": sessionHash,
         },
         cancelToken: cancelToken,
       );
+      final data = response.data.toString();
+      sessionHash = data.substring(11,data.length-1);
+      debugPrint("/call/load_new_model/$sessionHash");
       cancelToken = CancelToken();
       final Response<ResponseBody> loadModelQueue = await dio.get<ResponseBody>(
-        "/queue/data",
-        queryParameters: {"session_hash": sessionHash},
+        "/gradio_api/call/load_new_model/$sessionHash",
         options: Options(responseType: ResponseType.stream),
         cancelToken: cancelToken,
       );
@@ -104,8 +103,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     if(!sdConfig.prompt.contains("VERB")){
       sdConfig.prompt+= ", VERB";
     }
-    await dio.post(
-      "/queue/join",
+    final Response response = await dio.post(
+      "/gradio_api/call/sd_gen_generate_pipeline",
       data: {
         "data": [
           sdConfig.prompt.replaceAll("VERB", promptController.text),
@@ -147,8 +146,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           0.55,
           100,
           200,
-          0.1,
-          0.1,
+          1,
+          1,
           1,
           9,
           1,
@@ -230,16 +229,17 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           false,
           59
         ],
-        "fn_index": 14,
-        "session_hash": sessionHash,
       },
       cancelToken: cancelToken,
     );
     cancelToken = CancelToken();
+    final data = response.data.toString();
+    sessionHash = data.substring(11,data.length-1);
+    debugPrint("/call/sd_gen_generate_pipeline/$sessionHash");
+
     // Inference queue
     final Response<ResponseBody> inferQueue = await dio.get<ResponseBody>(
-      "/queue/data",
-      queryParameters: {"session_hash": sessionHash},
+      "/gradio_api/call/sd_gen_generate_pipeline/$sessionHash",
       options: Options(responseType: ResponseType.stream),
       cancelToken: cancelToken,
     );
@@ -254,11 +254,11 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       if (match.isNotEmpty) {
         lastUrl = match.last.group(1)!;
       }
-      if (data.contains('close_stream')) {
+      if (data.contains('COMPLETE')) {
         if(lastUrl.isEmpty) return;
         if(!mounted) return;
         setState(() {
-          imageUrl = "${url}file=images/$lastUrl";
+          imageUrl = "${url}gradio_api/file=images/$lastUrl";
           debugPrint(imageUrl);
           sdBusy = false;
           showLog = false;
@@ -271,12 +271,13 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           );
         }
       }
-      if (data.contains('GENERATION DATA')) {
+      if (data.contains('COMPLETE')) {
           Match? match = regexPng.firstMatch(data);
-          String? filePath = match?.group(0)?.replaceAll('\\"', '');
+          String? filePath = match?.group(1)?.replaceAll('\\"', '');
           if(filePath != null) {
             imageUrlRaw = url + filePath;
           }
+          debugPrint(imageUrlRaw);
       }
     }
     cancelToken = CancelToken();

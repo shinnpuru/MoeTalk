@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
 import 'package:momotalk/aidrawconfig.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'dart:io' show Platform;
@@ -77,6 +77,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    rootBundle.loadString("assets/mika.json").then((string) {
+      restoreFromJson(string);
+    });
     getUserName().then((name) {
       userName = name;
     });
@@ -153,13 +156,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       debugPrint("keyboard off");
       keyboardOn = false;
     }
-  }
-
-  void restoreFromJson(List<Message> msgs) {
-    setState(() {
-      messages.clear();
-      messages.addAll(msgs);
-    });
   }
 
   // All the existing methods remain the same...
@@ -1108,68 +1104,86 @@ Widget _buildChatPage() {
             color: Color(0xfff2a0ac)
           ),
         ),
-        actions: [
-          // Edit button to add or edit students
-          IconButton(
-            icon: const Icon(Icons.edit),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PromptEditor(),
+      ),
+      body: ListView(
+        children: [
+          const ListTile(
+            title: Text('当前角色', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          ListTile(
+            leading: CircleAvatar(
+              backgroundImage: avatar.isNotEmpty 
+                ? NetworkImage(avatar) 
+                : const AssetImage("assets/head.webp") as ImageProvider,
+            ),
+            title: Text(studentName),
+            subtitle: Text(messages.isNotEmpty ? messages.first.message : ""),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PromptEditor(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(),
+          const ListTile(
+            title: Text('角色池', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: students.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: students[index][1].isNotEmpty 
+                    ? NetworkImage(students[index][1]) 
+                    : const AssetImage("assets/head.webp") as ImageProvider,
+                ),
+                title: Text(students[index][0]),
+                subtitle: Text(students[index][2]),
+                onTap: () {
+                  setStudentName(students[index][0]);
+                  setAvatar(students[index][1]);
+                  setOriginalMsg(students[index][2]);
+                  setPrompt(students[index][3]);
+                  clearMsg();
+                  setState(() {
+                    _currentIndex = 0; // Switch to chat page
+                  });
+                },
+                onLongPress: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('删除角色'),
+                    content: const Text('你确定要删除这个角色吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          deleteStudent("student_${students[index][4]}_${students[index][0]}");
+                          setState(() {
+                            students.removeAt(index);
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('删除'),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           ),
         ],
-      ),
-      body: ListView.builder(
-        itemCount: students.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: students[index][1].isNotEmpty 
-                ? NetworkImage(students[index][1]) 
-                : const AssetImage("assets/head.webp") as ImageProvider,
-            ),
-            title: Text(students[index][0]),
-            subtitle: Text(students[index][2]),
-            onTap: () {
-              setStudentName(students[index][0]);
-              setAvatar(students[index][1]);
-              setOriginalMsg(students[index][2]);
-              setPrompt(students[index][3]);
-              clearMsg();
-              setState(() {
-                _currentIndex = 0; // Switch to chat page
-              });
-            },
-            onLongPress: () => showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('删除角色'),
-                content: const Text('你确定要删除这个角色吗？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      deleteStudent("student_${students[index][4]}_${students[index][0]}");
-                      setState(() {
-                        students.removeAt(index);
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: const Text('删除'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -1197,7 +1211,10 @@ Widget _buildChatPage() {
                   builder: (context) => WebdavPage(
                     currentMessages: msgListToJson(messages),
                     onRefresh: (String jsonString) {
-                      restoreFromJson(jsonToMsg(jsonString));
+                      setState(() {
+                        messages.clear();
+                        messages.addAll(jsonToMsg(jsonString));
+                      });
                     },
                   ),
                 ),
