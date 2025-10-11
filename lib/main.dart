@@ -79,9 +79,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    rootBundle.loadString("assets/chara.json").then((string) {
-      restoreFromJson(string);
-    });
+    _chatViewHeightFactor = 0.5;
     getUserName().then((name) {
       userName = name;
     });
@@ -127,6 +125,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         students = results;
         students.sort((a, b) => a[0].compareTo(b[0]));
       });
+      if(results.isEmpty){
+        rootBundle.loadString("assets/chara.json").then((string) {
+          restoreFromJson(string);
+        });
+      }
     });
   }
 
@@ -340,6 +343,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void clearMsg() {
     lastMessages = null;
     setState(() {
+      _chatViewHeightFactor = 0.5;
       messages.clear();
       getUserName().then((name) {
         userName = name;
@@ -1218,7 +1222,14 @@ Widget _buildChatPage() {
                         MaterialPageRoute(
                           builder: (context) => const PromptEditor(),
                         ),
-                      );
+                      ).then((_) {
+                        getStudents().then((List<List<String>> results) {
+                          setState(() {
+                            students = results;
+                            students.sort((a, b) => a[0].compareTo(b[0]));
+                          });
+                        });
+                      });
                     },
                   ),
                 ),
