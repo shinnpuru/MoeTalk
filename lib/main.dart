@@ -51,6 +51,7 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  double _chatViewHeightFactor = 0.5;
   
   // Chat page variables
   final fn = FocusNode();
@@ -898,8 +899,27 @@ Widget _buildChatPage() {
           },
           child: Column(
             children: [
-              const Spacer(),
               Expanded(
+                flex: (_chatViewHeightFactor * 100).toInt(),
+                child: GestureDetector(
+                  onVerticalDragUpdate: (details) {
+                    setState(() {
+                      final newFactor = _chatViewHeightFactor + details.delta.dy / context.size!.height;
+                      _chatViewHeightFactor = newFactor.clamp(0, 1);
+                    });
+                  },
+                  onTap: () {
+                    setState(() {
+                      _chatViewHeightFactor = 0.5;
+                    });
+                  },
+                  child: const MouseRegion(
+                    cursor: SystemMouseCursors.resizeUpDown,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: ((1 - _chatViewHeightFactor) * 100).toInt(),
                   child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                       child: SingleChildScrollView(
