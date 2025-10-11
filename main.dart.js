@@ -104100,7 +104100,7 @@ if(s.length===0)A.bn(r,!1).bQ()
 else A.bn(r,!1).fA(s)},
 $S:0}
 A.Ui.prototype={
-I(a){return new A.Fh(B.QJ,"MomoTalk",$.b6J(),$.b6D(),B.CC,null)}}
+I(a){return new A.Fh(B.QJ,"MoeTalk",$.b6J(),$.b6D(),B.CC,null)}}
 A.F9.prototype={
 ai(){var s=null,r=A.m3(!0,s,!0,!0,s,s,!1),q=t.rj
 return new A.Fa(r,new A.bJ(B.ac,$.ao()),A.uU(0,s,s),$.aS8(),new A.fZ("","","","",s,s,s,s),A.b([],t.n_),A.b([],q),A.b([],q))}}
@@ -105453,7 +105453,7 @@ a7h(a,b,c,d){var s=0,r=A.u(t.H),q=this,p
 var $async$nQ=A.p(function(e,f){if(e===1)return A.q(f,r)
 while(true)switch(s){case 0:p=c?B.FY:null
 s=2
-return A.m(q.a.GE(0,B.k3.qZ(1e4),d,b,new A.ath(new A.aaF("@mipmap/ic_launcher","shinnpuru.momotalk.notification","notification","Message notifications",B.Ln,B.Tz,p,"message",B.RB))),$async$nQ)
+return A.m(q.a.GE(0,B.k3.qZ(1e4),d,b,new A.ath(new A.aaF("@mipmap/ic_launcher","shinnpuru.moetalk.notification","notification","Message notifications",B.Ln,B.Tz,p,"message",B.RB))),$async$nQ)
 case 2:return A.r(null,r)}})
 return A.t($async$nQ,r)},
 mZ(){var s=0,r=A.u(t.H),q=this
@@ -105763,7 +105763,7 @@ m=A.aRp(o,p.f.a.a,n)
 p.O(new A.aCl(p))
 l=B.W
 s=3
-return A.m(m.b.vk(m,"momotalk/"+a,null,new A.aCm(p)),$async$zP)
+return A.m(m.b.vk(m,"moetalk/"+a,null,new A.aCm(p)),$async$zP)
 case 3:q=l.eD(0,c)
 s=1
 break
@@ -105795,7 +105795,7 @@ var $async$MW=A.p(function(a,b){if(a===1)return A.q(b,r)
 while(true)switch(s){case 0:try{n=q.d.a.a
 m=q.e.a.a
 p=A.aRp(n,q.f.a.a,m)
-p.Fw("momotalk").aD(new A.aCj(q),t.P)}catch(k){o=A.aa(k)
+p.Fw("moetalk").aD(new A.aCj(q),t.P)}catch(k){o=A.aa(k)
 q.u7(J.c1(o))}return A.r(null,r)}})
 return A.t($async$MW,r)},
 aA(){this.aS()
@@ -105841,7 +105841,7 @@ A.aCr.prototype={
 $0(){var s=0,r=A.u(t.H),q=this,p
 var $async$$0=A.p(function(a,b){if(a===1)return A.q(b,r)
 while(true)switch(s){case 0:p=q.a
-p.tE("momotalk/"+p.x[q.b][1])
+p.tE("moetalk/"+p.x[q.b][1])
 A.bn(q.c,!1).bQ()
 return A.r(null,r)}})
 return A.t($async$$0,r)},
@@ -105945,7 +105945,7 @@ $S:10}
 A.aCd.prototype={
 $0(){var s=0,r=A.u(t.H),q=this
 var $async$$0=A.p(function(a,b){if(a===1)return A.q(b,r)
-while(true)switch(s){case 0:q.a.tE("momotalk/"+Date.now()+".json")
+while(true)switch(s){case 0:q.a.tE("moetalk/"+Date.now()+".json")
 return A.r(null,r)}})
 return A.t($async$$0,r)},
 $S:10}
