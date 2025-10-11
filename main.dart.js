@@ -41356,7 +41356,7 @@ aI(a){if(a>0){if(a!==1/0)return Math.round(a)}else if(a>-1/0)return 0-Math.round
 throw A.e(A.ac(""+a+".round()"))},
 a4w(a){if(a<0)return-Math.round(-a)
 else return Math.round(a)},
-fq(a,b,c){if(B.e.bc(b,c)>0)throw A.e(A.BE(b))
+fq(a,b,c){if(this.bc(b,c)>0)throw A.e(A.BE(b))
 if(this.bc(a,b)<0)return b
 if(this.bc(a,c)>0)return c
 return a},
@@ -105089,7 +105089,7 @@ s.O(new A.amS(s,a))},
 $S:22}
 A.amS.prototype={
 $0(){var s=this.a
-s.e=B.d.fq(s.e+this.b.d.b/s.c.gv(0).b,0,1)},
+s.e=B.d.fq(s.e+this.b.d.b/s.c.gv(0).b,0.1,0.9)},
 $S:0}
 A.an2.prototype={
 $0(){var s=this.a
