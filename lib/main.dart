@@ -60,6 +60,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   late String studentName;
   late String avatar;
   late String userName;
+  late DecorationImage backgroundImage;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
   int splitCount = 0;
@@ -77,7 +78,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    rootBundle.loadString("assets/mika.json").then((string) {
+    rootBundle.loadString("assets/chara.json").then((string) {
       restoreFromJson(string);
     });
     getUserName().then((name) {
@@ -88,6 +89,16 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       });
     getAvatar().then((avt){
       avatar = avt;
+      backgroundImage = DecorationImage(
+        image: (avatar.isNotEmpty && avatar.startsWith('http'))
+            ? NetworkImage(avatar)
+            : const AssetImage("assets/avatar.png") as ImageProvider,
+        fit: BoxFit.cover,
+        colorFilter: ColorFilter.mode(
+          Colors.white.withOpacity(0.8),
+          BlendMode.dstATop,
+        ),
+      );
     });
     getOriginalMsg().then((originalMsg) {
       setState(() {
@@ -270,10 +281,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
       });
     } else if(messages[index].type == Message.image){
-      imagePopup(context, details, (bool edited){
-        if(edited){
+      imagePopup(context, details, (int edited){
+        if (edited == 0) {
+          setState(() {
+            backgroundImage = DecorationImage(
+              image: NetworkImage(messages[index].message),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                Colors.white.withOpacity(0.8),
+                BlendMode.dstATop,
+              ),
+            );
+          });
+        }
+        if(edited==2){
           launchUrlString(messages[index].message);
-        } else {
+        } 
+        if(edited==1){
           setState(() {
             messages.removeAt(index);
           });
@@ -323,7 +347,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         studentName = name;
       });
       getAvatar().then((avt){
-        avatar = avt;
+        avatar = avt;      
+        setState(() {
+          backgroundImage = DecorationImage(
+            image: (avatar.isNotEmpty && avatar.startsWith('http'))
+                ? NetworkImage(avatar)
+                : const AssetImage("assets/avatar.png") as ImageProvider,
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.8),
+              BlendMode.dstATop,
+            ),
+          );
+        });
       });
       getOriginalMsg().then((originalMsg) {
         setState(() {
@@ -851,16 +887,7 @@ Widget _buildChatPage() {
       ),
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: (avatar.isNotEmpty && avatar.startsWith('http'))
-                ? NetworkImage(avatar)
-                : const AssetImage("assets/avatar.png") as ImageProvider,
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.white.withOpacity(0.8),
-              BlendMode.dstATop,
-            ),
-          ),
+          image: backgroundImage
         ),
         child: GestureDetector(
           onTap: () {

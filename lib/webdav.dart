@@ -198,6 +198,44 @@ class WebdavPageState extends State<WebdavPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
+            // 本地备份
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  child: const Text('下载配置'),
+                  onPressed: () async {
+                    String j = await convertToJson();
+                    debugPrint(j);
+                    if(await writeFile(j)){
+                      snackBarAlert(context, "下载成功");
+                    } else {
+                      snackBarAlert(context, "下载失败");
+                    }
+                  },
+                ),
+                ElevatedButton(
+                  child: const Text('文件恢复'),
+                  onPressed: () async {
+                    String? j = await pickFile();
+                    if (j != null) {
+                      try {
+                        debugPrint(j);
+                        await restoreFromJson(j);
+                        snackBarAlert(context, "恢复成功");
+                      } catch (e) {
+                        snackBarAlert(context, "恢复失败");
+                        return;
+                      }
+                    } else {
+                      snackBarAlert(context, "未选择文件");
+                    }
+                  },
+                ),
+              ],
+            ),
+            const Divider(),
+            // WebDAV 备份
             TextField(
               controller: urlController,
               decoration: const InputDecoration(
@@ -241,42 +279,6 @@ class WebdavPageState extends State<WebdavPage> {
               value: progress,
               minHeight: 2,
               semanticsLabel: 'Linear progress indicator',
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  child: const Text('下载配置'),
-                  onPressed: () async {
-                    String j = await convertToJson();
-                    debugPrint(j);
-                    if(await writeFile(j)){
-                      snackBarAlert(context, "下载成功");
-                    } else {
-                      snackBarAlert(context, "下载失败");
-                    }
-                  },
-                ),
-                ElevatedButton(
-                  child: const Text('文件恢复'),
-                  onPressed: () async {
-                    String? j = await pickFile();
-                    if (j != null) {
-                      try {
-                        debugPrint(j);
-                        await restoreFromJson(j);
-                        snackBarAlert(context, "恢复成功");
-                      } catch (e) {
-                        snackBarAlert(context, "恢复失败");
-                        return;
-                      }
-                    } else {
-                      snackBarAlert(context, "未选择文件");
-                    }
-                  },
-                ),
-              ],
             ),
             const SizedBox(height: 8),
             Expanded(

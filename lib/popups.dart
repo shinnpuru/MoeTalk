@@ -185,7 +185,7 @@ void timePopup(BuildContext context, int oldTime, LongPressStartDetails details,
   });
 }
 
-void imagePopup(BuildContext context, LongPressStartDetails details, Function(bool) onEdited) {
+void imagePopup(BuildContext context, LongPressStartDetails details, Function(int) onEdited) {
   final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
   final RelativeRect position = RelativeRect.fromRect(
     Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 0, 0),
@@ -196,13 +196,10 @@ void imagePopup(BuildContext context, LongPressStartDetails details, Function(bo
     position: position,
     items: [
       const PopupMenuItem(value: 1, child: Text('移除')),
-      const PopupMenuItem(value: 2, child: Text('保存'))
+      const PopupMenuItem(value: 2, child: Text('保存')),
+      const PopupMenuItem(value: 0, child: Text('设为背景'))
     ],
   ).then((value) {
-    if (value == 1) {
-      onEdited(false);
-    } else if (value == 2) {
-      onEdited(true);
-    }
+    onEdited(value!);
   });
 }
