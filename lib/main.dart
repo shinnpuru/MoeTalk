@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
-import 'package:momotalk/aidrawconfig.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'dart:io' show Platform;
 import 'chatview.dart';
@@ -19,6 +18,7 @@ import 'aidraw.dart';
 import 'formatconfig.dart';
 import 'vitsconfig.dart';
 import 'vits.dart';
+import 'aidrawconfig.dart';
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +33,7 @@ class MomotalkApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MomoTalk',
+      title: 'MoeTalk',
       home: const MainPage(),
       theme: lightTheme,
       darkTheme: darkTheme,

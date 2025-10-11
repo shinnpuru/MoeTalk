@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:momotalk/storage.dart';
+import 'storage.dart';
 import 'openai.dart' show completion;
 import 'utils.dart' show snackBarAlert, Config;
 

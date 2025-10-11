@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:momotalk/storage.dart';
+import 'storage.dart';
 import 'utils.dart';
 
 class SdConfigPage extends StatelessWidget {

@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:momotalk/storage.dart';
 
 
 // type 1:asstant 2:user 3:system 4:timestamp

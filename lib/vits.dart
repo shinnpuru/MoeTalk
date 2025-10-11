@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:momotalk/utils.dart';
+import 'package:moetalk/utils.dart';
 import 'package:dio/dio.dart';
 import 'storage.dart';
 import 'package:just_audio/just_audio.dart';

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.shinnpuru" "\0"
-            VALUE "FileDescription", "momotalk" "\0"
+            VALUE "FileDescription", "moetalk" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "momotalk" "\0"
+            VALUE "InternalName", "moetalk" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.shinnpuru. All rights reserved." "\0"
-            VALUE "OriginalFilename", "momotalk.exe" "\0"
-            VALUE "ProductName", "momotalk" "\0"
+            VALUE "OriginalFilename", "moetalk.exe" "\0"
+            VALUE "ProductName", "moetalk" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
