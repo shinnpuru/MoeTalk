@@ -290,7 +290,7 @@ Future<String> getStatusPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("status_prompt");
   if (format == null || format.isEmpty) {
-    return "暂停角色扮演，分点描述角色当前的状态，包括好感度、服装、动作、想法，好感度满分为100分。";
+    return "暂停角色扮演，简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。";
   }
   return format;
 }
@@ -319,7 +319,7 @@ Future<String> getEndPrompt() async {
   String? format = prefs.getString("system_prompt");
   if (format == null || format.isEmpty) {
     String? name = await getStudentName(isDefault: true);
-    return "请你用一句话回复，可以使用反斜杠来间隔，可以使用括号描述状态。";
+    return "请你用一段或多段话回复，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。";
   }
   return format;
 }

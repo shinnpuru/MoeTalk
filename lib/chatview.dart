@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'utils.dart' show Message;
 
 
@@ -48,17 +49,17 @@ Widget centerBubble(String msg) {
     children: [
       Container(
         decoration: BoxDecoration(
-          color: const Color(0xCCdce5ec),
+          color: const Color.fromARGB(204, 129, 74, 202),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: Text(
-          msg,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Color(0xff4c5b70),
+        child: MarkdownBody(
+          data: msg,
+          shrinkWrap: true,
+          styleSheet: MarkdownStyleSheet(
+            p: const TextStyle(fontSize: 18, color: Colors.white),
           ),
-        ),
+        )
       ),
       const SizedBox(height: 5),
     ],
@@ -104,10 +105,12 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
-                      child: Text(
-                        message,
-                        style:
-                            const TextStyle(fontSize: 18, color: Colors.white),
+                      child: MarkdownBody(
+                        data: message,
+                        shrinkWrap: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
@@ -230,9 +233,12 @@ class ChatBubbleLayoutRight extends StatelessWidget {
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    message,
-                    style: const TextStyle(fontSize: 18, color: Colors.white),
+                  child: MarkdownBody(
+                    data: message,
+                    shrinkWrap: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 18, color: Colors.white),
+                    ),
                   ),
                 ),
               ),

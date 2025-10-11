@@ -909,7 +909,7 @@ Widget _buildChatPage() {
                   onVerticalDragUpdate: (details) {
                     setState(() {
                       final newFactor = _chatViewHeightFactor + details.delta.dy / context.size!.height;
-                      _chatViewHeightFactor = newFactor.clamp(0, 1);
+                      _chatViewHeightFactor = newFactor.clamp(0.1, 0.9);
                     });
                   },
                   onTap: () {
@@ -1334,7 +1334,7 @@ Widget _buildChatPage() {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.backup),
-              title: const Text('备份设置'),
+              title: const Text('备份配置'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1359,7 +1359,7 @@ Widget _buildChatPage() {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.settings),
-              title: const Text('模型设置'),
+              title: const Text('模型配置'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1454,8 +1454,12 @@ Widget _buildChatPage() {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('关于 MoeTalk'),
-                    content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
+                    title: const Text('关于'),
+                    content: const Text("""MoeTalk 是一个基于Flutter的开源聊天应用，使用大语言模型进行对话生成，使用扩散模型进行语音和图像合成。
+                    
+您的数据完全存储在您的设备上，本应用不会收集任何个人信息。
+                    
+代码地址：https://github.com/shinnpuru/MoeTalk"""),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),

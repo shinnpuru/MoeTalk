@@ -24,7 +24,7 @@ class SdConfigPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('配置'),
+        title: const Text('绘图配置'),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -56,14 +56,13 @@ class SdConfigPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const Text("输入 VERB 作为占位符"),
             TextField(
               controller: apiController,
               decoration: const InputDecoration(labelText: "绘画API地址"),
             ),
             TextField(
               controller: sdPrompt,
-              decoration: const InputDecoration(labelText: "正向提示词"),
+              decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为占位符)"),
             ),
             TextField(
               controller: sdNegative,

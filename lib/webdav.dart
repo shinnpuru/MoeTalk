@@ -183,7 +183,7 @@ class WebdavPageState extends State<WebdavPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('备份设置'),
+        title: const Text('备份配置'),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
