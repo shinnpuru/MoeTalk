@@ -849,158 +849,174 @@ Widget _buildChatPage() {
           ),
         ],
       ),
-      body: GestureDetector(
-        onTap: () {
-          fn.unfocus();
-          setState(() {
-            _isToolsExpanded = false;
-          });
-        },
-        child: Column(
-          children: [
-            Expanded(
-                child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
-                    child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: ListView.builder(
-                          itemCount: messages.length,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            final message = messages[index];
-                            if (index == 0) {
-                              return Column(
-                                children: [
-                                  const SizedBox(height: 10),
-                                  GestureDetector(
-                                    onLongPressStart: (LongPressStartDetails details) {
-                                      onMsgPressed(index, details);
-                                    },
-                                    child: ChatElement(
-                                      message: message.message,
-                                      type: message.type,
-                                      userName: userName,
-                                      stuName: studentName,
-                                      avatar: avatar,
-                                    )
-                                  )
-                                ],
-                              );
-                            }
-                            return GestureDetector(
-                              onLongPressStart: (LongPressStartDetails details) {
-                                onMsgPressed(index, details);
-                                fn.unfocus();
-                              },
-                              child: ChatElement(
-                                  message: message.message, 
-                                  type: message.type,
-                                  userName: userName,
-                                  stuName: studentName,
-                                  avatar: avatar,
-                                )
-                              );
-                          },
-                        )))),
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  // text input field
-                  Expanded(
-                      child: TextField(
-                          focusNode: fn,
-                          controller: textController,
-                          onEditingComplete: (){
-                            if(textController.text.isEmpty && userMsg.isNotEmpty){
-                              sendMsg(true);
-                            } else if(textController.text.isNotEmpty){
-                              sendMsg(false);
-                            }
-                          },
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            fillColor: const Color(0xffff899e),
-                            isCollapsed: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            hintText: inputLock ? '回复中' : '请输入您的消息...',
-                          ))),
-                  const SizedBox(width: 5),
-                  // tools button
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _isToolsExpanded = !_isToolsExpanded;
-                      });
-                    },
-                    icon: const Icon(Icons.add_circle),
-                    color: const Color(0xffff899e),
-                  ),
-                  const SizedBox(width: 5),
-                  // send button
-                  IconButton(
-                    onPressed: () => sendMsg(true),
-                    icon: const Icon(Icons.send),
-                    color: const Color(0xffff899e),
-                  )
-                ],
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: (avatar.isNotEmpty && avatar.startsWith('http'))
+                ? NetworkImage(avatar)
+                : const AssetImage("assets/avatar.png") as ImageProvider,
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.8),
+              BlendMode.dstATop,
             ),
-            // 工具栏展开区域
-            if (_isToolsExpanded)
+          ),
+        ),
+        child: GestureDetector(
+          onTap: () {
+            fn.unfocus();
+            setState(() {
+              _isToolsExpanded = false;
+            });
+          },
+          child: Column(
+            children: [
+              const Spacer(),
+              Expanded(
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+                      child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: ListView.builder(
+                            itemCount: messages.length,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemBuilder: (context, index) {
+                              final message = messages[index];
+                              if (index == 0) {
+                                return Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    GestureDetector(
+                                      onLongPressStart: (LongPressStartDetails details) {
+                                        onMsgPressed(index, details);
+                                      },
+                                      child: ChatElement(
+                                        message: message.message,
+                                        type: message.type,
+                                        userName: userName,
+                                        stuName: studentName
+                                      )
+                                    )
+                                  ],
+                                );
+                              }
+                              return GestureDetector(
+                                onLongPressStart: (LongPressStartDetails details) {
+                                  onMsgPressed(index, details);
+                                  fn.unfocus();
+                                },
+                                child: ChatElement(
+                                    message: message.message, 
+                                    type: message.type,
+                                    userName: userName,
+                                    stuName: studentName
+                                  )
+                                );
+                            },
+                          )))),
               Container(
                 padding: const EdgeInsets.all(8.0),
+                color: Theme.of(context).colorScheme.surfaceBright,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildToolButton(
-                      icon: Icons.monitor_heart,
-                      label: '状态',
-                      onTap: () {
-                        getStatus();
+                    // text input field
+                    Expanded(
+                        child: TextField(
+                            focusNode: fn,
+                            controller: textController,
+                            onEditingComplete: (){
+                              if(textController.text.isEmpty && userMsg.isNotEmpty){
+                                sendMsg(true);
+                              } else if(textController.text.isNotEmpty){
+                                sendMsg(false);
+                              }
+                            },
+                            decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              isCollapsed: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              hintText: inputLock ? '回复中' : '请输入您的消息...',
+                            ))),
+                    const SizedBox(width: 5),
+                    // tools button
+                    IconButton(
+                      onPressed: () {
                         setState(() {
-                          _isToolsExpanded = false;
+                          _isToolsExpanded = !_isToolsExpanded;
                         });
                       },
+                      icon: const Icon(Icons.add_circle),
+                      color: const Color(0xffff899e),
                     ),
-                    _buildToolButton(
-                      icon: Icons.draw,
-                      label: '绘图',
-                      onTap: () {
-                        getDraw();
-                        setState(() {
-                          _isToolsExpanded = false;
-                        });
-                      },
-                    ),
-                    _buildToolButton(
-                      icon: Icons.speaker,
-                      label: '语音',
-                      onTap: () {
-                        getVoice();
-                        setState(() {
-                          _isToolsExpanded = false;
-                        });
-                      },
-                    ),
-                    _buildToolButton(
-                      icon: Icons.auto_awesome,
-                      label: '生成',
-                      onTap: () {
-                        getMsg();
-                        setState(() {
-                          _isToolsExpanded = false;
-                        });
-                      },
-                    ),
+                    const SizedBox(width: 5),
+                    // send button
+                    IconButton(
+                      onPressed: () => sendMsg(true),
+                      icon: const Icon(Icons.send),
+                      color: const Color(0xffff899e),
+                    )
                   ],
                 ),
               ),
-          ],
+              // 工具栏展开区域
+              if (_isToolsExpanded)
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceBright,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildToolButton(
+                        icon: Icons.monitor_heart,
+                        label: '状态',
+                        onTap: () {
+                          getStatus();
+                          setState(() {
+                            _isToolsExpanded = false;
+                          });
+                        },
+                      ),
+                      _buildToolButton(
+                        icon: Icons.draw,
+                        label: '绘图',
+                        onTap: () {
+                          getDraw();
+                          setState(() {
+                            _isToolsExpanded = false;
+                          });
+                        },
+                      ),
+                      _buildToolButton(
+                        icon: Icons.speaker,
+                        label: '语音',
+                        onTap: () {
+                          getVoice();
+                          setState(() {
+                            _isToolsExpanded = false;
+                          });
+                        },
+                      ),
+                      _buildToolButton(
+                        icon: Icons.auto_awesome,
+                        label: '提示',
+                        onTap: () {
+                          getMsg();
+                          setState(() {
+                            _isToolsExpanded = false;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1031,9 +1047,9 @@ Widget _buildChatPage() {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1053,39 +1069,49 @@ Widget _buildChatPage() {
         ),
       ),
       body: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: historys.length,
         itemBuilder: (context, index) {
-          return ListTile(
-            leading: const Icon(Icons.history),
-            title: Text(getTimeStr(index)),
-            subtitle: Text(historys[index][0]),
-            onTap: () {
-              loadHistory(historys[index][2]);
-              setState(() {
-                _currentIndex = 0; // Switch to chat page
-              });
-            },
-            onLongPress: () => showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('删除历史记录'),
-                content: const Text('你确定要删除这条历史记录吗？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.history),
+                title: Text(getTimeStr(index)),
+                subtitle: Text(historys[index][0]),
+                onTap: () {
+                  loadHistory(historys[index][2]);
+                  setState(() {
+                    _currentIndex = 0; // Switch to chat page
+                  });
+                },
+                onLongPress: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('删除历史记录'),
+                    content: const Text('你确定要删除这条历史记录吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          deleteHistory("history_${historys[index][1]}");
+                          setState(() {
+                            historys.removeAt(index);
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('删除'),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () {
-                      deleteHistory("history_${historys[index][1]}");
-                      setState(() {
-                        historys.removeAt(index);
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: const Text('删除'),
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -1106,28 +1132,50 @@ Widget _buildChatPage() {
         ),
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
         children: [
           const ListTile(
             title: Text('当前角色', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundImage: avatar.isNotEmpty 
-                ? NetworkImage(avatar) 
-                : const AssetImage("assets/head.webp") as ImageProvider,
-            ),
-            title: Text(studentName),
-            subtitle: Text(messages.isNotEmpty ? messages.first.message : ""),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PromptEditor(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: Card(
+              elevation: 2,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: avatar.isNotEmpty && avatar.startsWith('http')
+                        ? NetworkImage(avatar)
+                        : const AssetImage("assets/avatar.png") as ImageProvider,
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                   ),
-                );
-              },
+                ),
+                child: ListTile(
+                  title: Text(studentName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    messages.isNotEmpty ? messages.first.message : "",
+                    style: const TextStyle(color: Colors.white70),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PromptEditor(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
           const Divider(),
@@ -1139,45 +1187,66 @@ Widget _buildChatPage() {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: students.length,
             itemBuilder: (context, index) {
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: students[index][1].isNotEmpty 
-                    ? NetworkImage(students[index][1]) 
-                    : const AssetImage("assets/head.webp") as ImageProvider,
-                ),
-                title: Text(students[index][0]),
-                subtitle: Text(students[index][2]),
-                onTap: () {
-                  setStudentName(students[index][0]);
-                  setAvatar(students[index][1]);
-                  setOriginalMsg(students[index][2]);
-                  setPrompt(students[index][3]);
-                  clearMsg();
-                  setState(() {
-                    _currentIndex = 0; // Switch to chat page
-                  });
-                },
-                onLongPress: () => showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('删除角色'),
-                    content: const Text('你确定要删除这个角色吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                child: Card(
+                  elevation: 2,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: students[index][1].isNotEmpty && students[index][1].startsWith('http')
+                            ? NetworkImage(students[index][1])
+                            : const AssetImage("assets/avatar.png") as ImageProvider,
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          deleteStudent("student_${students[index][4]}_${students[index][0]}");
-                          setState(() {
-                            students.removeAt(index);
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('删除'),
+                    ),
+                    child: ListTile(
+                      title: Text(students[index][0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                        students[index][2],
+                        style: const TextStyle(color: Colors.white70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
+                      onTap: () {
+                        setStudentName(students[index][0]);
+                        setAvatar(students[index][1]);
+                        setOriginalMsg(students[index][2]);
+                        setPrompt(students[index][3]);
+                        clearMsg();
+                        setState(() {
+                          _currentIndex = 0; // Switch to chat page
+                        });
+                      },
+                      onLongPress: () => showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('删除角色'),
+                          content: const Text('你确定要删除这个角色吗？'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('取消'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                deleteStudent("student_${students[index][4]}_${students[index][0]}");
+                                setState(() {
+                                  students.removeAt(index);
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: const Text('删除'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -1200,115 +1269,145 @@ Widget _buildChatPage() {
         ),
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         children: [
-          ListTile(
-            leading: const Icon(Icons.backup),
-            title: const Text('备份设置'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WebdavPage(
-                    currentMessages: msgListToJson(messages),
-                    onRefresh: (String jsonString) {
-                      setState(() {
-                        messages.clear();
-                        messages.addAll(jsonToMsg(jsonString));
-                      });
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('模型设置'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.format_shapes),
-            title: const Text('格式配置'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FormatConfigPage(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.draw),
-            title: const Text('绘图配置'), 
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FutureBuilder(
-                    future: getSdConfig(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else {
-                        return SdConfigPage(sdConfig: snapshot.data!);
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.speaker),
-            title: const Text('语音配置'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FutureBuilder(
-                    future: getVitsConfig(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else {
-                        return VitsConfigPage(vitsConfig: snapshot.data!);
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('关于'),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('关于 MoeTalk'),
-                  content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('OK'),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('备份设置'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WebdavPage(
+                      currentMessages: msgListToJson(messages),
+                      onRefresh: (String jsonString) {
+                        setState(() {
+                          messages.clear();
+                          messages.addAll(jsonToMsg(jsonString));
+                        });
+                      },
                     ),
-                  ],
-                ),
-              );
-            },
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('模型设置'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.format_shapes),
+              title: const Text('格式配置'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FormatConfigPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.draw),
+              title: const Text('绘图配置'), 
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FutureBuilder(
+                      future: getSdConfig(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}'));
+                        } else {
+                          return SdConfigPage(sdConfig: snapshot.data!);
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.speaker),
+              title: const Text('语音配置'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FutureBuilder(
+                      future: getVitsConfig(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}'));
+                        } else {
+                          return VitsConfigPage(vitsConfig: snapshot.data!);
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('关于'),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('关于 MoeTalk'),
+                    content: const Text('MoeTalk 是一个基于Flutter的聊天应用，使用OpenAI的API进行对话生成。'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

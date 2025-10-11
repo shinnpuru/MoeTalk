@@ -7,8 +7,7 @@ class ChatElement extends StatelessWidget {
   final int type;
   final String userName;
   final String stuName;
-  final String avatar;
-  const ChatElement({super.key, required this.message, required this.type, required this.userName, required this.stuName, required this.avatar});
+  const ChatElement({super.key, required this.message, required this.type, required this.userName, required this.stuName});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +15,7 @@ class ChatElement extends StatelessWidget {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           for(var m in message.split("\\")) 
             if(m.isNotEmpty) 
-              ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\"), avatar: avatar),
+              ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\")),
           const SizedBox(height: 10),
         ]);
     } else if (type == Message.user) {
@@ -33,9 +32,9 @@ class ChatElement extends StatelessWidget {
         "${t.minute.toString().padLeft(2,'0')}";
       return centerBubble(timestr);
     } else if (type == Message.system) {
-      return centerBubble("系统消息：$message");
+      return centerBubble(message);
     } else if (type == Message.image) {
-      return ChatBubbleImage(name: stuName, imageUrl: message, avatar: avatar);
+      return ChatBubbleImage(name: stuName, imageUrl: message);
     }
     else {
       return const SizedBox.shrink();
@@ -49,7 +48,7 @@ Widget centerBubble(String msg) {
     children: [
       Container(
         decoration: BoxDecoration(
-          color: const Color(0xffdce5ec),
+          color: const Color(0xCCdce5ec),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -69,13 +68,11 @@ Widget centerBubble(String msg) {
 class ChatBubbleLayoutLeft extends StatelessWidget {
   final String name;
   final List<String> messages;
-  final String avatar;
 
   const ChatBubbleLayoutLeft({
     super.key,
     required this.name,
-    required this.messages,
-    required this.avatar,
+    required this.messages
   });
 
   @override
@@ -83,13 +80,6 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: CircleAvatar(
-              radius: 25,
-              backgroundImage: NetworkImage(avatar),
-            )
-        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -126,6 +116,7 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(width: 10),
       ],
     );
   }
@@ -134,13 +125,11 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
 class ChatBubbleImage extends StatelessWidget {
   final String name;
   final String imageUrl;
-  final String avatar;
 
   const ChatBubbleImage({
     super.key,
     required this.name,
-    required this.imageUrl,
-    required this.avatar,
+    required this.imageUrl
   });
 
   @override
@@ -148,13 +137,6 @@ class ChatBubbleImage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: CircleAvatar(
-              radius: 25,
-              backgroundImage: NetworkImage(avatar),
-            )
-        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -205,6 +187,7 @@ class ChatBubbleImage extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(width: 10),
       ],
     );
   }
@@ -224,6 +207,7 @@ class ChatBubbleLayoutRight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
+      const SizedBox(width: 10),
       Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -271,7 +255,7 @@ class BubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = isLeft ? const Color(0xff4c5b70) : const Color(0xff4a8aca)
+      ..color = isLeft ? const Color(0xCC4c5b70) : const Color(0xCC4a8aca)
       ..style = PaintingStyle.fill;
 
     final path = Path();

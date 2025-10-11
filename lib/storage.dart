@@ -151,7 +151,7 @@ Future<String> getAvatar({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? avatar = prefs.getString("avatar");
   if (avatar == null || isDefault){
-     return "assets/head.webp";
+     return "assets/avatar.png";
   }
   return avatar;
 }
