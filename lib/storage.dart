@@ -191,7 +191,7 @@ Future<String> getUserName() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("user_name");
   if (name == null || name.isEmpty) {
-    return "用户";
+    return "老师";
   }
   return name;
 }

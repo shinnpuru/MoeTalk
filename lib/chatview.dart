@@ -13,17 +13,16 @@ class ChatElement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (type == Message.assistant) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for(var m in message.split("\\")) 
-            if(m.isNotEmpty) 
-              ChatBubbleLayoutLeft(name: stuName, messages: m.split("\\")),
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, 
+      children: [
+          ChatBubbleLayoutLeft(name: stuName, messages: [message]),
           const SizedBox(height: 10),
         ]);
     } else if (type == Message.user) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          ChatBubbleLayoutRight(name: userName, messages: message.split("\\")),
+          ChatBubbleLayoutRight(name: userName, messages: [message]),
           const SizedBox(height: 10),
         ],
       );
@@ -49,17 +48,17 @@ Widget centerBubble(String msg) {
     children: [
       Container(
         decoration: BoxDecoration(
-          color: const Color.fromARGB(204, 129, 74, 202),
+          color: const Color(0xCCdce5ec),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: MarkdownBody(
-          data: msg,
-          shrinkWrap: true,
-          styleSheet: MarkdownStyleSheet(
-            p: const TextStyle(fontSize: 18, color: Colors.white),
+        child: Text(
+          msg,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xff4c5b70),
           ),
-        )
+        ),
       ),
       const SizedBox(height: 5),
     ],
@@ -86,9 +85,16 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4c5b70),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                ),
               ),
               const SizedBox(height: 4),
               ...messages.asMap().entries.map((entry) {
@@ -103,15 +109,15 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
                     painter:
                         BubblePainter(isFirstBubble: idx == 0, isLeft: true),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(minHeight: 44, minWidth: double.infinity),
                       child: MarkdownBody(
-                        data: message,
-                        shrinkWrap: true,
-                        styleSheet: MarkdownStyleSheet(
-                          p: const TextStyle(fontSize: 18, color: Colors.white),
+                          data: message,
+                          shrinkWrap: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                         ),
-                      ),
                     ),
                   ),
                 );
@@ -215,9 +221,16 @@ class ChatBubbleLayoutRight extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-              Text(
-                name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4a8aca),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                ),
               ),
               const SizedBox(height: 4),
           ...messages.asMap().entries.map((entry) {
@@ -231,8 +244,8 @@ class ChatBubbleLayoutRight extends StatelessWidget {
               child: CustomPaint(
                 painter: BubblePainter(isFirstBubble: idx == 0, isLeft: false),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.all(12),
+                  constraints: const BoxConstraints(minHeight: 44, minWidth: double.infinity),
                   child: MarkdownBody(
                     data: message,
                     shrinkWrap: true,
@@ -261,32 +274,23 @@ class BubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = isLeft ? const Color(0xCC4c5b70) : const Color(0xCC4a8aca)
+      ..color = isLeft ? const Color(0xFF4c5b70) : const Color(0xFF4a8aca)
       ..style = PaintingStyle.fill;
 
     final path = Path();
-
-    if (isFirstBubble) {
-      // Draw triangle for the first bubble
-      if (isLeft) {
-        path.moveTo(-4, 17);
-        path.lineTo(4, 7);
-        path.lineTo(4, 27);
-        path.close();
-      } else {
-        path.moveTo(size.width + 4, 17);
-        path.lineTo(size.width - 4, 27);
-        path.lineTo(size.width - 4, 7);
-        path.close();
-      }
-    }
-
-    // Draw rounded rectangle for the bubble
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    path.addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)));
-
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
+    path.addRRect(rrect);
     canvas.drawPath(path, paint);
+
+    // Add a subtle border for a more refined look
+    final borderPaint = Paint()
+      ..color = Colors.black.withOpacity(0.1)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawRRect(rrect, borderPaint);
   }
+
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;

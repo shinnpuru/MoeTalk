@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'dart:io' show Platform;
 import 'chatview.dart';
@@ -51,7 +52,8 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 0;
-  double _chatViewHeightFactor = 0.5;
+  bool _isListViewMode = true; // true for list view, false for single view
+  int _singleViewIndex = 0;
   
   // Chat page variables
   final fn = FocusNode();
@@ -64,12 +66,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   late DecorationImage backgroundImage;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
-  int splitCount = 0;
   bool inputLock = false;
   bool keyboardOn = false;
   bool isForeground = true;
   bool isAutoNotification = false;
-  bool _isToolsExpanded = false; // 添加工具栏展开状态
+  bool _isToolsExpanded = false;
+  String? _characterStatus = "暂无状态";
   List<Message> messages = [];
   List<Message>? lastMessages;
   List<List<String>> historys = [];
@@ -79,7 +81,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _chatViewHeightFactor = 0.5;
     getUserName().then((name) {
       userName = name;
     });
@@ -100,8 +101,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       );
     });
     getOriginalMsg().then((originalMsg) {
+      for(var m in originalMsg.split("\\")) {
+        messages.add(Message(message: m, type: Message.assistant));
+      }
       setState(() {
-        messages.add(Message(message: originalMsg, type: Message.assistant));
+        _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
       });
     });
     getTempHistory().then((msg) {
@@ -156,9 +160,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    if(!Platform.isAndroid){
-      return;
-    }
     final bottom = WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
     if(bottom>10 && !keyboardOn){
       debugPrint("keyboard on");
@@ -166,29 +167,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       if(ModalRoute.of(context)?.isCurrent != true){
         return;
       }
-      Future.delayed(const Duration(milliseconds: 200), () => setScrollPercent(1.0));
     } else if(bottom<10 && keyboardOn){
       debugPrint("keyboard off");
       keyboardOn = false;
     }
-  }
-
-  // All the existing methods remain the same...
-  double getScrollPercent() {
-    final maxScroll = scrollController.position.maxScrollExtent;
-    final currentScroll = scrollController.position.pixels;
-    final percent = currentScroll / maxScroll;
-    debugPrint("scroll percent: $percent");
-    return percent;
-  }
-
-  void setScrollPercent(double percent) {
-    final maxScroll = scrollController.position.maxScrollExtent;
-    final currentScroll = maxScroll * percent;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      scrollController.animateTo(currentScroll,
-          duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
-    });
   }
 
   void updateConfig(Config c){
@@ -315,35 +297,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     setState(() {
       messages.clear();
       messages.addAll(msgs);
+      _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
+      _isListViewMode = true; // Show list view when loading history
     });
   }
 
   void updateResponse(String response) {
     setState(() {
-      if (messages.last.type != Message.assistant) {
-        splitCount = 0;
-        messages.add(Message(message: response, type: Message.assistant));
-      } else {
-        const String a="我无法继续作为",b="代替玩家言行";
-        if(response.startsWith(a) && response.contains(b)){
-          response = response.replaceAll(RegExp('^$a.*?$b'), "");
-        }
-        messages.last.message = response;
+      response = response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
+      for(var m in response.split("\\")) {
+        messages.add(Message(message: m, type: Message.assistant));
       }
     });
-    var currentSplitCount = response.split("\\").length;
-    if (splitCount != currentSplitCount) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setScrollPercent(1.0);
-      });
-      splitCount = currentSplitCount;
-    }
   }
 
   void clearMsg() {
     lastMessages = null;
     setState(() {
-      _chatViewHeightFactor = 0.5;
       messages.clear();
       getUserName().then((name) {
         userName = name;
@@ -367,8 +337,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         });
       });
       getOriginalMsg().then((originalMsg) {
+        for(var m in originalMsg.split("\\")) {
+          messages.add(Message(message: m, type: Message.assistant));
+        }
         setState(() {
-          messages.add(Message(message: originalMsg, type: Message.assistant));
+          _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
         });
       });
       setTempHistory(msgListToJson(messages));
@@ -424,17 +397,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             userMsg = "$userMsg\\${textController.text}";
             messages.last.message = userMsg;
           } else {
-            if (messages.length==1) {
-              messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
-            }
             userMsg = textController.text;
             messages.add(Message(message: userMsg, type: Message.user));
           }
           textController.clear();
         });
         debugPrint(userMsg);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          setScrollPercent(1.0);
+        setState(() {
+          _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
         });
         if(!realSend){return;}
       }
@@ -446,7 +416,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     });
     List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
     logMsg(msg);
-    bool notificationSent= false;
     try {
       String response = "";
       await completion(config, msg, 
@@ -454,39 +423,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           resp = resp.replaceAll(RegExp(r'[\n\\]+'), r'\');
           resp = randomizeBackslashes(resp);
           response += resp;
+        }, () async {
           updateResponse(response.replaceAll(RegExp(await getResponseRegex()), ''));
-          if(!isForeground && !notificationSent && response.contains("\\")){
-            List<String> msgs = response.split("\\");
-            for(int i=0;i<msgs.length;i++){
-              if(msgs[i].isEmpty || msgs[i].startsWith("*")||
-                msgs[i].startsWith("（")||msgs[i].startsWith("我无法继续")){
-                continue;
-              }
-              if(i!=msgs.length-1){
-                notification.showNotification(title: studentName, body: msgs[i]);
-                isAutoNotification = true;
-                notificationSent = true;
-                break;
-              }
-            }
-          }
-        }, (){
           debugPrint("done.");
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setScrollPercent(1.0);
-          });
           setState(() {
             inputLock = false;
           });
           debugPrint("inputUnlocked");
-          if(messages.last.message.contains("\\")){
-            setTempHistory(msgListToJson(messages));
-          }
-          if(!isForeground && !notificationSent){
-            isAutoNotification = true;
-            notificationSent = true;
-            notification.showNotification(title: "Done", body: "" ,showAvator: false);
-          }
+          setTempHistory(msgListToJson(messages));
           lastMessages = null;
         }, (err){
           setState(() {
@@ -494,10 +438,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           });
           debugPrint("inputUnlocked");
           errDialog(err.toString());
-          if(!isForeground){
-            isAutoNotification = true;
-            notification.showNotification(title: "Error", body: "", showAvator: false);
-          }
         });
     } catch (e) {
       setState(() {
@@ -507,10 +447,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       debugPrint(e.toString());
       if(!mounted) return;
       errDialog(e.toString());
-      if(!isForeground){
-        isAutoNotification = true;
-        notification.showNotification(title: "Error", body: "", showAvator: false);
-      }
     }
   }
 
@@ -683,98 +619,149 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     ).then((imageUrl){
       if(imageUrl!=null){
         setState(() {
+          backgroundImage = DecorationImage(
+            image: NetworkImage(imageUrl),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.8),
+              BlendMode.dstATop,
+            ),
+          );
+        });
+        setState(() {
           messages.add(Message(message: imageUrl, type: Message.image));
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          setScrollPercent(1.0);
-        });
+        setTempHistory(msgListToJson(messages));
       }
     });
   }
 
-  Future<void> getStatus() async {
-    final TextEditingController controller = TextEditingController();
-
-    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-    msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
-    
-    String result = "";
-    for (var m in msg) {
-      debugPrint("${m[0]}: ${m[1]}");
-    }
-    debugPrint("model: ${config.model}");
-    
-    // 显示加载对话框
+  void _showStatusDialog(){
+    // 编辑器
+    final controller = TextEditingController(text: _characterStatus);
+    // 显示状态信息对话框
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在分析角色状态'),
-            ],
+        return AlertDialog(
+          title: Text('$studentName的状态'),
+            content: SingleChildScrollView(
+            child: MarkdownBody(
+              data: _characterStatus!,
+            ),
           ),
+          actions: [
+            // 编辑按钮
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('编辑状态'),
+                    content: TextField(
+                      maxLines: null,
+                      minLines: 1,
+                      controller: controller,
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          controller.clear();
+                        },
+                        child: const Text('清空'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          if(controller.text.isNotEmpty){
+                            setState(() {
+                              _characterStatus = controller.text;
+                            });
+                          }
+                          Navigator.of(context).pop();
+                          _showStatusDialog();
+                        },
+                        child: const Text('确定'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Text('编辑'),
+            ),            
+            // 重新查询
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                getStatus(forceGet: true);
+              },
+              child: const Text('查询'),
+            ),
+            // 关闭按钮
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('关闭'),
+            ),
+          ],
+          
         );
       },
     );
+  }
 
-    try {
-      await completion(config, msg, (chunk) async {
-        result += chunk;
-      }, () async {
-        debugPrint("done.");
-        Navigator.of(context).pop(); // 关闭加载对话框
-        
-        if (result.isNotEmpty) {
-          String cleanResult = result.replaceAll(RegExp(await getResponseRegex()), '');
-          controller.text = cleanResult;
-          
-          // 显示状态信息对话框
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('$studentName 的状态'),
-                content: TextField(
-                  maxLines: null,
-                  minLines: 1,
-                  controller: controller,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('关闭'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        messages.add(Message(message: controller.text, type: Message.system));
-                      });
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        setScrollPercent(1.0);
-                      });
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('添加到聊天'),
-                  ),
-                ],
-              );
-            },
+  Future<void> getStatus({bool forceGet=false}) async {
+    if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
+      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+      msg.add(["user", "system instruction:之前的状态是$_characterStatus。${await getStatusPrompt()}"]);
+      
+      String result = "";
+      for (var m in msg) {
+        debugPrint("${m[0]}: ${m[1]}");
+      }
+      debugPrint("model: ${config.model}");
+      
+      // 显示加载对话框
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('正在分析角色状态'),
+              ],
+            ),
           );
-        }
-      }, (e) {
+        },
+      );
+
+      try {
+        await completion(config, msg, (chunk) async {
+          result += chunk;
+        }, () async {
+          debugPrint("done.");
+          Navigator.of(context).pop(); // 关闭加载对话框
+          if (result.isNotEmpty) {
+            String cleanResult = result.replaceAll(RegExp(await getResponseRegex()), '');
+            _characterStatus = cleanResult;
+          }
+          _showStatusDialog();
+        }, (e) {
+          Navigator.of(context).pop(); // 关闭加载对话框
+          snackBarAlert(context, "获取状态失败: $e");
+        });
+      } catch (e) {
         Navigator.of(context).pop(); // 关闭加载对话框
         snackBarAlert(context, "获取状态失败: $e");
-      });
-    } catch (e) {
-      Navigator.of(context).pop(); // 关闭加载对话框
-      snackBarAlert(context, "获取状态失败: $e");
+      }
+    }
+    else{
+      _showStatusDialog();
     }
   }
 
@@ -860,9 +847,6 @@ Widget _buildChatPage() {
                   setState(() {
                     messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
                   });
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    setScrollPercent(1.0);
-                  });
                 }
               } else if (value == 'System') {
                 systemPopup(context, "", (String edited,bool isSend){
@@ -872,9 +856,6 @@ Widget _buildChatPage() {
                       if(isSend){
                         sendMsg(true,forceSend: true);
                       }
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        setScrollPercent(1.0);
-                      });
                     }
                   });
                 });
@@ -904,68 +885,79 @@ Widget _buildChatPage() {
           child: Column(
             children: [
               Expanded(
-                flex: (_chatViewHeightFactor * 100).toInt(),
-                child: GestureDetector(
-                  onVerticalDragUpdate: (details) {
-                    setState(() {
-                      final newFactor = _chatViewHeightFactor + details.delta.dy / context.size!.height;
-                      _chatViewHeightFactor = newFactor.clamp(0.1, 0.9);
-                    });
-                  },
-                  onTap: () {
-                    setState(() {
-                      _chatViewHeightFactor = 0.5;
-                    });
-                  },
-                  child: const MouseRegion(
-                    cursor: SystemMouseCursors.resizeUpDown,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: ((1 - _chatViewHeightFactor) * 100).toInt(),
-                  child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
-                      child: SingleChildScrollView(
+                child: _isListViewMode
+                    ? Container(
+                        color: Colors.black.withOpacity(0.3),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
                           controller: scrollController,
-                          child: ListView.builder(
-                            itemCount: messages.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              final message = messages[index];
-                              if (index == 0) {
-                                return Column(
-                                  children: [
-                                    const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onLongPressStart: (LongPressStartDetails details) {
-                                        onMsgPressed(index, details);
-                                      },
-                                      child: ChatElement(
-                                        message: message.message,
-                                        type: message.type,
-                                        userName: userName,
-                                        stuName: studentName
-                                      )
-                                    )
-                                  ],
-                                );
-                              }
-                              return GestureDetector(
-                                onLongPressStart: (LongPressStartDetails details) {
-                                  onMsgPressed(index, details);
-                                  fn.unfocus();
-                                },
-                                child: ChatElement(
-                                    message: message.message, 
-                                    type: message.type,
-                                    userName: userName,
-                                    stuName: studentName
-                                  )
-                                );
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isListViewMode = false;
+                                  _singleViewIndex = index;
+                                  if (messages[_singleViewIndex].type == Message.image) {
+                                    _singleViewIndex = _singleViewIndex == messages.length - 1
+                                        ? _singleViewIndex - 1
+                                        : _singleViewIndex + 1;
+                                  }
+                                });
+                              },
+                              onLongPressStart: (details) {
+                                onMsgPressed(index, details);
+                                fn.unfocus();
+                              },
+                              child: ChatElement(
+                                message: message.message,
+                                type: message.type,
+                                userName: userName,
+                                stuName: studentName,
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : (messages.isEmpty
+                        ? const Align(alignment: Alignment.bottomCenter,child: Text("No messages"))
+                        : GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (messages.isNotEmpty) {
+                                  _singleViewIndex = _singleViewIndex == messages.length - 1
+                                      ? _singleViewIndex
+                                      : _singleViewIndex + 1;
+                                  if (messages[_singleViewIndex].type == Message.image) {
+                                    _singleViewIndex = _singleViewIndex == messages.length - 1
+                                        ? _singleViewIndex - 1
+                                        : _singleViewIndex + 1;
+                                  }
+                                }
+                              });
                             },
-                          )))),
+                            onLongPress: () {
+                              setState(() {
+                                _isListViewMode = true;
+                              });
+                            },
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: SingleChildScrollView(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: ChatElement(
+                                    message: messages[_singleViewIndex].message,
+                                    type: messages[_singleViewIndex].type,
+                                    userName: userName,
+                                    stuName: studentName,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )),
+              ),
               Container(
                 padding: const EdgeInsets.all(8.0),
                 color: Theme.of(context).colorScheme.surfaceBright,

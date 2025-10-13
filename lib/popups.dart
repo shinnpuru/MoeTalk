@@ -127,13 +127,6 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
           },
           child: const Text('确定'),
         ),
-        TextButton(
-          onPressed: () {
-            onEdited(controller.text,true);
-            Navigator.of(context).pop();
-          },
-          child: const Text('确定并生成'),
-        ),
       ],
     );
   });
