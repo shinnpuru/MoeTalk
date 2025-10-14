@@ -72,7 +72,7 @@ Future<String?> getAudioBase64(BuildContext context, String query) async {
     ),
   );
   if (response.statusCode == 200) {
-    snackBarAlert(context, "请求成功: ${response.statusCode}");
+    // snackBarAlert(context, "请求成功: ${response.statusCode}");
     return response.data['data'][1] as String?;
   } else {
     snackBarAlert(context, "请求失败: ${response.statusCode} ${response.toString()}");

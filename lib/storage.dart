@@ -290,7 +290,7 @@ Future<String> getStatusPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("status_prompt");
   if (format == null || format.isEmpty) {
-    return "暂停角色扮演，简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。";
+    return "简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。";
   }
   return format;
 }

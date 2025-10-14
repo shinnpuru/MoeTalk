@@ -13,6 +13,7 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     context: context,
     position: position,
     items: [
+      const PopupMenuItem(value: 0, child: Text('语音')),
       const PopupMenuItem(value: 1, child: Text('编辑')),
       const PopupMenuItem(value: 2, child: Text('删除')),
     ],
@@ -45,6 +46,8 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
       });
     } else if (value == 2) {
       onEdited("DELETE");
+    } else if (value == 0) {
+      onEdited("VOICE");
     }
   });
 }

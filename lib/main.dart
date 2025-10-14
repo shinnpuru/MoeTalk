@@ -184,6 +184,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       assistantPopup(context, messages[index].message, details, studentName, (String edited){
         debugPrint("edited: $edited");
         edited = edited.replaceAll("\n", "\\");
+        if(edited=="VOICE"){
+          getVoice(messages[index].message);
+          return;
+        }
         if(edited=="FORMAT"){
           String msg = messages[index].message.replaceAll(":", "：");
           String var1="$studentName：",var2="$userName：";
@@ -306,6 +310,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     setState(() {
       response = response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
       for(var m in response.split("\\")) {
+        if (m.isEmpty) continue;
         messages.add(Message(message: m, type: Message.assistant));
       }
     });
@@ -450,64 +455,43 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> getVoice() async {
-    final TextEditingController controller = TextEditingController();
-    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-      msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$studentName的口吻用一句话回复$userName。"]);
-      String result = "";
-      for (var m in msg) {
-        debugPrint("${m[0]}: ${m[1]}");
-      }
-      debugPrint("model: ${config.model}");
-      controller.text = "生成中...";
-      await completion(config, msg, (chunk) async {
-        result += chunk;
-        controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
-      }, () async {
-        debugPrint("done.");
-      }, (e) {
-        snackBarAlert(context, e.toString());
-      });
-    showDialog(context: context, builder: (context) {
-      return AlertDialog(
-        title: const Text('创建语音'),
-        content: TextField(
-          maxLines: null,
-          minLines: 1,
-          controller: controller,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('取消'),
+  Future<void> getVoice(String text) async {
+    if (text.isEmpty) {
+      snackBarAlert(context, "当前消息为空");
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在生成语音...'),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              if (controller.text.isEmpty) {
-                snackBarAlert(context, "语音内容不能为空");
-                return;
-              }
-              queryAndPlayAudio(context,controller.text).then((_) {
-                // ignore: use_build_context_synchronously
-                snackBarAlert(context, "语音创建成功");
-              }).catchError((e) {
-                // ignore: use_build_context_synchronously
-                snackBarAlert(context, "语音创建失败: $e");
-              });
-              Navigator.of(context).pop();
-            },
-            child: const Text('确定'),
-          ),
-        ],
-      );
-    });
+        );
+      },
+    );
+
+    try {
+      await queryAndPlayAudio(context, text);
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      snackBarAlert(context, "语音生成失败: $e");
+    }
   }
 
   Future<void> getMsg() async {
     List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-    msg.add(["user", "system instruction:暂停角色扮演，根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
+    msg.add(["user", "system instruction:根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
     
     String result = "";
     for (var m in msg) {
@@ -714,7 +698,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Future<void> getStatus({bool forceGet=false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
       List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
-      msg.add(["user", "system instruction:之前的状态是$_characterStatus。${await getStatusPrompt()}"]);
+      msg.add(["user", "system instruction:之前的状态是$_characterStatus。"]);
+      msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
       
       String result = "";
       for (var m in msg) {
@@ -900,6 +885,16 @@ Widget _buildChatPage() {
                                   _isListViewMode = false;
                                   _singleViewIndex = index;
                                   if (messages[_singleViewIndex].type == Message.image) {
+                                    // change background
+                                    backgroundImage = DecorationImage(
+                                      image: NetworkImage(messages[_singleViewIndex].message),
+                                      fit: BoxFit.cover,
+                                      colorFilter: ColorFilter.mode(
+                                        Colors.white.withOpacity(0.8),
+                                        BlendMode.dstATop,
+                                      ),
+                                    );
+                                    // skip image
                                     _singleViewIndex = _singleViewIndex == messages.length - 1
                                         ? _singleViewIndex - 1
                                         : _singleViewIndex + 1;
@@ -921,7 +916,7 @@ Widget _buildChatPage() {
                         ),
                       )
                     : (messages.isEmpty
-                        ? const Align(alignment: Alignment.bottomCenter,child: Text("No messages"))
+                        ? const Align(alignment: Alignment.bottomCenter,child: Text("没有消息。"))
                         : GestureDetector(
                             onTap: () {
                               setState(() {
@@ -930,6 +925,16 @@ Widget _buildChatPage() {
                                       ? _singleViewIndex
                                       : _singleViewIndex + 1;
                                   if (messages[_singleViewIndex].type == Message.image) {
+                                    // change background
+                                    backgroundImage = DecorationImage(
+                                      image: NetworkImage(messages[_singleViewIndex].message),
+                                      fit: BoxFit.cover,
+                                      colorFilter: ColorFilter.mode(
+                                        Colors.white.withOpacity(0.8),
+                                        BlendMode.dstATop,
+                                      ),
+                                    );
+                                    // skip image
                                     _singleViewIndex = _singleViewIndex == messages.length - 1
                                         ? _singleViewIndex - 1
                                         : _singleViewIndex + 1;
@@ -942,20 +947,25 @@ Widget _buildChatPage() {
                                 _isListViewMode = true;
                               });
                             },
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: SingleChildScrollView(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: ChatElement(
-                                    message: messages[_singleViewIndex].message,
-                                    type: messages[_singleViewIndex].type,
-                                    userName: userName,
-                                    stuName: studentName,
+                            child: Column(
+                              children: [
+                                const Spacer(),
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: SingleChildScrollView(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: ChatElement(
+                                        message: messages[_singleViewIndex].message,
+                                        type: messages[_singleViewIndex].type,
+                                        userName: userName,
+                                        stuName: studentName,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              ]
+                            )
                           )),
               ),
               Container(
@@ -1039,7 +1049,7 @@ Widget _buildChatPage() {
                         icon: Icons.speaker,
                         label: '语音',
                         onTap: () {
-                          getVoice();
+                          getVoice(messages.isNotEmpty ? messages[_currentIndex].message : "");
                           setState(() {
                             _isToolsExpanded = false;
                           });
