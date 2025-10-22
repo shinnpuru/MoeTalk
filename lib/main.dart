@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
@@ -311,6 +312,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       response = response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
       for(var m in response.split("\\")) {
         if (m.isEmpty) continue;
+        debugPrint("response chunk: $m");
         messages.add(Message(message: m, type: Message.assistant));
       }
     });
@@ -873,47 +875,60 @@ Widget _buildChatPage() {
                 child: _isListViewMode
                     ? Container(
                         color: Colors.black.withOpacity(0.3),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          controller: scrollController,
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final message = messages[index];
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _isListViewMode = false;
-                                  _singleViewIndex = index;
-                                  if (messages[_singleViewIndex].type == Message.image) {
-                                    // change background
-                                    backgroundImage = DecorationImage(
-                                      image: NetworkImage(messages[_singleViewIndex].message),
-                                      fit: BoxFit.cover,
-                                      colorFilter: ColorFilter.mode(
-                                        Colors.white.withOpacity(0.8),
-                                        BlendMode.dstATop,
-                                      ),
-                                    );
-                                    // skip image
-                                    _singleViewIndex = _singleViewIndex == messages.length - 1
-                                        ? _singleViewIndex - 1
-                                        : _singleViewIndex + 1;
-                                  }
-                                });
-                              },
-                              onLongPressStart: (details) {
-                                onMsgPressed(index, details);
-                                fn.unfocus();
-                              },
-                              child: ChatElement(
-                                message: message.message,
-                                type: message.type,
-                                userName: userName,
-                                stuName: studentName,
-                              ),
-                            );
-                          },
-                        ),
+                        child: Builder(builder: (context) {
+                          // Scroll to bottom only once when the widget builds
+                          SchedulerBinding.instance.addPostFrameCallback((_) {
+                            if (scrollController.hasClients) {
+                              scrollController.animateTo(
+                                scrollController.position.maxScrollExtent  * _singleViewIndex / (messages.isEmpty ? 1 : messages.length) ,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          });
+                          
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            controller: scrollController,
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final message = messages[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isListViewMode = false;
+                                    _singleViewIndex = index;
+                                    if (messages[_singleViewIndex].type == Message.image) {
+                                      // change background
+                                      backgroundImage = DecorationImage(
+                                        image: NetworkImage(messages[_singleViewIndex].message),
+                                        fit: BoxFit.cover,
+                                        colorFilter: ColorFilter.mode(
+                                          Colors.white.withOpacity(0.8),
+                                          BlendMode.dstATop,
+                                        ),
+                                      );
+                                      // skip image
+                                      _singleViewIndex = _singleViewIndex == messages.length - 1
+                                          ? _singleViewIndex - 1
+                                          : _singleViewIndex + 1;
+                                    }
+                                  });
+                                },
+                                onLongPressStart: (details) {
+                                  onMsgPressed(index, details);
+                                  fn.unfocus();
+                                },
+                                child: ChatElement(
+                                  message: message.message,
+                                  type: message.type,
+                                  userName: userName,
+                                  stuName: studentName,
+                                ),
+                              );
+                            },
+                          );
+                        }),
                       )
                     : (messages.isEmpty
                         ? const Align(alignment: Alignment.bottomCenter,child: Text("没有消息。"))
@@ -1049,7 +1064,8 @@ Widget _buildChatPage() {
                         icon: Icons.speaker,
                         label: '语音',
                         onTap: () {
-                          getVoice(messages.isNotEmpty ? messages[_currentIndex].message : "");
+                          debugPrint(_singleViewIndex.toString());
+                          getVoice(messages.isNotEmpty ? messages[_singleViewIndex].message : "");
                           setState(() {
                             _isToolsExpanded = false;
                           });

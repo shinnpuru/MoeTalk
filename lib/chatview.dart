@@ -88,7 +88,7 @@ class ChatBubbleLayoutLeft extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4c5b70),
+                  color: const Color.from(alpha: 0.5, red: 0.298, green: 0.357, blue: 0.439),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -224,7 +224,7 @@ class ChatBubbleLayoutRight extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4a8aca),
+                  color: const Color.from(alpha: 0.5, red: 0.29, green: 0.541, blue: 0.792),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -274,7 +274,7 @@ class BubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = isLeft ? const Color(0xFF4c5b70) : const Color(0xFF4a8aca)
+      ..color = isLeft ? const Color.from(alpha: 0.5, red: 0.298, green: 0.357, blue: 0.439) : const Color.from(alpha: 0.5, red: 0.29, green: 0.541, blue: 0.792)
       ..style = PaintingStyle.fill;
 
     final path = Path();

@@ -318,8 +318,8 @@ Future<String> getEndPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("system_prompt");
   if (format == null || format.isEmpty) {
-    String? name = await getStudentName(isDefault: true);
-    return "请你用一段或多段话回复，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。";
+    String? name = await getStudentName();
+    return "请你扮演$name用一段或多段话回复并推进剧情，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。";
   }
   return format;
 }
