@@ -56,18 +56,26 @@ class Config {
 }
 
 class VitsConfig {
-  String model;
-  String language;
-  double? noiseScale;
-  double? noiseScaleW;
-  double? lengthScale;
+  String prompt;
+  double? happy;
+  double? angry;
+  double? sad;
+  double? afraid;
+  double? disgusted;
+  double? melancholic;
+  double? surprised;
+  double? calm;
 
   VitsConfig({
-    required this.model,
-    required this.language,
-    this.noiseScale,
-    this.noiseScaleW,
-    this.lengthScale
+    required this.prompt,
+    this.happy,
+    this.angry,
+    this.sad,
+    this.afraid,
+    this.disgusted,
+    this.melancholic,
+    this.surprised,
+    this.calm,
   });
 }
 

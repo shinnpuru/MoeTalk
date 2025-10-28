@@ -262,7 +262,7 @@ Future<String?> getVitsUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? url = prefs.getString("vits_url");
   if (url == null || url.isEmpty) {
-    return "https://shinnpuru-vits-models.hf.space/";
+    return "https://indexteam-indextts-2-demo.hf.space/";
   }
   return url;
 }
@@ -340,27 +340,37 @@ Future<String> getResponseRegex() async {
 
 Future<void> setVitsConfig(VitsConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = [config.model, config.language, 
-    config.noiseScale?.toString() ?? '', config.noiseScaleW?.toString() ?? '', 
-    config.lengthScale?.toString() ?? ''];
+  List<String> configList = [
+    config.prompt, 
+    config.happy?.toString()??'',
+    config.angry?.toString()??'',
+    config.sad?.toString()??'',
+    config.afraid?.toString()??'',
+    config.disgusted?.toString()??'',
+    config.melancholic?.toString()??'',
+    config.surprised?.toString()??'',
+    config.calm?.toString()??''
+  ];
   await prefs.setStringList("vits_config", configList);
 }
 
 Future<VitsConfig> getVitsConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("vits_config") ?? ['','','','',''];
-  final memConfig = VitsConfig(model: configList[0], language: configList[1],
-    noiseScale: double.tryParse(configList[2]), noiseScaleW: double.tryParse(configList[3]),
-    lengthScale: double.tryParse(configList[4]));
-  if(memConfig.model.isEmpty) {
-    memConfig.model = 'tts-Misono%20Mika';
+  List<String> configList = prefs.getStringList("vits_config") ?? ['','0','0','0','0','0','0','0','0'];
+  final memConfig = VitsConfig(
+    prompt: configList[0],
+    happy: double.tryParse(configList[1]) ,
+    angry: double.tryParse(configList[2]) ,
+    sad: double.tryParse(configList[3]) ,
+    afraid: double.tryParse(configList[4]) ,
+    disgusted: double.tryParse(configList[5]) ,
+    melancholic: double.tryParse(configList[6]) ,
+    surprised: double.tryParse(configList[7]) ,
+    calm: double.tryParse(configList[8]) ,
+  );
+  if(memConfig.prompt.isEmpty) {
+    memConfig.prompt = "https://static.wikitide.net/bluearchivewiki/c/ca/Mika_Cafe_monolog_1.ogg";
   }
-  if(memConfig.language.isEmpty) {
-    memConfig.language = 'Chinese';
-  }
-  memConfig.noiseScale ??= 0.6;
-  memConfig.noiseScaleW ??= 0.7;
-  memConfig.lengthScale ??= 0.5;
   return memConfig;
 }
 

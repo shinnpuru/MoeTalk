@@ -5,39 +5,12 @@ import 'package:dio/dio.dart';
 import 'storage.dart';
 import 'package:just_audio/just_audio.dart';
 
-Future<List<int>> base64StringToUint8List(String base64String) async {
-  return base64Decode(base64String);
-}
-
-class MyCustomSource extends StreamAudioSource {
-  final List<int> bytes;
-
-  MyCustomSource(this.bytes);
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    start ??= 0;
-    end ??= bytes.length;
-
-    return StreamAudioResponse(
-      sourceLength: null,
-      contentLength: end - start,
-      offset: start,
-      stream: Stream.value(bytes.sublist(start, end)),
-      contentType: 'audio/wav', // 或根据实际音频格式修改
-    );
-  }
-}
-
-Future<void> playBase64Audio(BuildContext context, String base64String) async {
+Future<void> playAudio(BuildContext context, String audioUrl) async {
   try {
-    // strip 'data:audio/wav;base64,' prefix if it exists
-    if (base64String.startsWith('data:audio/wav;base64,')) {
-      base64String = base64String.replaceFirst('data:audio/wav;base64,', '');
-    }
-    final audioBytes = await base64StringToUint8List(base64String);
     final player = AudioPlayer();
-    await player.setAudioSource(MyCustomSource(audioBytes));
+    await player.setAudioSource(
+      AudioSource.uri(Uri.parse(audioUrl)),
+    );
     await player.play();
   } catch (e) {
     snackBarAlert(context, "播放错误: $e");
@@ -45,26 +18,44 @@ Future<void> playBase64Audio(BuildContext context, String base64String) async {
 }
 
 
-Future<String?> getAudioBase64(BuildContext context, String query) async {
+Future<String?> getAudio(BuildContext context, String query) async {
   VitsConfig? vitsConfig = await getVitsConfig();
-  String? value = await getVitsUrl();
-  if (value == null || value.isEmpty) {
-    value = 'https://shinnpuru-vits-models.hf.space/';
+  String? url = await getVitsUrl();
+  if (url == null || url.isEmpty) {
+    url = 'https://indexteam-indextts-2-demo.hf.space/';
   }
-  if(!value.endsWith('/')) {
-    value += '/';
+  if(!url.endsWith('/')) {
+    url += '/';
   }
   print(query);
-  final dio = Dio(BaseOptions(baseUrl: value));
+  final dio = Dio(BaseOptions(baseUrl: url));
   final response = await dio.post(
-    "/api/${vitsConfig.model}",
+    "/gradio_api/call/gen_single",
     data: jsonEncode({"data": [
+        "Same as the voice reference",
+        {"path":vitsConfig.prompt,"meta":{"_type":"gradio.FileData"}}, // 语音参考
         query, // 语音内容
-        vitsConfig.language, // 语言
-        vitsConfig.noiseScale ?? 0.6, // 噪声缩放
-        vitsConfig.noiseScaleW ?? 0.7, // 噪声缩放W
-        vitsConfig.lengthScale ?? 1.2, // 长度缩放
-        false, // 是否使用音频增强
+        null, // 表请参考
+        1, // 表情强度
+        vitsConfig.happy, // 情绪参数
+        vitsConfig.angry,
+        vitsConfig.sad,
+        vitsConfig.afraid,
+        vitsConfig.disgusted,
+        vitsConfig.melancholic,
+        vitsConfig.surprised,
+        vitsConfig.calm,
+        "", // Emotion description
+        false, // Randomize emotion sampling
+        120, // Max tokens per generation segment
+        true, // do_sample
+        0.8, // top_p
+        30, // top_k
+        0.8, // temperature 
+        0, // length_penalty
+        3, // num_beams
+        10, // repetition_penalty
+        1500 // max_mel_tokens
     ]
     }),
     options: Options(
@@ -72,8 +63,28 @@ Future<String?> getAudioBase64(BuildContext context, String query) async {
     ),
   );
   if (response.statusCode == 200) {
-    // snackBarAlert(context, "请求成功: ${response.statusCode}");
-    return response.data['data'][1] as String?;
+    // 取得音频数据
+    final data = response.data.toString();
+    String sessionHash = data.substring(11,data.length-1);
+    debugPrint("/call/gen_single/$sessionHash");
+    final Response audioResponse = await dio.get(
+      "/gradio_api/call/gen_single/$sessionHash",
+    );
+    debugPrint("Session Hash: $sessionHash");
+    
+    // 匹配音频链接
+    final regex = RegExp('/tmp/gradio/\\S+?\\.wav');
+    final match = regex.firstMatch(audioResponse.data.toString());
+    if (match != null) {
+      final audioPath = "${url}gradio_api/file=${match.group(0)}";
+      debugPrint("Audio path: $audioPath");
+
+      return audioPath;
+    } else {
+      snackBarAlert(context, "未找到音频路径：${audioResponse.data.toString()}");
+      return null;
+    }
+    
   } else {
     snackBarAlert(context, "请求失败: ${response.statusCode} ${response.toString()}");
     return null;
@@ -82,9 +93,9 @@ Future<String?> getAudioBase64(BuildContext context, String query) async {
 
 Future<void> queryAndPlayAudio(BuildContext context, String query) async {
   try {
-    final audioBase64 = await getAudioBase64(context, query);
-    if (audioBase64 != null && audioBase64.isNotEmpty) {
-      await playBase64Audio(context, audioBase64);
+    final audio = await getAudio(context, query);
+    if (audio != null && audio.isNotEmpty) {
+      await playAudio(context, audio);
     } else {
       snackBarAlert(context, "未找到音频数据");
     }
