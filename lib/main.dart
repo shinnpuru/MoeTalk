@@ -101,14 +101,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         ),
       );
     });
-    getOriginalMsg().then((originalMsg) {
-      for(var m in originalMsg.split("\\")) {
-        messages.add(Message(message: m, type: Message.assistant));
-      }
-      setState(() {
-        _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
-      });
-    });
     getTempHistory().then((msg) {
       if (msg != null) {
         loadHistory(msg);
@@ -299,12 +291,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   void loadHistory(String msg) {
     List<Message> msgs = jsonToMsg(msg);
-    setState(() {
-      messages.clear();
-      messages.addAll(msgs);
-      _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
-      _isListViewMode = true; // Show list view when loading history
-    });
+    messages.clear();
+    messages.addAll(msgs);
+    _singleViewIndex = 0;
+    _isListViewMode = false;
   }
 
   void updateResponse(String response) {
@@ -348,10 +338,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           messages.add(Message(message: m, type: Message.assistant));
         }
         setState(() {
-          _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
+          _singleViewIndex = 0;
         });
+        setTempHistory(msgListToJson(messages));
       });
-      setTempHistory(msgListToJson(messages));
     });
   }
 
@@ -760,7 +750,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
   }
 
-Widget _buildChatPage() {
+  Widget _buildChatPage() {
     return Scaffold(
       appBar: AppBar(
         title: const SizedBox(
@@ -936,6 +926,9 @@ Widget _buildChatPage() {
                             onTap: () {
                               setState(() {
                                 if (messages.isNotEmpty) {
+                                  if(_singleViewIndex == messages.length - 1){
+                                    sendMsg(true);
+                                  }
                                   _singleViewIndex = _singleViewIndex == messages.length - 1
                                       ? _singleViewIndex
                                       : _singleViewIndex + 1;
@@ -1024,6 +1017,7 @@ Widget _buildChatPage() {
                     // send button
                     IconButton(
                       onPressed: () => sendMsg(true),
+                      onLongPress: () => getMsg(),
                       icon: const Icon(Icons.send),
                       color: const Color(0xffff899e),
                     )
@@ -1128,6 +1122,14 @@ Widget _buildChatPage() {
 
   // 分离历史记录页面
   Widget _buildHistoryPage() {
+    // 恢复历史记录
+    getHistorys().then((List<List<String>> results) {
+      setState(() {
+        historys = results;
+        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+      });
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('历史记录', style: TextStyle(color: Colors.white)),
@@ -1191,6 +1193,14 @@ Widget _buildChatPage() {
 
   // 分离角色页面
   Widget _buildStudentsPage() {
+    // 恢复角色列表
+    getStudents().then((List<List<String>> results) {
+      setState(() {
+        students = results;
+        students.sort((a, b) => a[0].compareTo(b[0]));
+      });
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('角色列表', style: TextStyle(color: Colors.white)),

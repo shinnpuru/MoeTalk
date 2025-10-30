@@ -31,6 +31,15 @@ class ConfigPageState extends State<ConfigPage> {
   void initState() {
     super.initState();
     getApiConfigs().then((List<Config> value) {
+      debugPrint("Loaded API configs: $value");
+      if(value.isEmpty){
+        value.add(Config(name: "deepseek", baseUrl: "https://api.deepseek.com/v1", apiKey: "", model: "deepseek-chat", temperature: "1", frequencyPenalty: "", presencePenalty: "", maxTokens: "8192"));
+        value.add(Config(name: "openai", baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-5", temperature: "1", frequencyPenalty: "", presencePenalty: "", maxTokens: "8192"));
+        value.add(Config(name: "gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta", apiKey: "", model: "gemini-2.5-flash", temperature: "1", frequencyPenalty: "", presencePenalty: "", maxTokens: "8192"));
+        value.add(Config(name: "grok", baseUrl: "https://api.grok.ai/v1", apiKey: "", model: "grok-4", temperature: "1", frequencyPenalty: "", presencePenalty: "", maxTokens: "8192"));
+        value.add(Config(name: "openrouter", baseUrl: "https://openrouter.ai/api/v1", apiKey: "", model: "google/gemini-2.5-flash", temperature: "1", frequencyPenalty: "", presencePenalty: "", maxTokens: "8192"));
+      }
+
       setState(() {
         apiConfigs = value;
         for (Config c in apiConfigs) {
@@ -97,6 +106,42 @@ class ConfigPageState extends State<ConfigPage> {
         );
       },
     );
+  }
+
+  void saveConfig() {
+    if (apiConfigs.isNotEmpty) {
+      for (Config c in apiConfigs) {
+        if (c.name == nameController.text) {
+          // 删除旧配置
+          deleteApiConfig(nameController.text);
+          apiConfigs.remove(c);
+        }
+      }
+    }
+    Config newConfig = Config(
+      name: nameController.text,
+      baseUrl: urlController.text,
+      apiKey: keyController.text,
+      model: modelController.text,
+      temperature: temperatureController.text.isEmpty
+          ? null
+          : temperatureController.text,
+      frequencyPenalty: frequencyPenaltyController.text.isEmpty
+          ? null
+          : frequencyPenaltyController.text,
+      presencePenalty: presencePenaltyController.text.isEmpty
+          ? null
+          : presencePenaltyController.text,
+      maxTokens: maxTokensController.text.isEmpty
+          ? null
+          : maxTokensController.text,
+    );
+    setApiConfig(newConfig);
+    setCurrentApiConfig(nameController.text);
+    setState(() {
+      apiConfigs.add(newConfig);
+      selectedConfig = nameController.text;
+    });
   }
 
   @override
@@ -244,45 +289,15 @@ class ConfigPageState extends State<ConfigPage> {
                         modelController.text.isEmpty) {
                       snackBarAlert(context, "请填写所有字段");
                     } else {
-                      if (apiConfigs.isNotEmpty) {
-                        for (Config c in apiConfigs) {
-                          if (c.name == nameController.text) {
-                            snackBarAlert(context, "名称重复");
-                            return;
-                          }
-                        }
-                      }
-                      Config newConfig = Config(
-                        name: nameController.text,
-                        baseUrl: urlController.text,
-                        apiKey: keyController.text,
-                        model: modelController.text,
-                        temperature: temperatureController.text.isEmpty
-                            ? null
-                            : temperatureController.text,
-                        frequencyPenalty: frequencyPenaltyController.text.isEmpty
-                            ? null
-                            : frequencyPenaltyController.text,
-                        presencePenalty: presencePenaltyController.text.isEmpty
-                            ? null
-                            : presencePenaltyController.text,
-                        maxTokens: maxTokensController.text.isEmpty
-                            ? null
-                            : maxTokensController.text,
-                      );
-                      setApiConfig(newConfig);
-                      setCurrentApiConfig(nameController.text);
-                      setState(() {
-                        apiConfigs.add(newConfig);
-                        selectedConfig = nameController.text;
-                      });
+                      saveConfig();
                       snackBarAlert(context, "保存成功");
                     }
                   },
                 ),
                 ElevatedButton(
-                  child: const Text("确定"),
+                  child: const Text("确认"),
                   onPressed: () {
+                    saveConfig();
                     widget.updateFunc(Config(
                       name: nameController.text,
                       baseUrl: urlController.text,
