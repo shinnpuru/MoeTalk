@@ -28,25 +28,6 @@ class WebdavPageState extends State<WebdavPage> {
   double progress = 0;
   List<List<String>> messageRecords = [];
 
-  void errDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<void> testWebdav() async {
     try {
@@ -55,7 +36,7 @@ class WebdavPageState extends State<WebdavPage> {
       if(!context.mounted) return;
       snackBarAlert(context, "Ping OK");
     } catch (e) {
-      errDialog(e.toString());
+      snackBarAlert(context, "Ping Failed: $e");
     }
   }
 
@@ -74,7 +55,7 @@ class WebdavPageState extends State<WebdavPage> {
       if(!context.mounted) return;
       snackBarAlert(context, "Backup OK");
     } catch (e) {
-      errDialog(e.toString());
+      snackBarAlert(context, "Backup Failed: $e");
     }
   }
 
@@ -161,7 +142,7 @@ class WebdavPageState extends State<WebdavPage> {
         });
       });
     } catch (e) {
-      errDialog(e.toString());
+      snackBarAlert(context, "Refresh Failed: $e");
     }
   }
 

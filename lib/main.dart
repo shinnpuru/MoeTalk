@@ -352,37 +352,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     debugPrint("model: ${config.model}");
   }
 
-  void errDialog(String content,{bool canRetry=true}){
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('确定'),
-          ),
-          if(canRetry) TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-              sendMsg(true,forceSend: true);
-            },
-            child: const Text('重试'),
-          ),
-        ],
-      ),
-    ).then((val){
-      if(val==null&&lastMessages!=null){
-        setState(() {
-          messages.addAll(lastMessages!);
-        });
-      }
-    });
-  }
-
   Future<void> sendMsg(bool realSend,{bool forceSend=false}) async {
     if (inputLock) {
       return;
@@ -434,7 +403,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             inputLock = false;
           });
           debugPrint("inputUnlocked");
-          errDialog(err.toString());
+          snackBarAlert(context, err.toString());
         });
     } catch (e) {
       setState(() {
@@ -443,7 +412,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       debugPrint("inputUnlocked");
       debugPrint(e.toString());
       if(!mounted) return;
-      errDialog(e.toString());
+      snackBarAlert(context, e.toString());
     }
   }
 

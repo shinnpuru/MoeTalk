@@ -36,21 +36,7 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
             }, (){
               snackBarAlert(context, "完成");
             }, (e){
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text("Error"),
-                  content: Text(e.toString()),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('确定'),
-                    ),
-                  ],
-                ),
-              );
+              snackBarAlert(context, "错误: $e");
             });
           },
           child: const Text('AI'),
