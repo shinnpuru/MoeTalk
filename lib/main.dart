@@ -892,6 +892,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     : (messages.isEmpty
                         ? const Align(alignment: Alignment.bottomCenter,child: Text("没有消息。"))
                         : GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: () {
                               setState(() {
                                 if (messages.isNotEmpty) {
