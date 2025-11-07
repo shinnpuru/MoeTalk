@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
@@ -74,7 +76,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isToolsExpanded = false;
   String? _characterStatus = "暂无状态";
   List<Message> messages = [];
-  List<Message>? lastMessages;
   List<List<String>> historys = [];
   List<List<String>> students = [];
 
@@ -82,25 +83,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    getUserName().then((name) {
-      userName = name;
-    });
-    getStudentName().then((name){
-        studentName = name;
-      });
-    getAvatar().then((avt){
-      avatar = avt;
-      backgroundImage = DecorationImage(
-        image: (avatar.isNotEmpty && avatar.startsWith('http'))
-            ? NetworkImage(avatar)
-            : const AssetImage("assets/avatar.png") as ImageProvider,
-        fit: BoxFit.cover,
-        colorFilter: ColorFilter.mode(
-          Colors.white.withOpacity(0.8),
-          BlendMode.dstATop,
-        ),
-      );
-    });
+    clearMsg();
     getTempHistory().then((msg) {
       if (msg != null) {
         loadHistory(msg);
@@ -227,7 +210,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         });
         if(isResend){
           textController.clear();
-          lastMessages = messages.sublist(index+1,messages.length);
           messages.removeRange(index+1, messages.length);
           sendMsg(true);
         }
@@ -309,7 +291,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   void clearMsg() {
-    lastMessages = null;
     setState(() {
       messages.clear();
       getUserName().then((name) {
@@ -324,7 +305,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           backgroundImage = DecorationImage(
             image: (avatar.isNotEmpty && avatar.startsWith('http'))
                 ? NetworkImage(avatar)
-                : const AssetImage("assets/avatar.png") as ImageProvider,
+                : avatar.startsWith('data:image/')
+                  ? MemoryImage(base64Decode(avatar.split(',')[1]))
+                  : const AssetImage("assets/avatar.png") as ImageProvider,
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.white.withOpacity(0.8),
@@ -380,7 +363,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       inputLock = true;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
     logMsg(msg);
     try {
       String response = "";
@@ -397,7 +380,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           });
           debugPrint("inputUnlocked");
           setTempHistory(msgListToJson(messages));
-          lastMessages = null;
         }, (err){
           setState(() {
             inputLock = false;
@@ -451,7 +433,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getMsg() async {
-    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
     msg.add(["user", "system instruction:根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
     
     String result = "";
@@ -555,7 +537,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getDraw() async {
-    List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -658,7 +640,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> getStatus({bool forceGet=false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
-      List<List<String>> msg = parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+      List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
       msg.add(["user", "system instruction:之前的状态是$_characterStatus。"]);
       msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
       
@@ -748,7 +730,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Colors.white,
             onPressed: () async {
                 if(!context.mounted) return;
-                String? value = await namingHistory(context, "", config, studentName, parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
+                String? value = await namingHistory(context, "", config, studentName, await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
                 if (value != null) {
                   debugPrint(value);
                   addHistory(msgListToJson(messages),value);
@@ -896,9 +878,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             onTap: () {
                               setState(() {
                                 if (messages.isNotEmpty) {
-                                  if(_singleViewIndex == messages.length - 1){
-                                    sendMsg(true);
-                                  }
                                   _singleViewIndex = _singleViewIndex == messages.length - 1
                                       ? _singleViewIndex
                                       : _singleViewIndex + 1;
@@ -1179,6 +1158,33 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Color(0xfff2a0ac)
           ),
         ),
+        actions: [
+          // Import Character Png
+          IconButton(
+            icon: const Icon(Icons.file_upload),
+            onPressed: () async {
+              loadCharacterCard(context);
+              // 刷新当前角色
+              getStudentName().then((name){
+                setState(() {
+                  studentName = name;
+                });
+              });
+            }
+          ),
+          // Save Character
+          IconButton(
+            icon: const Icon(Icons.save_as),
+            onPressed: () async {
+              addStudent(
+                studentName,
+                avatar,
+                await getOriginalMsg(),
+                await getPrompt(),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -1199,7 +1205,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   image: DecorationImage(
                     image: avatar.isNotEmpty && avatar.startsWith('http')
                         ? NetworkImage(avatar)
-                        : const AssetImage("assets/avatar.png") as ImageProvider,
+                        : avatar.startsWith('data:image/')
+                          ? MemoryImage(base64Decode(avatar.split(',')[1]))
+                          : const AssetImage("assets/avatar.png") as ImageProvider,
                     fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                   ),
@@ -1243,6 +1251,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: students.length,
             itemBuilder: (context, index) {
+              final avatar = students[index][1];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                 child: Card(
@@ -1254,9 +1263,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   child: Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: students[index][1].isNotEmpty && students[index][1].startsWith('http')
-                            ? NetworkImage(students[index][1])
-                            : const AssetImage("assets/avatar.png") as ImageProvider,
+                        image: avatar.isNotEmpty && avatar.startsWith('http')
+                            ? NetworkImage(avatar)
+                            : avatar.startsWith('data:image/')
+                              ? MemoryImage(base64Decode(avatar.split(',')[1]))
+                              : const AssetImage("assets/avatar.png") as ImageProvider,
                         fit: BoxFit.cover,
                         colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                       ),

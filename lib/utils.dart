@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:moetalk/storage.dart';
 
 
 // type 1:asstant 2:user 3:system 4:timestamp
@@ -112,13 +113,14 @@ String timestampToSystemMsg(String timestr) {
   return "下面的对话开始于 $result";
 }
 
-List<List<String>> parseMsg(String start, String prompt, List<Message> messages, String end) {
-  List<List<String>> msg = [];
-  msg.add(["system", start]);
-  msg.add(["system",prompt]);
+Future<List<List<String>>> parseMsg(String start, String prompt, List<Message> messages, String end) async {
+  final userName = await getUserName();
+  final List<List<String>> msg = [];
+  msg.add(["system", start.replaceAll('<user>', userName)]);
+  msg.add(["system", prompt.replaceAll('<user>', userName)]);
   for (var m in messages) {
     if (m.type == Message.assistant) {
-      msg.add(["assistant",m.message.replaceAll("\\\\", "\\")]);
+      msg.add(["assistant",m.message.replaceAll('<user>', userName)]);
     } else if (m.type == Message.user) {
       msg.add(["user",m.message]);
     } else if (m.type == Message.system) {
@@ -128,7 +130,7 @@ List<List<String>> parseMsg(String start, String prompt, List<Message> messages,
       msg.add(["system","下面的对话开始于$timestr"]);
     }
   }
-  msg.add(["system", end]);
+  msg.add(["system", end.replaceAll('<user>', userName)]);
   return msg;
 }
 

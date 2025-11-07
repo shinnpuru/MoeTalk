@@ -47,23 +47,6 @@ class PromptEditorState extends State<PromptEditor> {
               studentAvatarController.text = await getAvatar(isDefault: true);
             },
           ),
-          // 另存为
-          IconButton(
-            icon: const Icon(Icons.save_as),
-            onPressed: () async {
-              addStudent(
-                studentNameController.text,
-                studentAvatarController.text,
-                originMsgController.text,
-                controller.text,
-              );
-              setPrompt(controller.text);
-              setStudentName(studentNameController.text);
-              setOriginalMsg(originMsgController.text);
-              setAvatar(studentAvatarController.text);
-              Navigator.pop(context);
-            },
-          ),
           // 保存
           IconButton(
             icon: const Icon(Icons.save),

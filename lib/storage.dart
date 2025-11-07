@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';   // 用于 Uint8List
+import 'package:image/image.dart' as img; // 导入 image 包并重命名，避免冲突
 import 'utils.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
@@ -427,16 +429,6 @@ Future<void> restoreFromJson(jsonString) async {
       await prefs.setStringList(key, value.map((item) => item.toString()).toList());
     }
   }
-
-  if (allPrefs.containsKey("data")) {
-    Map<String, dynamic> data = allPrefs["data"];
-    for (String key in data.keys) {
-      if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
-        prefs.setString(key, data[key]);
-      }
-    }
-  }
-
 }
 
 Future<String?> pickFile() async{
@@ -448,5 +440,84 @@ Future<String?> pickFile() async{
   } else {
     debugPrint("No file selected, $result");
     return null;
+  }
+}
+
+Future<void> loadCharacterCard(context) async {
+  // 1. 让用户选择一个 PNG 或 JSON 文件
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['png','json'],
+  );
+
+  if (result != null && result.files.single.bytes != null) {
+
+    String jsonString = '';
+    if(result.files.single.extension == 'png'){
+      // 2. 获取文件的原始字节 (Uint8List)
+      Uint8List imageBytes = result.files.single.bytes!;
+
+      // 3. 使用 'image' 包解码 PNG
+      img.Image? image = img.decodePng(imageBytes);
+
+      if (image == null) {
+        debugPrint("错误: 无法解码 PNG。");
+        return null;
+      }
+
+      // 4. 关键步骤：从 PNG 元数据中提取 'chara' 键
+      // image.textData 是一个 Map<String, String>，它自动读取了所有 tEXt 块
+      String? rawData = image.textData?['chara'];
+
+      if (rawData != null) {
+        debugPrint("成功找到 'chara' 元数据。");
+
+        try {
+          // 5. Base64 解码 (从 String 变为 List<int>)
+          List<int> decodedBytes = base64Decode(rawData);
+
+          // 6. UTF-8 解码 (从 List<int> 变为 String)
+          jsonString = utf8.decode(decodedBytes);
+
+          debugPrint("解码后的 JSON 字符串: $jsonString");
+        } catch (e) {
+          snackBarAlert(context,"解码 'chara' 数据时出错: $e");
+          return;
+        }
+      } else {
+        snackBarAlert(context,"错误: 未找到 'chara' 元数据。");
+        return;
+      }
+    }
+    else{
+      jsonString = utf8.decode(result.files.single.bytes!);
+    }
+
+    if(jsonString.isEmpty){
+      snackBarAlert(context,"错误: JSON 字符串为空。");
+      return;
+    }
+    // 7. 解析 JSON 并恢复 SharedPreferences
+    Map<String, dynamic> allPrefs = jsonDecode(jsonString);
+
+    final prefs = await SharedPreferences.getInstance();
+    if (allPrefs.containsKey("data")) {
+      Map<String, dynamic> data = allPrefs["data"];
+      for (String key in data.keys) {
+        if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
+          prefs.setString(key, data[key]);
+        }
+      }
+    }
+
+    // 8. 如果是 PNG 文件，则转为 Base64 存储头像
+    if(result.files.single.extension == 'png'){
+      String base64Image = base64Encode(result.files.single.bytes!);
+      await prefs.setString("avatar", "data:image/png;base64,$base64Image");
+    }
+
+  } else {
+    // 用户取消了选择
+    snackBarAlert(context, "未选择文件。");
   }
 }
