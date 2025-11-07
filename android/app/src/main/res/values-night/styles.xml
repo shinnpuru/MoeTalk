@@ -16,5 +16,5 @@
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
-    <color name="splash_color">#F19EAA</color>
+    <color name="splash_color">#FEBCBD</color>
 </resources>
