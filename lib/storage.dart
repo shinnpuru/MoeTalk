@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -8,6 +9,10 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';   // 用于 Uint8List
 import 'package:image/image.dart' as img; // 导入 image 包并重命名，避免冲突
 import 'utils.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io' if (kIsWeb) 'dart:html' as html;
+import 'non_web_utils.dart'
+    if (dart.library.html) 'web_utils.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
@@ -99,10 +104,10 @@ Future<List<List<String>>> getStudents() async{
   return students;
 }
 
-Future<void> addStudent(String name, String avatar, String first_mes, String description) async {
+Future<void> addStudent(String name, String avatar, String firstMes, String description) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,first_mes,description,timeStamp]);
+  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp]);
 }
 
 Future<void> deleteStudent(String key) async {
@@ -335,7 +340,7 @@ Future<String> getResponseRegex() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("response_regex");
   if (format == null || format.isEmpty) {
-    return "<think>.*?<\/think>";
+    return "<think>.*?</think>";
   }
   return format;
 }
@@ -462,7 +467,7 @@ Future<void> loadCharacterCard(context) async {
 
       if (image == null) {
         debugPrint("错误: 无法解码 PNG。");
-        return null;
+        return;
       }
 
       // 4. 关键步骤：从 PNG 元数据中提取 'chara' 键
@@ -519,5 +524,70 @@ Future<void> loadCharacterCard(context) async {
   } else {
     // 用户取消了选择
     snackBarAlert(context, "未选择文件。");
+  }
+}
+
+Future<void> downloadCharacterCard(context) async {
+  try {
+    // 1. 收集角色数据
+    final prefs = await SharedPreferences.getInstance();
+    final name = await getStudentName();
+    final description = await getPrompt();
+    final firstMes = await getOriginalMsg();
+
+    final characterData = {
+      "spec": "chara_card_v2",
+      "spec_version": "2.0",
+      "data": {
+        "name": name,
+        "description": description,
+        "first_mes": firstMes,
+      }
+    };
+
+    // 2. 将角色数据转换为 Base64 编码的 JSON 字符串
+    final jsonString = jsonEncode(characterData);
+    final base64String = base64Encode(utf8.encode(jsonString));
+
+    // 3. 获取并解码头像图片
+    String avatarUri = await getAvatar();
+    Uint8List imageBytes;
+
+    if (avatarUri.startsWith('data:image')) {
+      imageBytes = base64Decode(avatarUri.split(',')[1]);
+    } else if (avatarUri.startsWith('http://') || avatarUri.startsWith('https://')) {
+      final uri = Uri.parse(avatarUri);
+      if (kIsWeb) {
+        // Web 平台使用 http 包
+        final response = await http.get(uri);
+        imageBytes = response.bodyBytes;
+      } else {
+        // 其他平台使用 dart:io 的 HttpClient
+        final request = await HttpClient().getUrl(uri);
+        final response = await request.close();
+        imageBytes = await consolidateHttpClientResponseBytes(response);
+      }
+    } else {
+      final byteData = await rootBundle.load(avatarUri);
+      imageBytes = byteData.buffer.asUint8List();
+    }
+
+    img.Image? image = img.decodeImage(imageBytes);
+    if (image == null) {
+      snackBarAlert(context, "无法解码头像图片。");
+      return;
+    }
+
+    // 4. 将 Base64 字符串作为 'chara' 元数据添加到图片中
+    image.textData = {'chara': base64String};
+
+    // 5. 将图片编码回 PNG 格式
+    final Uint8List outputBytes = Uint8List.fromList(img.encodePng(image));
+
+    // 6. 提示用户保存文件 (区分 Web 和其他平台)
+    await writePngFile(outputBytes);
+  } catch (e) {
+    debugPrint("下载角色卡时出错: $e");
+    snackBarAlert(context, "下载角色卡时出错: $e");
   }
 }

@@ -158,7 +158,7 @@ class ConfigPageState extends State<ConfigPage> {
             DropdownButton<String>(
               value: selectedConfig,
               hint: const Text('选择配置'),
-              //isExpanded: true,
+              isExpanded: true,
               items: apiConfigs.map((Config config) {
                 return DropdownMenuItem<String>(
                   value: config.name,

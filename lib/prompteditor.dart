@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'storage.dart';
 
@@ -18,17 +21,81 @@ class PromptEditorState extends State<PromptEditor> {
   void initState() {
     super.initState();
     getPrompt().then((String value) {
-      controller.text = value;
+      setState(() {
+        controller.text = value;
+      });
     });
     getAvatar().then((String value) {
-      studentAvatarController.text = value;
+      setState(() {
+        studentAvatarController.text = value;
+      });
     });
     getStudentName().then((String value) {
-      studentNameController.text = value;
+      setState(() {
+        studentNameController.text = value;
+      });
     });
     getOriginalMsg().then((String value) {
-      originMsgController.text = value;
+      setState(() {
+        originMsgController.text = value;
+      });
     });
+  }
+
+  Future<void> _pickAvatar() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['png'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      File file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      final base64String = 'data:image/png;base64,${base64Encode(bytes)}';
+      setState(() {
+        studentAvatarController.text = base64String;
+      });
+    }
+  }
+
+  Future<void> _showEditDialog(BuildContext context, String title,
+      TextEditingController controller, {bool multiLine = false}) async {
+    final TextEditingController dialogController =
+        TextEditingController(text: controller.text);
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('编辑 $title'),
+          content: TextField(
+            controller: dialogController,
+            maxLines: multiLine ? 5 : 1,
+            autofocus: true,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: title,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('取消'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('确定'),
+              onPressed: () {
+                setState(() {
+                  controller.text = dialogController.text;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -45,6 +112,7 @@ class PromptEditorState extends State<PromptEditor> {
               studentNameController.text = await getStudentName(isDefault: true);
               originMsgController.text = await getOriginalMsg(isDefault: true);
               studentAvatarController.text = await getAvatar(isDefault: true);
+              setState(() {});
             },
           ),
           // 保存
@@ -60,43 +128,55 @@ class PromptEditorState extends State<PromptEditor> {
           ),
         ],
       ),
-      body:  Column(
+      body: ListView(
+        padding: const EdgeInsets.all(8.0),
         children: <Widget>[
-          const SizedBox(height: 8),
-          TextField(
-            controller: studentAvatarController,
-            decoration: const InputDecoration(
-              labelText: '角色头像',
+          const ListTile(
+            title: Text('角色头像'),
+          ),
+          GestureDetector(
+            onTap: _pickAvatar,
+            child: Center(
+              child: CircleAvatar(
+                radius: 50,
+                backgroundImage: studentAvatarController.text.startsWith('http')
+                ? NetworkImage(studentAvatarController.text)
+                : studentAvatarController.text.startsWith('data:image/')
+                  ? MemoryImage(base64Decode(studentAvatarController.text.split(',')[1]))
+                  : const AssetImage("assets/avatar.png")
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: studentNameController,
-            decoration: const InputDecoration(
-              labelText: '角色名',
+          ListTile(
+            title: const Text('角色名'),
+            subtitle: Text(
+              studentNameController.text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
+            onTap: () =>
+                _showEditDialog(context, '角色名', studentNameController),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: originMsgController,
-            decoration: const InputDecoration(
-              labelText: '初始对话',
+          ListTile(
+            title: const Text('初始对话'),
+            subtitle: Text(
+              originMsgController.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
+            onTap: () => _showEditDialog(context, '初始对话', originMsgController,
+                multiLine: true),
           ),
-          Expanded(child:
-          Padding(padding: const EdgeInsets.all(8.0),
-            child: 
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: '提示词',
-                ),
-                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-              )
-            )
+          ListTile(
+            title: const Text('提示词'),
+            subtitle: Text(
+              controller.text,
+              maxLines: null,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: "Courier"),
+            ),
+            onTap: () =>
+                _showEditDialog(context, '提示词', controller, multiLine: true),
           ),
         ],
       ),

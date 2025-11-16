@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'utils.dart';
 import 'openai.dart';

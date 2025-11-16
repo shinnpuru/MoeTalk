@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'storage.dart';
-import 'utils.dart';
 
 class FormatConfigPage extends StatelessWidget {
   

@@ -1,5 +1,7 @@
 // notification_permission_stub.dart
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,6 +20,25 @@ Future<bool> writeFile(String data) async {
     return await writeFileWindows(data);
   } else {
     debugPrint('Unsupported platform');
+    return false;
+  }
+}
+
+Future<bool> writePngFile(Uint8List outputBytes) async {
+  try {
+    String? outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: '请保存角色卡',
+      fileName: 'momoAvatar_${DateTime.now().millisecondsSinceEpoch}.png',
+      type: FileType.custom,
+      allowedExtensions: ['png'],
+    );
+    if (outputFile != null) {
+      final file = File(outputFile);
+      await file.writeAsBytes(outputBytes);
+    }
+    return true;
+  } catch (e) {
+    debugPrint('Error writing PNG file: $e');
     return false;
   }
 }

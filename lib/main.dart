@@ -5,7 +5,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
-import 'dart:io' show Platform;
 import 'chatview.dart';
 import 'configpage.dart';
 import 'notifications.dart';
@@ -26,8 +25,8 @@ import 'aidrawconfig.dart';
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  NotificationHelper notificationHelper = NotificationHelper();
-  await notificationHelper.initialize();
+  // NotificationHelper notificationHelper = NotificationHelper();
+  // await notificationHelper.initialize();
   runApp(const MomotalkApp());
 }
 
@@ -78,6 +77,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   List<Message> messages = [];
   List<List<String>> historys = [];
   List<List<String>> students = [];
+  final Map<String, ImageProvider> _avatarImageCache = {};
 
   @override
   void initState() {
@@ -105,11 +105,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         students = results;
         students.sort((a, b) => a[0].compareTo(b[0]));
       });
-      if(results.isEmpty){
-        rootBundle.loadString("assets/chara.json").then((string) {
-          restoreFromJson(string);
-        });
-      }
     });
   }
 
@@ -1150,6 +1145,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       });
     });
 
+    ImageProvider getAvatarImage(String avatar) {
+      if (_avatarImageCache.containsKey(avatar)) {
+        return _avatarImageCache[avatar]!;
+      }
+      final ImageProvider imageProvider;
+      if (avatar.isNotEmpty && avatar.startsWith('http')) {
+        imageProvider = NetworkImage(avatar);
+      } else if (avatar.startsWith('data:image/')) {
+        imageProvider = MemoryImage(base64Decode(avatar.split(',')[1]));
+      } else {
+        imageProvider = const AssetImage("assets/avatar.png");
+      }
+      _avatarImageCache[avatar] = imageProvider;
+      return imageProvider;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('角色列表', style: TextStyle(color: Colors.white)),
@@ -1158,33 +1169,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Color(0xfff2a0ac)
           ),
         ),
-        actions: [
-          // Import Character Png
-          IconButton(
-            icon: const Icon(Icons.file_upload),
-            onPressed: () async {
-              loadCharacterCard(context);
-              // 刷新当前角色
-              getStudentName().then((name){
-                setState(() {
-                  studentName = name;
-                });
-              });
-            }
-          ),
-          // Save Character
-          IconButton(
-            icon: const Icon(Icons.save_as),
-            onPressed: () async {
-              addStudent(
-                studentName,
-                avatar,
-                await getOriginalMsg(),
-                await getPrompt(),
-              );
-            },
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -1203,11 +1187,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               child: Container(
                 decoration: BoxDecoration(
                   image: DecorationImage(
-                    image: avatar.isNotEmpty && avatar.startsWith('http')
-                        ? NetworkImage(avatar)
-                        : avatar.startsWith('data:image/')
-                          ? MemoryImage(base64Decode(avatar.split(',')[1]))
-                          : const AssetImage("assets/avatar.png") as ImageProvider,
+                    image: getAvatarImage(avatar),
                     fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                   ),
@@ -1220,26 +1200,108 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PromptEditor(),
+                  trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Edit Prompt
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.white),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const PromptEditor(),
+                              ),
+                            ).then((_) {
+                              clearMsg();
+                              getStudents().then((List<List<String>> results) {
+                                setState(() {
+                                  students = results;
+                                  students.sort((a, b) => a[0].compareTo(b[0]));
+                                });
+                              });
+                            });
+                          },
                         ),
-                      ).then((_) {
-                        getStudents().then((List<List<String>> results) {
-                          setState(() {
-                            students = results;
-                            students.sort((a, b) => a[0].compareTo(b[0]));
-                          });
-                        });
-                      });
-                    },
+                        // Save Character
+                        IconButton(
+                          icon: const Icon(Icons.save_as, color: Colors.white),
+                          onPressed: () async {
+                            addStudent(
+                              studentName,
+                              avatar,
+                              await getOriginalMsg(),
+                              await getPrompt(),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_upload),
+                  label: const Text('导入角色卡'),
+                  onPressed: () async {
+                    // 显示加载对话框
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('正在导入角色...'),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                    await loadCharacterCard(context);
+                    clearMsg();
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  }
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_download),
+                  label: const Text('导出角色卡'),
+                  onPressed: () async {
+                    // 显示加载对话框
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('正在导出角色...'),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                    await downloadCharacterCard(
+                      context,
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  }
+                ),
+              ],
             ),
           ),
           const Divider(),
@@ -1251,7 +1313,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: students.length,
             itemBuilder: (context, index) {
-              final avatar = students[index][1];
+              final studentAvatar = students[index][1];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                 child: Card(
@@ -1263,11 +1325,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   child: Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: avatar.isNotEmpty && avatar.startsWith('http')
-                            ? NetworkImage(avatar)
-                            : avatar.startsWith('data:image/')
-                              ? MemoryImage(base64Decode(avatar.split(',')[1]))
-                              : const AssetImage("assets/avatar.png") as ImageProvider,
+                        image: getAvatarImage(studentAvatar),
                         fit: BoxFit.cover,
                         colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
                       ),
@@ -1390,7 +1448,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => FormatConfigPage(),
+                    builder: (context) => const FormatConfigPage(),
                   ),
                 );
               },
