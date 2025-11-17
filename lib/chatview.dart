@@ -15,14 +15,14 @@ class ChatElement extends StatelessWidget {
     if (type == Message.assistant) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, 
       children: [
-          ChatBubbleLayoutLeft(name: stuName, messages: [message]),
+          ChatBubbleLayoutLeft(name: stuName, messages: [message.replaceAll('{{user}}', userName).replaceAll('{{char}}', stuName)]),
           const SizedBox(height: 10),
         ]);
     } else if (type == Message.user) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          ChatBubbleLayoutRight(name: userName, messages: [message]),
+          ChatBubbleLayoutRight(name: userName, messages: [message.replaceAll('{{user}}', userName).replaceAll('{{char}}', stuName)]),
           const SizedBox(height: 10),
         ],
       );
@@ -32,7 +32,7 @@ class ChatElement extends StatelessWidget {
         "${t.minute.toString().padLeft(2,'0')}";
       return centerBubble(timestr);
     } else if (type == Message.system) {
-      return centerBubble(message);
+      return centerBubble(message.replaceAll('{{user}}', userName).replaceAll('{{char}}', stuName));
     } else if (type == Message.image) {
       return ChatBubbleImage(name: stuName, imageUrl: message);
     }

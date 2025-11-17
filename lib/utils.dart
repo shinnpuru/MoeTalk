@@ -114,13 +114,12 @@ String timestampToSystemMsg(String timestr) {
 }
 
 Future<List<List<String>>> parseMsg(String start, String prompt, List<Message> messages, String end) async {
-  final userName = await getUserName();
   final List<List<String>> msg = [];
-  msg.add(["system", start.replaceAll('<user>', userName)]);
-  msg.add(["system", prompt.replaceAll('<user>', userName)]);
+  msg.add(["system", start]);
+  msg.add(["system", prompt]);
   for (var m in messages) {
     if (m.type == Message.assistant) {
-      msg.add(["assistant",m.message.replaceAll('<user>', userName)]);
+      msg.add(["assistant",m.message]);
     } else if (m.type == Message.user) {
       msg.add(["user",m.message]);
     } else if (m.type == Message.system) {
@@ -130,7 +129,15 @@ Future<List<List<String>>> parseMsg(String start, String prompt, List<Message> m
       msg.add(["system","下面的对话开始于$timestr"]);
     }
   }
-  msg.add(["system", end.replaceAll('<user>', userName)]);
+  msg.add(["system", end]);
+
+  // replace placeholders
+  final userName = await getUserName();
+  final stuName = await getStudentName();
+  for (var m in msg) {
+    m[1] = m[1].replaceAll("{{user}}", userName);
+    m[1] = m[1].replaceAll("{{char}}", stuName);
+  }
   return msg;
 }
 

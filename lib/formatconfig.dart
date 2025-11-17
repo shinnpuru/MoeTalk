@@ -56,6 +56,7 @@ class FormatConfigPage extends StatelessWidget {
                 ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
               ),
+            Text("提示：用户名称在提示词中可用{{user}}代替，角色名称可用{{char}}代替。"),
             const SizedBox(height: 16),
             TextField(
                 controller: startPrompt,
