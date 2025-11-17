@@ -58,15 +58,7 @@ class SdConfigPage extends StatelessWidget {
           children: [
             TextField(
               controller: apiController,
-              decoration: const InputDecoration(labelText: "绘画API地址"),
-            ),
-            TextField(
-              controller: sdPrompt,
-              decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为占位符)"),
-            ),
-            TextField(
-              controller: sdNegative,
-              decoration: const InputDecoration(labelText: "负向提示词"),
+              decoration: const InputDecoration(labelText: "API地址"),
             ),
             TextField(
               controller: sdModel,
@@ -109,6 +101,18 @@ class SdConfigPage extends StatelessWidget {
                 ),
               ),
             ]),
+            TextField(
+              controller: sdPrompt,
+              decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为占位符)"),
+              minLines: 2,
+              maxLines: 4,
+            ),
+            TextField(
+              controller: sdNegative,
+              decoration: const InputDecoration(labelText: "负向提示词"),
+              minLines: 2,
+              maxLines: 4,
+            ),
           ],
         ),
       ),

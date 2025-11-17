@@ -617,14 +617,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 Navigator.of(context).pop();
                 getStatus(forceGet: true);
               },
-              child: const Text('查询'),
+              child: const Text('重新获取'),
             ),
-            // 关闭按钮
+            // 添加到对话
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                setState(() {
+                  messages.add(Message(message: _characterStatus!, type: Message.system));
+                  _singleViewIndex = messages.length - 1;
+                });
+                setTempHistory(msgListToJson(messages));
               },
-              child: const Text('关闭'),
+              child: const Text('确认添加'),
             ),
           ],
           
@@ -719,29 +724,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               snackBarAlert(context, "已重置");
             },
           ),
-          // Save
-          IconButton(
-            icon: const Icon(Icons.save),
-            color: Colors.white,
-            onPressed: () async {
-                if(!context.mounted) return;
-                String? value = await namingHistory(context, "", config, studentName, await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
-                if (value != null) {
-                  debugPrint(value);
-                  addHistory(msgListToJson(messages),value);
-                  if(!context.mounted) return;
-                  snackBarAlert(context, "已保存");
-                  getHistorys().then((List<List<String>> results) {
-                    setState(() {
-                      historys = results;
-                      historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-                    });
-                  });
-                } else {
-                  debugPrint("cancel");
-                }
-            },
-          ),
           PopupMenuButton<String>(
             icon: const Icon(
               Icons.edit,
@@ -758,7 +740,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               ),
               const PopupMenuItem(
                 value: 'Msgs',
-                child: Text('编辑消息'),
+                child: Text('批量编辑'),
               ),
             ],
             onSelected: (String value) async {
@@ -790,6 +772,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   )
                 ).then((msgs){setState(() {});});
               }
+            },
+          ),
+          // Save
+          IconButton(
+            icon: const Icon(Icons.save),
+            color: Colors.white,
+            onPressed: () async {
+                if(!context.mounted) return;
+                String? value = await namingHistory(context, "", config, studentName, await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
+                if (value != null) {
+                  debugPrint(value);
+                  addHistory(msgListToJson(messages),value);
+                  if(!context.mounted) return;
+                  snackBarAlert(context, "已保存");
+                  getHistorys().then((List<List<String>> results) {
+                    setState(() {
+                      historys = results;
+                      historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                    });
+                  });
+                } else {
+                  debugPrint("cancel");
+                }
             },
           ),
         ],
@@ -1174,6 +1179,73 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         children: [
           const ListTile(
+            title: Text('角色卡操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_upload),
+                  label: const Text('导入当前角色'),
+                  onPressed: () async {
+                    // 显示加载对话框
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('正在导入角色...'),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                    await loadCharacterCard(context);
+                    clearMsg();
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  }
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_download),
+                  label: const Text('导出当前角色'),
+                  onPressed: () async {
+                    // 显示加载对话框
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('正在导出角色...'),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                    await downloadCharacterCard(
+                      context,
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  }
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          const ListTile(
             title: Text('当前角色', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           Padding(
@@ -1241,69 +1313,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.file_upload),
-                  label: const Text('导入角色卡'),
-                  onPressed: () async {
-                    // 显示加载对话框
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return const AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('正在导入角色...'),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                    await loadCharacterCard(context);
-                    clearMsg();
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  }
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.file_download),
-                  label: const Text('导出角色卡'),
-                  onPressed: () async {
-                    // 显示加载对话框
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return const AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('正在导出角色...'),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                    await downloadCharacterCard(
-                      context,
-                    );
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  }
-                ),
-              ],
-            ),
-          ),
           const Divider(),
           const ListTile(
             title: Text('角色池', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),

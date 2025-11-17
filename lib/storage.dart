@@ -418,6 +418,7 @@ Future<void> restoreFromJson(jsonString) async {
   if (jsonString.isEmpty) return;
 
   final prefs = await SharedPreferences.getInstance();
+  prefs.clear();
   Map<String, dynamic> allPrefs = jsonDecode(jsonString);
 
   for (String key in allPrefs.keys) {

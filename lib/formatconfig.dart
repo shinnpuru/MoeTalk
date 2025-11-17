@@ -50,9 +50,17 @@ class FormatConfigPage extends StatelessWidget {
         child: Column(
           children: [
             TextField(
+                controller: userName,
+                decoration: const InputDecoration(
+                  labelText: '用户名称',
+                ),
+                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
+              ),
+            const SizedBox(height: 16),
+            TextField(
                 controller: startPrompt,
                 decoration: const InputDecoration(
-                  labelText: '开始系统提示词',
+                  labelText: '开始提示词',
                 ),
                 minLines: 3,
                 maxLines: 3,
@@ -61,26 +69,10 @@ class FormatConfigPage extends StatelessWidget {
             TextField(
                 controller: endPrompt,
                 decoration: const InputDecoration(
-                  labelText: '结束系统提示词',
+                  labelText: '结束提示词',
                 ),
                 minLines: 3,
                 maxLines: 3,
-                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
-              ),
-            const SizedBox(height: 16),
-            TextField(
-                controller: responseRegex,
-                decoration: const InputDecoration(
-                  labelText: '删除正则表达式',
-                ),
-                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
-              ),
-            const SizedBox(height: 16),
-            TextField(
-                controller: userName,
-                decoration: const InputDecoration(
-                  labelText: '用户名称',
-                ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
               ),
             const SizedBox(height: 16),
@@ -91,6 +83,14 @@ class FormatConfigPage extends StatelessWidget {
                 ),
                 minLines: 3,
                 maxLines: 3,
+                style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
+              ),
+            const SizedBox(height: 16),
+            TextField(
+                controller: responseRegex,
+                decoration: const InputDecoration(
+                  labelText: '输出正则过滤',
+                ),
                 style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
               ),
           ],

@@ -51,12 +51,12 @@ Widget centerBubble(String msg) {
           color: const Color(0xCCdce5ec),
           borderRadius: BorderRadius.circular(12),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: Text(
-          msg,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Color(0xff4c5b70),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: MarkdownBody(
+          data: msg,
+          shrinkWrap: true,
+          styleSheet: MarkdownStyleSheet(
+            p: const TextStyle(fontSize: 14, color: Colors.black54),
           ),
         ),
       ),

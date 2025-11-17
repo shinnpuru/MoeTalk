@@ -2,27 +2,58 @@ import 'package:flutter/material.dart';
 import 'storage.dart';
 import 'utils.dart';
 
-class VitsConfigPage extends StatelessWidget {
+class VitsConfigPage extends StatefulWidget {
   final VitsConfig vitsConfig;
-  
+
   const VitsConfigPage({super.key, required this.vitsConfig});
 
   @override
-  Widget build(BuildContext context) {
-    TextEditingController apiController = TextEditingController();
-    TextEditingController vitsPrompt = TextEditingController(text: vitsConfig.prompt);
-    TextEditingController vitsHappy = TextEditingController(text: vitsConfig.happy?.toString() ?? '0.0');
-    TextEditingController vitsSad = TextEditingController(text: vitsConfig.sad?.toString() ?? '0.0');
-    TextEditingController vitsAngry = TextEditingController(text: vitsConfig.angry?.toString() ?? '0.0');
-    TextEditingController vitsAfraid = TextEditingController(text: vitsConfig.angry?.toString() ?? '0.0');
-    TextEditingController vitsDisgusted = TextEditingController(text: vitsConfig.happy?.toString() ?? '0.0');
-    TextEditingController vitsMelancholic = TextEditingController(text: vitsConfig.sad?.toString() ?? '0.0');
-    TextEditingController vitsSurprised = TextEditingController(text: vitsConfig.angry?.toString() ?? '0.0');
-    TextEditingController vitsCalm = TextEditingController(text: vitsConfig.angry?.toString() ?? '0.0');
+  State<VitsConfigPage> createState() => _VitsConfigPageState();
+}
+
+class _VitsConfigPageState extends State<VitsConfigPage> {
+  late TextEditingController _apiController;
+  late TextEditingController _vitsPrompt;
+  late double _happy;
+  late double _sad;
+  late double _angry;
+  late double _afraid;
+  late double _disgusted;
+  late double _melancholic;
+  late double _surprised;
+  late double _calm;
+
+  @override
+  void initState() {
+    super.initState();
+    _apiController = TextEditingController();
     getVitsUrl().then((value) {
-      apiController.text = value?? '';
+      if (mounted) {
+        _apiController.text = value ?? '';
+      }
     });
 
+    final vitsConfig = widget.vitsConfig;
+    _vitsPrompt = TextEditingController(text: vitsConfig.prompt);
+    _happy = vitsConfig.happy ?? 0.0;
+    _sad = vitsConfig.sad ?? 0.0;
+    _angry = vitsConfig.angry ?? 0.0;
+    _afraid = vitsConfig.afraid ?? 0.0;
+    _disgusted = vitsConfig.disgusted ?? 0.0;
+    _melancholic = vitsConfig.melancholic ?? 0.0;
+    _surprised = vitsConfig.surprised ?? 0.0;
+    _calm = vitsConfig.calm ?? 0.0;
+  }
+
+  @override
+  void dispose() {
+    _apiController.dispose();
+    _vitsPrompt.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('语音配置'),
@@ -31,87 +62,79 @@ class VitsConfigPage extends StatelessWidget {
             icon: const Icon(Icons.save),
             onPressed: () {
               VitsConfig updatedConfig = VitsConfig(
-                prompt: vitsPrompt.text,
-                happy: double.tryParse(vitsHappy.text) ?? 0.0,
-                sad: double.tryParse(vitsSad.text) ?? 0.0,
-                angry: double.tryParse(vitsAngry.text) ?? 0.0,
-                afraid: double.tryParse(vitsAfraid.text) ?? 0.0,
-                disgusted: double.tryParse(vitsDisgusted.text) ?? 0.0,
-                melancholic: double.tryParse(vitsMelancholic.text) ?? 0.0,
-                surprised: double.tryParse(vitsSurprised.text) ?? 0.0,
-                calm: double.tryParse(vitsCalm.text) ?? 0.0,
+                prompt: _vitsPrompt.text,
+                happy: _happy,
+                sad: _sad,
+                angry: _angry,
+                afraid: _afraid,
+                disgusted: _disgusted,
+                melancholic: _melancholic,
+                surprised: _surprised,
+                calm: _calm,
               );
               setVitsConfig(updatedConfig);
-              setVitsUrl(apiController.text);
-              Navigator.of(context).pop();
+              setVitsUrl(_apiController.text);
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
             },
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
+        child: ListView(
           children: [
             TextField(
-              controller: apiController,
-              decoration: const InputDecoration(labelText: "语音API地址"),
+              controller: _apiController,
+              decoration: const InputDecoration(labelText: "API地址"),
+              minLines: 1,
+              maxLines: 3,
             ),
             TextField(
-              controller: vitsPrompt,
-              decoration: const InputDecoration(labelText: "语音参考地址"),
+              controller: _vitsPrompt,
+              decoration: const InputDecoration(labelText: "音频参考"),
+              minLines: 1,
+              maxLines: 3,
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: vitsHappy,
-                        decoration: const InputDecoration(labelText: "快乐"),
-                      ),
-                      TextField(
-                        controller: vitsSad,
-                        decoration: const InputDecoration(labelText: "悲伤"),
-                      ),
-                      TextField(
-                        controller: vitsAngry,
-                        decoration: const InputDecoration(labelText: "愤怒"),
-                      ),
-                      TextField(
-                        controller: vitsAfraid,
-                        decoration: const InputDecoration(labelText: "恐惧"),
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0)),
-                Expanded(
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: vitsDisgusted,
-                        decoration: const InputDecoration(labelText: "厌恶"),
-                      ),
-                      TextField(
-                        controller: vitsMelancholic,
-                        decoration: const InputDecoration(labelText: "忧郁"),
-                      ),
-                      TextField(
-                        controller: vitsSurprised,
-                        decoration: const InputDecoration(labelText: "惊讶"),
-                      ),
-                      TextField(
-                        controller: vitsCalm,
-                        decoration: const InputDecoration(labelText: "平静"),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            )
+            const SizedBox(height: 16),
+            const ListTile(
+              title: Text("情感参数",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
+            ),
+            _buildSlider("快乐", _happy, (val) => setState(() => _happy = val)),
+            _buildSlider("悲伤", _sad, (val) => setState(() => _sad = val)),
+            _buildSlider("愤怒", _angry, (val) => setState(() => _angry = val)),
+            _buildSlider("恐惧", _afraid, (val) => setState(() => _afraid = val)),
+            _buildSlider("厌恶", _disgusted, (val) => setState(() => _disgusted = val)),
+            _buildSlider("忧郁", _melancholic, (val) => setState(() => _melancholic = val)),
+            _buildSlider("惊讶", _surprised, (val) => setState(() => _surprised = val)),
+            _buildSlider("平静", _calm, (val) => setState(() => _calm = val)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSlider(
+      String label, double value, ValueChanged<double> onChanged) {
+    return Row(
+      children: [
+        SizedBox(width: 50, child: Text(label)),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: 0.0,
+            max: 1.0,
+            divisions: 10,
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(width: 40, child: Text(value.toStringAsFixed(1))),
+      ],
     );
   }
 }

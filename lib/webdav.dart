@@ -204,7 +204,33 @@ class WebdavPageState extends State<WebdavPage> {
                     String? j = await pickFile();
                     if (j != null) {
                       try {
-                        debugPrint(j);
+                        bool? confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('确认恢复'),
+                            content: const Text('此操作将覆盖当前配置，是否继续？'),
+                            actions: <Widget>[
+                            TextButton(
+                              child: const Text('取消'),
+                              onPressed: () {
+                              Navigator.of(context).pop(false);
+                              },
+                            ),
+                            TextButton(
+                              child: const Text('确定'),
+                              onPressed: () {
+                              Navigator.of(context).pop(true);
+                              },
+                            ),
+                            ],
+                          );
+                          },
+                        );
+
+                        if (confirm != true) {
+                          return;
+                        }
                         await restoreFromJson(j);
                         snackBarAlert(context, "恢复成功");
                       } catch (e) {
@@ -237,7 +263,7 @@ class WebdavPageState extends State<WebdavPage> {
               child: TextField(
                 controller: usernameController,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: '用户名',
                 ),
               ),
             ),
@@ -246,7 +272,7 @@ class WebdavPageState extends State<WebdavPage> {
               child: TextField(
                 controller: passwordController,
                 decoration: const InputDecoration(
-                  labelText: 'Password',
+                  labelText: '密码',
                 ),
               ),
             ),
