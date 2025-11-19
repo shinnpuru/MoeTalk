@@ -113,7 +113,11 @@ String timestampToSystemMsg(String timestr) {
   return "下面的对话开始于 $result";
 }
 
-Future<List<List<String>>> parseMsg(String start, String prompt, List<Message> messages, String end) async {
+Future<List<List<String>>> parseMsg(List<Message> messages) async {
+  final start = await getStartPrompt();
+  final prompt = await getPrompt();
+  final end = await getEndPrompt();
+
   final List<List<String>> msg = [];
   msg.add(["system", start]);
   msg.add(["system", prompt]);

@@ -48,10 +48,10 @@ class PromptEditorState extends State<PromptEditor> {
       allowedExtensions: ['png'],
     );
 
-    if (result != null && result.files.single.path != null) {
-      File file = File(result.files.single.path!);
-      final bytes = await file.readAsBytes();
-      final base64String = 'data:image/png;base64,${base64Encode(bytes)}';
+
+    if (result != null && result.files.single.bytes != null) {
+      String base64Image = base64Encode(result.files.single.bytes!);
+      final base64String = 'data:image/png;base64,${base64Image}';
       setState(() {
         studentAvatarController.text = base64String;
       });

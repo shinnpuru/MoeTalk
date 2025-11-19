@@ -76,6 +76,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   String? _characterStatus = "暂无状态";
   List<Message> messages = [];
   List<List<String>> historys = [];
+  List<String>? currentStory;
   List<List<String>> students = [];
   final Map<String, ImageProvider> _avatarImageCache = {};
 
@@ -358,7 +359,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       inputLock = true;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
     logMsg(msg);
     try {
       String response = "";
@@ -428,7 +429,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getMsg() async {
-    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
     msg.add(["user", "system instruction:根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
     
     String result = "";
@@ -532,7 +533,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getDraw() async {
-    List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -640,7 +641,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> getStatus({bool forceGet=false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
-      List<List<String>> msg = await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt());
+      List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
       msg.add(["user", "system instruction:之前的状态是$_characterStatus。"]);
       msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
       
@@ -780,7 +781,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Colors.white,
             onPressed: () async {
                 if(!context.mounted) return;
-                String? value = await namingHistory(context, "", config, studentName, await parseMsg(await getStartPrompt(), await getPrompt(), messages, await getEndPrompt()));
+                String? value = await namingHistory(context, "", config, studentName, await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages));
                 if (value != null) {
                   debugPrint(value);
                   addHistory(msgListToJson(messages),value);
@@ -1069,9 +1070,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  // 分离历史记录页面
-  Widget _buildHistoryPage() {
-    // 恢复历史记录
+  // 分离故事页面
+  Widget _buildStoryPage() {
+    // 恢复故事列表
     getHistorys().then((List<List<String>> results) {
       setState(() {
         historys = results;
@@ -1081,61 +1082,211 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('历史记录', style: TextStyle(color: Colors.white)),
+        title: const Text('故事列表', style: TextStyle(color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
           ),
         ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        itemCount: historys.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.history),
-                title: Text(getTimeStr(index)),
-                subtitle: Text(historys[index][0]),
-                onTap: () {
-                  loadHistory(historys[index][2]);
-                  setState(() {
-                    _currentIndex = 0; // Switch to chat page
-                  });
-                },
-                onLongPress: () => showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('删除历史记录'),
-                    content: const Text('你确定要删除这条历史记录吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          deleteHistory("history_${historys[index][1]}");
-                          setState(() {
-                            historys.removeAt(index);
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('删除'),
-                      ),
-                    ],
+      body: Column(
+        children: [
+          const ListTile(
+            title: Text('故事操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_upload),
+                  label: const Text('导入故事'),
+                  onPressed: () async {
+                    String? jsonString = await pickFile();
+                    if (jsonString != null) {
+                      await restoreHistoryFromJson(jsonString);
+                      getHistorys().then((List<List<String>> results) {
+                        setState(() {
+                          historys = results;
+                          historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                        });
+                        snackBarAlert(context, "故事导入成功");
+                      });
+                    }
+                  },
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.file_download),
+                  label: const Text('导出当前故事'),
+                  onPressed: () async {
+                    if (currentStory == null) {
+                      snackBarAlert(context, "没有设置当前故事");
+                      return;
+                    }
+                    List<Message> storyMsgs = jsonToMsg(currentStory![2]);
+                    List<String> msgContents = storyMsgs.map((m) => m.message).toList();
+                    bool success = await downloadHistorytoJson(currentStory![0], msgContents);
+                    if(success && context.mounted){
+                      snackBarAlert(context, "故事已导出");
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          if (currentStory != null) ...[
+            const ListTile(
+              title: Text('当前故事', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.book, color: Color(0xfff2a0ac)),
+                  title: Text(currentStory![0]),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        currentStory = null;
+                      });
+                      snackBarAlert(context, "已卸载当前故事");
+                    },
                   ),
                 ),
               ),
             ),
-          );
-        },
+            const Divider(),
+          ],
+          const ListTile(
+            title: Text('故事池', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              itemCount: historys.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: PopupMenuTheme(
+                      data: PopupMenuThemeData(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.book),
+                        title: Text(getTimeStr(index)),
+                        subtitle: Text(historys[index][0]),
+                        onTap: () {
+                          setState(() {
+                            currentStory = historys[index];
+                          });
+                          snackBarAlert(context, "已将 ${historys[index][0]} 设置为当前故事");
+                        },
+                        onLongPress: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(historys[index][0]),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.download),
+                                    title: const Text('加载到对话'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      loadHistory(historys[index][2]);
+                                      setState(() {
+                                        _currentIndex = 0; // Switch to chat page
+                                      });
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.edit),
+                                    title: const Text('编辑'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      List<Message> storyMsgs = jsonToMsg(historys[index][2]);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => MsgEditor(msgs: storyMsgs),
+                                        ),
+                                      ).then((editedMsgs) {
+                                        if (editedMsgs != null) {
+                                          String newJson = msgListToJson(editedMsgs);
+                                          deleteHistory("history_${historys[index][1]}");
+                                          addHistory(newJson, historys[index][0]).then((_) {
+                                            getHistorys().then((results) {
+                                              setState(() {
+                                                historys = results;
+                                                historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                                              });
+                                            });
+                                          });
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.delete),
+                                    title: const Text('删除'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('删除故事'),
+                                          content: const Text('你确定要删除这个故事吗？'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('取消'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                deleteHistory("history_${historys[index][1]}");
+                                                if (currentStory != null && currentStory![1] == historys[index][1]) {
+                                                  currentStory = null;
+                                                }
+                                                setState(() {
+                                                  historys.removeAt(index);
+                                                });
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text('删除'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1560,7 +1711,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         currentPage = _buildChatPage();
         break;
       case 1:
-        currentPage = _buildHistoryPage();
+        currentPage = _buildStoryPage();
         break;
       case 2:
         currentPage = _buildStudentsPage();
@@ -1590,8 +1741,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             label: '聊天',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: '历史',
+            icon: Icon(Icons.book),
+            label: '故事',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people),

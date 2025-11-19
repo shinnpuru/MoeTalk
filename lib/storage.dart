@@ -177,14 +177,9 @@ Future<String> convertToJson() async {
   final prefs = await SharedPreferences.getInstance();
   final keys = prefs.getKeys();
   
-  Map<String, dynamic> allPrefs = {"data":{}};
+  Map<String, dynamic> allPrefs = {};
   for (String key in keys) {
-    // "name" "avatar" "first_mes" "description" save to data
-    if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
-      allPrefs["data"][key] = prefs.get(key);
-    } else {
-      allPrefs[key] = prefs.get(key);
-    }
+    allPrefs[key] = prefs.get(key);
   }
   return jsonEncode(allPrefs);
 }
@@ -436,6 +431,50 @@ Future<void> restoreFromJson(jsonString) async {
   }
 }
 
+Future<void> restoreHistoryFromJson(jsonString) async {
+  if (jsonString.isEmpty) return;
+
+  Map<String, dynamic> data = jsonDecode(jsonString);
+  // get name and entries fields, and get content in entries as system msg
+  String name = data['name'] ?? '未命名故事';
+  List<dynamic> entries = data['entries'] ?? [];
+
+  List<Message> messages = [];
+  for (var entry in entries) {
+    if (entry is Map<String, dynamic> && entry.containsKey('content')) {
+      messages.add(Message(message: entry['content'], type: Message.system));
+    }
+  }
+
+  if (messages.isNotEmpty) {
+    String msgJson = msgListToJson(messages);
+    await addHistory(msgJson, name);
+  }
+}
+
+Future<bool> downloadHistorytoJson(String name, List<String> msgs) async {
+  List<Map<String, dynamic>> entries = [];
+  for (int i = 0; i < msgs.length; i++) {
+    entries.add({
+      'keys': [],
+      'content': msgs[i],
+      'extensions': {},
+      'enabled': true,
+      'insertion_order': i,
+      'constant': true, // Always include in the prompt
+    });
+  }
+
+  Map<String, dynamic> characterBook = {
+    'name': name,
+    'description': '', // You can add a description if available
+    'extensions': {},
+    'entries': entries,
+  };
+
+  return writeFile(jsonEncode(characterBook));
+}
+
 Future<String?> pickFile() async{
   FilePickerResult? result = await FilePicker.platform.pickFiles(type:FileType.custom, allowedExtensions: ['json']);
   if(result != null) {
@@ -511,6 +550,40 @@ Future<void> loadCharacterCard(context) async {
       for (String key in data.keys) {
         if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
           prefs.setString(key, data[key].replaceAll('<user>', '{{user}}'));
+        }
+        if (key == "character_book") {
+            final characterBook = data['character_book'];
+            if (characterBook != null && characterBook is Map<String, dynamic>) {
+            final bool? confirmImport = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('导入角色书'),
+                content: const Text('检测到角色卡中包含角色书，是否将其作为故事导入？'),
+                actions: <Widget>[
+                TextButton(
+                  child: const Text('取消'),
+                  onPressed: () {
+                  Navigator.of(context).pop(false);
+                  },
+                ),
+                TextButton(
+                  child: const Text('导入'),
+                  onPressed: () {
+                  Navigator.of(context).pop(true);
+                  },
+                ),
+                ],
+              );
+              },
+            );
+
+            if (confirmImport == true) {
+              final String bookJsonString = jsonEncode(characterBook);
+              await restoreHistoryFromJson(bookJsonString);
+              snackBarAlert(context, '角色书已作为故事导入。');
+            }
+          }
         }
       }
     }

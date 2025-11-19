@@ -29,6 +29,50 @@ class MsgEditorState extends State<MsgEditor> {
     }
   }
 
+  Future<void> _editMessage(int index) async {
+    final TextEditingController controller = TextEditingController(text: widget.msgs[index].message);
+    final newMessage = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('编辑消息'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          decoration: const InputDecoration(hintText: '消息内容'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, controller.text);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+
+    if (newMessage != null && newMessage.isNotEmpty) {
+      setState(() {
+        widget.msgs[index].message = newMessage;
+      });
+    }
+  }
+
+  void _moveItem(int oldIndex, int newIndex) {
+    setState(() {
+      final Message item = widget.msgs.removeAt(oldIndex);
+      widget.msgs.insert(newIndex, item);
+
+      final bool selectedState = selected.removeAt(oldIndex);
+      selected.insert(newIndex, selectedState);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,8 +98,15 @@ class MsgEditorState extends State<MsgEditor> {
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    widget.msgs.removeWhere((element) => selected[widget.msgs.indexOf(element)]);
-                    selected.removeWhere((element) => element);
+                    // Create a list of items to remove to avoid concurrent modification issues
+                    final List<Message> toRemove = [];
+                    for (int i = 0; i < selected.length; i++) {
+                      if (selected[i]) {
+                        toRemove.add(widget.msgs[i]);
+                      }
+                    }
+                    widget.msgs.removeWhere((msg) => toRemove.contains(msg));
+                    selected.removeWhere((isSelected) => isSelected);
                   });
                 },
                 child: const Text('删除'),
@@ -75,10 +126,28 @@ class MsgEditorState extends State<MsgEditor> {
               itemCount: widget.msgs.length,
               itemBuilder: (context, index) {
                 return GestureDetector(
+                  key: ValueKey(widget.msgs[index]),
                   child: Card(
                     child: ListTile(
                       selected: selected[index],
                       title: Text(typeDesc(widget.msgs[index].type)+widget.msgs[index].message,maxLines: 2,overflow: TextOverflow.ellipsis,),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_upward),
+                            onPressed: index > 0 ? () => _moveItem(index, index - 1) : null,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_downward),
+                            onPressed: index < widget.msgs.length - 1 ? () => _moveItem(index, index + 1) : null,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _editMessage(index),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   onHorizontalDragEnd: (details) {
