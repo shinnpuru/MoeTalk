@@ -40,7 +40,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
       if (mounted) setState(() => endPrompt.text = value);
     });
     getSummaryPrompt().then((value) {
-      if (mounted) setState(() => endPrompt.text = value);
+      if (mounted) setState(() => summaryPrompt.text = value);
     });
   }
 
@@ -110,7 +110,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
               setStatusPrompt(statusPrompt.text);
               setInspirePrompt(inspirePrompt.text);
               setDrawPrompt(drawPrompt.text);
-              setEndPrompt(drawPrompt.text);
+              setEndPrompt(endPrompt.text);
               setSummaryPrompt(summaryPrompt.text);
               Navigator.of(context).pop();
             },
