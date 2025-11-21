@@ -202,118 +202,128 @@ class ConfigPageState extends State<ConfigPage> {
             const ListTile(
               title: Text('预设管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: '名称'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  child: const Text('保存预设'),
-                  onPressed: () {
-                    if (nameController.text.isEmpty ||
-                        urlController.text.isEmpty ||
-                        keyController.text.isEmpty ||
-                        modelController.text.isEmpty) {
-                      snackBarAlert(context, "请填写所有字段");
-                    } else {
-                      saveConfig();
-                      snackBarAlert(context, "保存成功");
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            DropdownButton<String>(
-              value: selectedConfig,
-              hint: const Text('选择预设'),
-              isExpanded: true,
-              items: apiConfigs.map((Config config) {
-                return DropdownMenuItem<String>(
-                  value: config.name,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child:  Column(
+                children: [
+                  Row(
                     children: [
-                      Text(config.name),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(labelText: '名称'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        child: const Text('保存预设'),
                         onPressed: () {
-                          deleteConfirm(context, config.name);
+                          if (nameController.text.isEmpty ||
+                              urlController.text.isEmpty ||
+                              keyController.text.isEmpty ||
+                              modelController.text.isEmpty) {
+                            snackBarAlert(context, "请填写所有字段");
+                          } else {
+                            saveConfig();
+                            snackBarAlert(context, "保存成功");
+                          }
                         },
                       ),
                     ],
                   ),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  selectedConfig = newValue;
-                  for (Config c in apiConfigs) {
-                    if (c.name == newValue) {
-                      nameController.text = c.name;
-                      urlController.text = c.baseUrl;
-                      keyController.text = c.apiKey;
-                      modelController.text = c.model;
-                      temperatureController.text = c.temperature ?? "";
-                      frequencyPenaltyController.text = c.frequencyPenalty ?? "";
-                      presencePenaltyController.text = c.presencePenalty ?? "";
-                      maxTokensController.text = c.maxTokens ?? "";
-                      widget.updateFunc(c);
-                      break;
-                    }
-                  }
-                });
-                setCurrentApiConfig(selectedConfig!);
-              },
+                  const SizedBox(height: 20),
+                  DropdownButton<String>(
+                  value: selectedConfig,
+                  hint: const Text('选择预设'),
+                  isExpanded: true,
+                  items: apiConfigs.map((Config config) {
+                    return DropdownMenuItem<String>(
+                      value: config.name,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(config.name),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              deleteConfirm(context, config.name);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedConfig = newValue;
+                      for (Config c in apiConfigs) {
+                        if (c.name == newValue) {
+                          nameController.text = c.name;
+                          urlController.text = c.baseUrl;
+                          keyController.text = c.apiKey;
+                          modelController.text = c.model;
+                          temperatureController.text = c.temperature ?? "";
+                          frequencyPenaltyController.text = c.frequencyPenalty ?? "";
+                          presencePenaltyController.text = c.presencePenalty ?? "";
+                          maxTokensController.text = c.maxTokens ?? "";
+                          widget.updateFunc(c);
+                          break;
+                        }
+                      }
+                    });
+                    setCurrentApiConfig(selectedConfig!);
+                  },
+                ),
+                ]
+              )
             ),
-            const Divider(),
             const SizedBox(height: 20),
             const ListTile(
               title: Text('配置参数', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(labelText: 'API地址'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: keyController,
-              decoration: const InputDecoration(labelText: 'API密钥'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: modelController,
-              decoration: const InputDecoration(labelText: '模型'),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: temperatureController,
-                    decoration: const InputDecoration(labelText: '温度'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [DecimalTextInputFormatter()],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child:  Column(
+                children: [
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: urlController,
+                    decoration: const InputDecoration(labelText: 'API地址'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: frequencyPenaltyController,
-                    decoration: const InputDecoration(labelText: '频率惩罚（可选）'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [DecimalTextInputFormatter()],
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: keyController,
+                    decoration: const InputDecoration(labelText: 'API密钥'),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: modelController,
+                    decoration: const InputDecoration(labelText: '模型'),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: temperatureController,
+                          decoration: const InputDecoration(labelText: '温度'),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [DecimalTextInputFormatter()],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: frequencyPenaltyController,
+                          decoration: const InputDecoration(labelText: '频率惩罚（可选）'),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [DecimalTextInputFormatter()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
               children: [
                 Expanded(
                   child: TextField(
@@ -334,6 +344,9 @@ class ConfigPageState extends State<ConfigPage> {
                 ),
               ],
             ),
+                ]
+              )
+            )
           ],
         ),
         )

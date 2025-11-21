@@ -21,10 +21,11 @@ class MsgEditorState extends State<MsgEditor> {
 
   String typeDesc(int type){
     switch(type){
-      case Message.user: return "U ";
-      case Message.assistant: return "A ";
-      case Message.system: return "S ";
-      case Message.timestamp: return "T ";
+      case Message.user: return "用户";
+      case Message.assistant: return "角色";
+      case Message.system: return "系统";
+      case Message.timestamp: return "设计";
+      case Message.image: return "图像";
       default: return "? ";
     }
   }
@@ -73,11 +74,41 @@ class MsgEditorState extends State<MsgEditor> {
     });
   }
 
+  void _cycleType(int index) {
+    setState(() {
+      final msg = widget.msgs[index];
+      if (msg.type == Message.user) {
+        msg.type = Message.assistant;
+      } else if (msg.type == Message.assistant) {
+        msg.type = Message.system;
+      } else if (msg.type == Message.system) {
+        msg.type = Message.timestamp;
+      } else {
+        msg.type = Message.user;
+      }
+    });
+  }
+
+  void _addMessage() {
+    setState(() {
+      widget.msgs.add(Message(message: "",type: Message.system));
+      selected.add(false);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('消息编辑器'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.pop(context, widget.msgs);
+            }, 
+            icon: const Icon(Icons.save),
+          )
+        ],
       ),
       body: Column(
         children: <Widget>[
@@ -89,10 +120,25 @@ class MsgEditorState extends State<MsgEditor> {
                 onPressed: () {
                   lastSwipe = -1;
                   setState(() {
+                    selected.fillRange(0, selected.length, true);
+                  });
+                },
+                child: const Text('全选'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  lastSwipe = -1;
+                  setState(() {
                     selected.fillRange(0, selected.length, false);
                   });
                 },
                 child: const Text('全不选'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _addMessage,
+                child: const Text('添加'),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -111,13 +157,6 @@ class MsgEditorState extends State<MsgEditor> {
                 },
                 child: const Text('删除'),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, widget.msgs);
-                },
-                child: const Text('确认'),
-              ),
             ],
           )
           ),
@@ -129,8 +168,14 @@ class MsgEditorState extends State<MsgEditor> {
                   key: ValueKey(widget.msgs[index]),
                   child: Card(
                     child: ListTile(
+                      leading: InkWell(
+                        onTap: () => _cycleType(index),
+                        child: CircleAvatar(
+                          child: Text(typeDesc(widget.msgs[index].type).trim()),
+                        ),
+                      ),
                       selected: selected[index],
-                      title: Text(typeDesc(widget.msgs[index].type)+widget.msgs[index].message,maxLines: 2,overflow: TextOverflow.ellipsis,),
+                      title: Text(widget.msgs[index].message,maxLines: 2,overflow: TextOverflow.ellipsis,),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

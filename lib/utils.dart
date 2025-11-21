@@ -113,27 +113,46 @@ String timestampToSystemMsg(String timestr) {
   return "下面的对话开始于 $result";
 }
 
-Future<List<List<String>>> parseMsg(List<Message> messages) async {
-  final start = await getStartPrompt();
-  final prompt = await getPrompt();
-  final end = await getEndPrompt();
+Future<List<List<String>>> parseMsg(List<Message> messages, List<Message> story, List<Message> function) async {
+  final List<Message> template = await getContextTemplate();
 
   final List<List<String>> msg = [];
-  msg.add(["system", start]);
-  msg.add(["system", prompt]);
-  for (var m in messages) {
-    if (m.type == Message.assistant) {
-      msg.add(["assistant",m.message]);
-    } else if (m.type == Message.user) {
-      msg.add(["user",m.message]);
-    } else if (m.type == Message.system) {
-      msg.add(["system",m.message]);
-    } else if (m.type == Message.timestamp) {
-      var timestr = timestampToSystemMsg(m.message);
-      msg.add(["system","下面的对话开始于$timestr"]);
+  
+  for (var t in template) {
+    if (t.message == "charDescription") {
+      final prompt = await getPrompt();
+      msg.add(["system", prompt]);
+    } else if (t.message == "chatHistory") {
+      for (var m in messages) {
+        if (m.type == Message.assistant) {
+          msg.add(["assistant",m.message]);
+        } else if (m.type == Message.user) {
+          msg.add(["user",m.message]);
+        } else if (m.type == Message.system) {
+          msg.add(["system",m.message]);
+        } else if (m.type == Message.timestamp) {
+          var timestr = timestampToSystemMsg(m.message);
+          msg.add(["system","下面的对话开始于$timestr"]);
+        }
+      }
+    } else if (t.message == "worldInfo") {
+      for (var m in story) {
+        msg.add(["system", m.message]);
+      }
+    } else if (t.message == "callFunction") {
+      for (var m in function) {
+        msg.add(["system", m.message]);
+      } 
+    }else {
+      String role = "system";
+      if (t.type == Message.user) {
+        role = "user";
+      } else if (t.type == Message.assistant) {
+        role = "assistant";
+      }
+      msg.add([role, t.message]);
     }
   }
-  msg.add(["system", end]);
 
   // replace placeholders
   final userName = await getUserName();

@@ -85,17 +85,31 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            TextField(
-              controller: _apiController,
-              decoration: const InputDecoration(labelText: "API地址"),
-              minLines: 1,
-              maxLines: 3,
+            const ListTile(
+              title: Text("基础配置",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
             ),
-            TextField(
-              controller: _vitsPrompt,
-              decoration: const InputDecoration(labelText: "音频参考"),
-              minLines: 1,
-              maxLines: 3,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child:  Column(
+                children: [
+                  TextField(
+                    controller: _apiController,
+                    decoration: const InputDecoration(labelText: "API地址"),
+                    minLines: 1,
+                    maxLines: 3,
+                  ),
+                  TextField(
+                    controller: _vitsPrompt,
+                    decoration: const InputDecoration(labelText: "音频参考"),
+                    minLines: 1,
+                    maxLines: 3,
+                  ),
+                ]
+              )
             ),
             const SizedBox(height: 16),
             const ListTile(
@@ -105,14 +119,21 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
             ),
-            _buildSlider("快乐", _happy, (val) => setState(() => _happy = val)),
-            _buildSlider("悲伤", _sad, (val) => setState(() => _sad = val)),
-            _buildSlider("愤怒", _angry, (val) => setState(() => _angry = val)),
-            _buildSlider("恐惧", _afraid, (val) => setState(() => _afraid = val)),
-            _buildSlider("厌恶", _disgusted, (val) => setState(() => _disgusted = val)),
-            _buildSlider("忧郁", _melancholic, (val) => setState(() => _melancholic = val)),
-            _buildSlider("惊讶", _surprised, (val) => setState(() => _surprised = val)),
-            _buildSlider("平静", _calm, (val) => setState(() => _calm = val)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child:  Column(
+                children: [
+                  _buildSlider("快乐", _happy, (val) => setState(() => _happy = val)),
+                  _buildSlider("悲伤", _sad, (val) => setState(() => _sad = val)),
+                  _buildSlider("愤怒", _angry, (val) => setState(() => _angry = val)),
+                  _buildSlider("恐惧", _afraid, (val) => setState(() => _afraid = val)),
+                  _buildSlider("厌恶", _disgusted, (val) => setState(() => _disgusted = val)),
+                  _buildSlider("忧郁", _melancholic, (val) => setState(() => _melancholic = val)),
+                  _buildSlider("惊讶", _surprised, (val) => setState(() => _surprised = val)),
+                  _buildSlider("平静", _calm, (val) => setState(() => _calm = val)),
+                ]
+              )
+            )
           ],
         ),
       ),

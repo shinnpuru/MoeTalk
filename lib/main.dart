@@ -62,10 +62,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   final textController = TextEditingController();
   final scrollController = ScrollController();
   final notification = NotificationHelper();
-  late String studentName;
-  late String avatar;
-  late String userName;
-  late DecorationImage backgroundImage;
+  String studentName = "";
+  String avatar = "";
+  String userName = "";
+  DecorationImage? backgroundImage;
   Config config = Config(name: "", baseUrl: "", apiKey: "", model: "");
   String userMsg = "";
   bool inputLock = false;
@@ -359,7 +359,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       inputLock = true;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
+    List<List<String>> msg = await parseMsg(
+      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getEndPrompt(), type: Message.system)]
+    );
     logMsg(msg);
     try {
       String response = "";
@@ -429,8 +431,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getMsg() async {
-    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
-    msg.add(["user", "system instruction:根据上下文，以$userName的口吻用一句话回复$studentName。生成3个不同风格的候选回复，用||分隔。"]);
+    List<List<String>> msg = await parseMsg(
+      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getInspirePrompt(), type: Message.system)]
+    );
     
     String result = "";
     for (var m in msg) {
@@ -533,7 +536,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getDraw() async {
-    List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
+    List<List<String>> msg = await parseMsg(
+      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getDrawPrompt(), type: Message.system)]
+    );
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -641,9 +646,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> getStatus({bool forceGet=false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
-      List<List<String>> msg = await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages);
-      msg.add(["user", "system instruction:之前的状态是$_characterStatus。"]);
-      msg.add(["user", "system instruction:${await getStatusPrompt()}"]);
+    List<List<String>> msg = await parseMsg(
+      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getStatusPrompt(), type: Message.system)]
+      );
       
       String result = "";
       for (var m in msg) {
@@ -781,7 +786,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Colors.white,
             onPressed: () async {
                 if(!context.mounted) return;
-                String? value = await namingHistory(context, "", config, studentName, await parseMsg(currentStory!=null?messages+jsonToMsg(currentStory![2]):messages));
+                String? value = await namingHistory(
+                  context, 
+                  "", 
+                  config, 
+                  await parseMsg(
+                    messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getSummaryPrompt(), type:Message.system)]
+                  )
+                );
                 if (value != null) {
                   debugPrint(value);
                   addHistory(msgListToJson(messages),value);
@@ -1017,7 +1029,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: Icons.auto_awesome,
-                        label: '提示',
+                        label: '灵感',
                         onTap: () {
                           getMsg();
                           setState(() {
@@ -1118,7 +1130,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_download),
-                  label: const Text('导出当前故事'),
+                  label: const Text('导出故事'),
                   onPressed: () async {
                     if (currentStory == null) {
                       snackBarAlert(context, "没有设置当前故事");
@@ -1339,7 +1351,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_upload),
-                  label: const Text('导入当前角色'),
+                  label: const Text('导入角色'),
                   onPressed: () async {
                     // 显示加载对话框
                     showDialog(
@@ -1366,7 +1378,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_download),
-                  label: const Text('导出当前角色'),
+                  label: const Text('导出角色'),
                   onPressed: () async {
                     // 显示加载对话框
                     showDialog(

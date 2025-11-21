@@ -169,10 +169,11 @@ class WebdavPageState extends State<WebdavPage> {
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: () async {
-                  await setWebdav(urlController.text, usernameController.text, passwordController.text);
-                  if(!context.mounted) return;
-                  snackBarAlert(context, 'Saved');
-                }),
+              await setWebdav(urlController.text, usernameController.text, passwordController.text);
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            }),
         ],
       ),
       body: Padding(
