@@ -57,7 +57,6 @@ class Config {
 }
 
 class VitsConfig {
-  String prompt;
   double? happy;
   double? angry;
   double? sad;
@@ -68,7 +67,6 @@ class VitsConfig {
   double? calm;
 
   VitsConfig({
-    required this.prompt,
     this.happy,
     this.angry,
     this.sad,

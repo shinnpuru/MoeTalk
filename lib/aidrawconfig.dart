@@ -142,7 +142,7 @@ class SdConfigPage extends StatelessWidget {
                 children: [
                   TextField(
                     controller: sdPrompt,
-                    decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为占位符)"),
+                    decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为动作占位符，输入 CHAR 作为角色占位符)"),
                     minLines: 2,
                     maxLines: 4,
                   ),

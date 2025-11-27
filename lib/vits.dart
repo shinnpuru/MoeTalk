@@ -21,21 +21,23 @@ Future<void> playAudio(BuildContext context, String audioUrl) async {
 Future<String?> getAudio(BuildContext context, String query) async {
   VitsConfig? vitsConfig = await getVitsConfig();
   String? url = await getVitsUrl();
+  String? prompt = await getVitsPrompt();
   if (url == null || url.isEmpty) {
     url = 'https://indexteam-indextts-2-demo.hf.space/';
   }
   if(!url.endsWith('/')) {
     url += '/';
   }
-  print(query);
+  debugPrint(query);
+  debugPrint(prompt);
   final dio = Dio(BaseOptions(baseUrl: url));
   final response = await dio.post(
     "/gradio_api/call/gen_single",
     data: jsonEncode({"data": [
         "Same as the voice reference",
-        {"path":vitsConfig.prompt,"meta":{"_type":"gradio.FileData"}}, // 语音参考
+        {"path":prompt,"meta":{"_type":"gradio.FileData"}}, // 语音参考
         query, // 语音内容
-        null, // 表请参考
+        null, // 表情参考
         1, // 表情强度
         vitsConfig.happy, // 情绪参数
         vitsConfig.angry,

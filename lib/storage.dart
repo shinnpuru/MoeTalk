@@ -91,23 +91,27 @@ Future<List<Config>> getApiConfigs() async {
   return configs;
 }
 
-// 0:name 1:avatar 2:first_mes 3:description 4:timestamp
+// 0:name 1:avatar 2:first_mes 3:description 4:timestamp 5:draw_char_prompt 6:vits_prompt
 Future<List<List<String>>> getStudents() async{
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<List<String>> students = [];
   Set<String> keys = prefs.getKeys();
   for (String key in keys) {
     if (key.startsWith("student_")) {
-      students.add(prefs.getStringList(key) ?? ["","","","",""]);
+      List<String> data = prefs.getStringList(key) ?? ["","","","",""];
+      while(data.length < 7) {
+        data.add("");
+      }
+      students.add(data);
     }
   }
   return students;
 }
 
-Future<void> addStudent(String name, String avatar, String firstMes, String description) async {
+Future<void> addStudent(String name, String avatar, String firstMes, String description, String drawCharPrompt, String vitsPrompt) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp]);
+  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp,drawCharPrompt,vitsPrompt]);
 }
 
 Future<void> deleteStudent(String key) async {
@@ -269,6 +273,20 @@ Future<String?> getVitsUrl() async {
   return url;
 }
 
+Future<void> setVitsPrompt(String url) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("vits_prompt", url);
+}
+
+Future<String> getVitsPrompt({bool isDefault=false}) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? prompt = prefs.getString("vits_prompt");
+  if (prompt == null || prompt.isEmpty || isDefault) {
+    return r"assets/tyc-samplevoice-1-titlecall.wav";
+  }
+  return prompt;
+}
+
 Future<void> setDrawUrl(String url) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("draw_url", url);
@@ -283,6 +301,19 @@ Future<String?> getDrawUrl() async {
   return url;
 }
 
+Future<void> setDrawCharPrompt(String url) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("draw_char_prompt", url);
+}
+
+Future<String> getDrawCharPrompt({bool isDefault=false}) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? prompt = prefs.getString("draw_char_prompt");
+  if (prompt == null || prompt.isEmpty || isDefault) {
+    return "";
+  }
+  return prompt;
+}
 Future<void> setDrawPrompt(String format) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("draw_prompt", format);
@@ -393,7 +424,6 @@ Future<String> getResponseRegex() async {
 Future<void> setVitsConfig(VitsConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = [
-    config.prompt, 
     config.happy?.toString()??'',
     config.angry?.toString()??'',
     config.sad?.toString()??'',
@@ -408,21 +438,17 @@ Future<void> setVitsConfig(VitsConfig config) async {
 
 Future<VitsConfig> getVitsConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("vits_config") ?? ['','0','0','0','0','0','0','0','0'];
+  List<String> configList = prefs.getStringList("vits_config") ?? ['0','0','0','0','0','0','0','0'];
   final memConfig = VitsConfig(
-    prompt: configList[0],
-    happy: double.tryParse(configList[1]) ,
-    angry: double.tryParse(configList[2]) ,
-    sad: double.tryParse(configList[3]) ,
-    afraid: double.tryParse(configList[4]) ,
-    disgusted: double.tryParse(configList[5]) ,
-    melancholic: double.tryParse(configList[6]) ,
-    surprised: double.tryParse(configList[7]) ,
-    calm: double.tryParse(configList[8]) ,
+    happy: double.tryParse(configList[0]) ,
+    angry: double.tryParse(configList[1]) ,
+    sad: double.tryParse(configList[2]) ,
+    afraid: double.tryParse(configList[3]) ,
+    disgusted: double.tryParse(configList[4]) ,
+    melancholic: double.tryParse(configList[5]) ,
+    surprised: double.tryParse(configList[6]) ,
+    calm: double.tryParse(configList[7]) ,
   );
-  if(memConfig.prompt.isEmpty) {
-    memConfig.prompt = "https://static.wikitide.net/bluearchivewiki/c/ca/Mika_Cafe_monolog_1.ogg";
-  }
   return memConfig;
 }
 
@@ -441,16 +467,16 @@ Future<SdConfig> getSdConfig() async {
     sampler: configList[3], width: int.tryParse(configList[4]), height: int.tryParse(configList[5]),
     steps: int.tryParse(configList[6]), cfg: int.tryParse(configList[7]));
   if(memConfig.prompt.isEmpty) {
-    memConfig.prompt = '1girl, VERB, masterpiece, high score, great score, absurdres';
+    memConfig.prompt = '1girl, CHAR, VERB, masterpiece, best quality, newest, absurdres, highres, safe,';
   }
   if(memConfig.negativePrompt.isEmpty) {
-    memConfig.negativePrompt = 'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry';
+    memConfig.negativePrompt = 'nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro';
   }
   if(memConfig.model.isEmpty) {
-    memConfig.model = 'cagliostrolab/animagine-xl-4.0';
+    memConfig.model = 'Laxhar/noobai-XL-Vpred-1.0';
   }
   if(memConfig.sampler.isEmpty) {
-    memConfig.sampler = 'Euler a';
+    memConfig.sampler = 'Euler';
   }
   memConfig.width ??= 1024;
   memConfig.height ??= 1600;
@@ -637,6 +663,18 @@ Future<void> loadCharacterCard(context) async {
           }
         }
       }
+
+      if (data.containsKey("extensions")) {
+        final extensions = data["extensions"];
+        if (extensions is Map<String, dynamic>) {
+          if (extensions.containsKey("draw_prompt")) {
+            await prefs.setString("draw_char_prompt", extensions["draw_prompt"]);
+          }
+          if (extensions.containsKey("vits_prompt")) {
+            await prefs.setString("vits_prompt", extensions["vits_prompt"]);
+          }
+        }
+      }
     }
 
     // 8. 如果是 PNG 文件，则转为 Base64 存储头像
@@ -654,10 +692,11 @@ Future<void> loadCharacterCard(context) async {
 Future<void> downloadCharacterCard(context) async {
   try {
     // 1. 收集角色数据
-    final prefs = await SharedPreferences.getInstance();
     final name = await getStudentName();
     final description = await getPrompt();
     final firstMes = await getOriginalMsg();
+    final drawCharPrompt = await getDrawCharPrompt();
+    final vitsPrompt = await getVitsPrompt();
 
     final characterData = {
       "spec": "chara_card_v2",
@@ -666,6 +705,10 @@ Future<void> downloadCharacterCard(context) async {
         "name": name,
         "description": description,
         "first_mes": firstMes,
+        "extensions": {
+          "draw_prompt": drawCharPrompt,
+          "vits_prompt": vitsPrompt
+        }
       }
     };
 

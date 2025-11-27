@@ -16,6 +16,8 @@ class PromptEditorState extends State<PromptEditor> {
   TextEditingController studentNameController = TextEditingController();
   TextEditingController originMsgController = TextEditingController();
   TextEditingController studentAvatarController = TextEditingController();
+  TextEditingController drawCharPromptController = TextEditingController();
+  TextEditingController vitsPromptController = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +40,16 @@ class PromptEditorState extends State<PromptEditor> {
     getOriginalMsg().then((String value) {
       setState(() {
         originMsgController.text = value;
+      });
+    });
+    getDrawCharPrompt().then((String value) {
+      setState(() {
+        drawCharPromptController.text = value;
+      });
+    });
+    getVitsPrompt().then((String value) {
+      setState(() {
+        vitsPromptController.text = value;
       });
     });
   }
@@ -112,6 +124,8 @@ class PromptEditorState extends State<PromptEditor> {
               studentNameController.text = await getStudentName(isDefault: true);
               originMsgController.text = await getOriginalMsg(isDefault: true);
               studentAvatarController.text = await getAvatar(isDefault: true);
+              drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
+              vitsPromptController.text = await getVitsPrompt(isDefault: true);
               setState(() {});
             },
           ),
@@ -123,6 +137,8 @@ class PromptEditorState extends State<PromptEditor> {
               setStudentName(studentNameController.text);
               setOriginalMsg(originMsgController.text);
               setAvatar(studentAvatarController.text);
+              setDrawCharPrompt(drawCharPromptController.text);
+              setVitsPrompt(vitsPromptController.text);
               Navigator.pop(context);
             },
           ),
@@ -132,7 +148,7 @@ class PromptEditorState extends State<PromptEditor> {
         padding: const EdgeInsets.all(8.0),
         children: <Widget>[
           const ListTile(
-            title: Text('角色头像'),
+            title: Text('角色头像（点击更换）'),
           ),
           GestureDetector(
             onTap: _pickAvatar,
@@ -168,7 +184,7 @@ class PromptEditorState extends State<PromptEditor> {
                 multiLine: true),
           ),
           ListTile(
-            title: const Text('提示词'),
+            title: const Text('设定提示词'),
             subtitle: Text(
               controller.text,
               maxLines: null,
@@ -176,7 +192,27 @@ class PromptEditorState extends State<PromptEditor> {
               style: const TextStyle(fontFamily: "Courier"),
             ),
             onTap: () =>
-                _showEditDialog(context, '提示词', controller, multiLine: true),
+                _showEditDialog(context, '设定提示词', controller, multiLine: true),
+          ),
+          ListTile(
+            title: const Text('绘画提示词'),
+            subtitle: Text(
+              drawCharPromptController.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => _showEditDialog(context, '绘画提示词', drawCharPromptController,
+                multiLine: true),
+          ),
+          ListTile(
+            title: const Text('语音参考'),
+            subtitle: Text(
+              vitsPromptController.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => _showEditDialog(context, '语音参考', vitsPromptController,
+                multiLine: true),
           ),
         ],
       ),

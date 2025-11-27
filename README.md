@@ -4,10 +4,10 @@
 </div>
 
 <div align="center">
-中文 | <a href="README_EN.md">English</a>
+<a href="README.md">中文</a> | <a href="README_EN.md">English</a>
 </div>
 
-# 💖 MoeTalk - 你的随身 AI 伴侣
+# MoeTalk - 你的随身 AI 伴侣
 
 **将你最喜欢的角色带入现实！** 
 
@@ -79,6 +79,10 @@ MoeTalk 是一个渐进式 Web 应用 (PWA)，这意味着你可以将其“安�
 ## 🤝 贡献
 
 欢迎贡献！如果你有关于新功能、错误修复或改进的想法，请随时提出 issue 或提交 pull request。
+
+## 💖 感谢
+
+本软件基于[MisonoTalk](https://github.com/k96e/MisonoTalk)进行二次开发，使用了[DiffuseCraft](https://huggingface.co/spaces/r3gm/DiffuseCraft)和[IndexTTS](https://huggingface.co/spaces/IndexTeam/IndexTTS-2-Demo)作为后端。样例声音来自[つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
 
 ## 📄 许可证
 

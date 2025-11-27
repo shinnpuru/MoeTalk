@@ -13,7 +13,6 @@ class VitsConfigPage extends StatefulWidget {
 
 class _VitsConfigPageState extends State<VitsConfigPage> {
   late TextEditingController _apiController;
-  late TextEditingController _vitsPrompt;
   late double _happy;
   late double _sad;
   late double _angry;
@@ -34,7 +33,6 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
     });
 
     final vitsConfig = widget.vitsConfig;
-    _vitsPrompt = TextEditingController(text: vitsConfig.prompt);
     _happy = vitsConfig.happy ?? 0.0;
     _sad = vitsConfig.sad ?? 0.0;
     _angry = vitsConfig.angry ?? 0.0;
@@ -48,7 +46,6 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
   @override
   void dispose() {
     _apiController.dispose();
-    _vitsPrompt.dispose();
     super.dispose();
   }
 
@@ -62,7 +59,6 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
             icon: const Icon(Icons.save),
             onPressed: () {
               VitsConfig updatedConfig = VitsConfig(
-                prompt: _vitsPrompt.text,
                 happy: _happy,
                 sad: _sad,
                 angry: _angry,
@@ -99,12 +95,6 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
                   TextField(
                     controller: _apiController,
                     decoration: const InputDecoration(labelText: "API地址"),
-                    minLines: 1,
-                    maxLines: 3,
-                  ),
-                  TextField(
-                    controller: _vitsPrompt,
-                    decoration: const InputDecoration(labelText: "音频参考"),
                     minLines: 1,
                     maxLines: 3,
                   ),

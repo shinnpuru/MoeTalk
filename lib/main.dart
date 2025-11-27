@@ -1467,6 +1467,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               avatar,
                               await getOriginalMsg(),
                               await getPrompt(),
+                              await getDrawCharPrompt(),
+                              await getVitsPrompt(),
                             );
                           },
                         ),
@@ -1515,6 +1517,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         setAvatar(students[index][1]);
                         setOriginalMsg(students[index][2]);
                         setPrompt(students[index][3]);
+                        setDrawCharPrompt(students[index][5]);
+                        setVitsPrompt(students[index][6]);
                         clearMsg();
                         setState(() {
                           _currentIndex = 0; // Switch to chat page

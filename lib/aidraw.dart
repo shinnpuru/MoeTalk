@@ -97,14 +97,20 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     }
     lastModel = sdConfig.model;
     logController.text = '正在绘画...\n${logController.text}';
+    if(!sdConfig.prompt.contains("CHAR")){
+      sdConfig.prompt+= ", CHAR";
+    }
     if(!sdConfig.prompt.contains("VERB")){
       sdConfig.prompt+= ", VERB";
     }
+    String? charPrompt = await getDrawCharPrompt();
+    String finalPrompt = sdConfig.prompt.replaceAll("VERB", promptController.text).replaceAll("CHAR", charPrompt);
+    debugPrint(finalPrompt);
     final Response response = await dio.post(
       "/gradio_api/call/sd_gen_generate_pipeline",
       data: {
         "data": [
-          sdConfig.prompt.replaceAll("VERB", promptController.text),
+          finalPrompt,
           sdConfig.negativePrompt,
           1,
           sdConfig.steps,

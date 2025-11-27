@@ -1,4 +1,14 @@
-# 💖 MoeTalk - Your AI Companion Anywhere
+<div align="center">
+  <img src="web/favicon.png" width="128" height="128" alt="MoeTalk Logo">
+  
+</div>
+
+<div align="center">
+<a href="README.md">中文</a> | <a href="README_EN.md">English</a>
+</div>
+
+
+# MoeTalk - Your AI Companion Anywhere
 
 **Bring your favorite characters to life!** MoeTalk is an open-source, privacy-first chat application built with Flutter that lets you converse with AI personalities. Powered by large language models (LLMs) for dialogue and diffusion models for image and voice synthesis, your conversations will be more immersive than ever.
 
@@ -66,6 +76,10 @@ Before you start chatting, navigate to the **Settings** page within the app to c
 ## 🤝 Contributing
 
 Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, feel free to open an issue or submit a pull request.
+
+## 💖 Thanks
+
+This software is developed based on [MisonoTalk](https://github.com/k96e/MisonoTalk), using [DiffuseCraft](https://huggingface.co/spaces/r3gm/DiffuseCraft) and [IndexTTS](https://huggingface.co/spaces/IndexTeam/IndexTTS-2-Demo) as backends。Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
 
 ## 📄 License
 
