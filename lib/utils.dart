@@ -139,7 +139,7 @@ Future<List<List<String>>> parseMsg(List<Message> messages, List<Message> story,
       }
     } else if (t.message == "callFunction") {
       for (var m in function) {
-        msg.add(["system", m.message]);
+        msg.add(["user", m.message]);
       } 
     }else {
       String role = "system";

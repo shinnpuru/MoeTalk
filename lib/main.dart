@@ -56,6 +56,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 0;
   bool _isListViewMode = true; // true for list view, false for single view
   int _singleViewIndex = 0;
+  bool _isFullScreen = false; // Add a state variable to control fullscreen mode
   
   // Chat page variables
   final fn = FocusNode();
@@ -709,109 +710,74 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Widget _buildChatPage() {
     return Scaffold(
-      appBar: AppBar(
-        title: const SizedBox(
-            height: 22,
-            child: Image(
-                image: AssetImage("assets/moetalk.png"),
-                fit: BoxFit.fitHeight)),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xfff2a0ac)
-          ),
-        ),
-        actions: <Widget>[
-          // Reset
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            color: Colors.white,
-            onPressed: () {
-              clearMsg();
-              snackBarAlert(context, "已重置");
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.edit,
-              color: Colors.white,
-            ),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'Time',
-                child: Text('时间戳'),
+      appBar: _isFullScreen
+          ? null // Hide the AppBar in fullscreen mode
+          : AppBar(
+              title: const SizedBox(
+                  height: 22,
+                  child: Image(
+                      image: AssetImage("assets/moetalk.png"),
+                      fit: BoxFit.fitHeight)),
+              flexibleSpace: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xfff2a0ac),
+                ),
               ),
-              const PopupMenuItem(
-                value: 'System',
-                child: Text('系统消息'),
-              ),
-              const PopupMenuItem(
-                value: 'Msgs',
-                child: Text('批量编辑'),
-              ),
-            ],
-            onSelected: (String value) async {
-              if (value == 'Time') {
-                if(messages.isEmpty){
-                  return;
-                }
-                if(messages.last.type != Message.timestamp){
-                  setState(() {
-                    messages.add(Message(message: DateTime.now().millisecondsSinceEpoch.toString(), type: Message.timestamp));
-                  });
-                }
-              } else if (value == 'System') {
-                systemPopup(context, "", (String edited,bool isSend){
-                  setState(() {
-                    if(edited.isNotEmpty){
-                      messages.add(Message(message: edited, type: Message.system));
-                      if(isSend){
-                        sendMsg(true,forceSend: true);
+              actions: <Widget>[
+                // Reset
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  color: Colors.white,
+                  onPressed: () {
+                    clearMsg();
+                    snackBarAlert(context, "已重置");
+                  },
+                ),
+                // Edit
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  color: Colors.white,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MsgEditor(msgs: messages)
+                      )
+                    ).then((msgs){setState(() {});});
+                  }
+                ),
+                // Save
+                IconButton(
+                  icon: const Icon(Icons.save),
+                  color: Colors.white,
+                  onPressed: () async {
+                      if(!context.mounted) return;
+                      String? value = await namingHistory(
+                        context, 
+                        "", 
+                        config, 
+                        await parseMsg(
+                          messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getSummaryPrompt(), type:Message.system)]
+                        )
+                      );
+                      if (value != null) {
+                        debugPrint(value);
+                        addHistory(msgListToJson(messages),value);
+                        if(!context.mounted) return;
+                        snackBarAlert(context, "已保存");
+                        getHistorys().then((List<List<String>> results) {
+                          setState(() {
+                            historys = results;
+                            historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                          });
+                        });
+                      } else {
+                        debugPrint("cancel");
                       }
-                    }
-                  });
-                });
-              }else if (value == 'Msgs') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MsgEditor(msgs: messages)
-                  )
-                ).then((msgs){setState(() {});});
-              }
-            },
-          ),
-          // Save
-          IconButton(
-            icon: const Icon(Icons.save),
-            color: Colors.white,
-            onPressed: () async {
-                if(!context.mounted) return;
-                String? value = await namingHistory(
-                  context, 
-                  "", 
-                  config, 
-                  await parseMsg(
-                    messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getSummaryPrompt(), type:Message.system)]
-                  )
-                );
-                if (value != null) {
-                  debugPrint(value);
-                  addHistory(msgListToJson(messages),value);
-                  if(!context.mounted) return;
-                  snackBarAlert(context, "已保存");
-                  getHistorys().then((List<List<String>> results) {
-                    setState(() {
-                      historys = results;
-                      historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-                    });
-                  });
-                } else {
-                  debugPrint("cancel");
-                }
-            },
-          ),
-        ],
-      ),
+                  },
+                ),
+              ],
+            ),
       body: Container(
         decoration: BoxDecoration(
           image: backgroundImage
@@ -1034,6 +1000,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           getMsg();
                           setState(() {
                             _isToolsExpanded = false;
+                          });
+                        },
+                      ),
+                      // Fullscreen button
+                      _buildToolButton(
+                        icon: _isFullScreen
+                            ? Icons.fullscreen_exit
+                            : Icons.fullscreen,
+                        label: _isFullScreen ? '退出全屏' : '全屏',
+                        onTap: () {
+                          setState(() {
+                            _isFullScreen = !_isFullScreen;
                           });
                         },
                       ),
@@ -1741,7 +1719,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       body: currentPage,
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: _isFullScreen?null:
+      BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {

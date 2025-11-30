@@ -24,7 +24,7 @@ class MsgEditorState extends State<MsgEditor> {
       case Message.user: return "用户";
       case Message.assistant: return "角色";
       case Message.system: return "系统";
-      case Message.timestamp: return "设计";
+      case Message.timestamp: return "时间";
       case Message.image: return "图像";
       default: return "? ";
     }
