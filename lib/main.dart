@@ -407,13 +407,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const AlertDialog(
+        return AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在生成语音...'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text('正在播放语音...'),
+              const SizedBox(height: 16),
+              // Display text here if needed
+              TextField(
+                controller: TextEditingController(text: text),
+                maxLines: 5,
+                minLines: 3,
+                readOnly: true,
+                decoration: const InputDecoration(border: OutlineInputBorder(),),
+                style: const TextStyle(fontSize: 12),
+              ),
             ],
           ),
         );
@@ -540,11 +550,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     List<List<String>> msg = await parseMsg(
       messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getDrawPrompt(), type: Message.system)]
     );
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AiDraw(msg:msg, config: config)
-      )
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AiDraw(msg:msg, config: config)
     ).then((imageUrl){
       if(imageUrl!=null){
         setState(() {

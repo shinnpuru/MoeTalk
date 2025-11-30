@@ -335,106 +335,136 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                showLog = !showLog;
-              });
-            },
-            icon: Icon(showLog?Icons.image:Icons.assignment)
-          ),
-          IconButton(
-            onPressed: () {
-              Navigator.pop(context,imageUrl);
-            },
-            icon: const Icon(Icons.arrow_forward)
-          )
-        ],
-        title: const Text('绘画'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [            
-            TextField(
-              controller: promptController,
-              decoration: InputDecoration(labelText: gptBusy?'生成中...':'提示词'),
-              maxLines: 3,
-              minLines: 1,
-            ),
+          mainAxisSize: MainAxisSize.min,
+          children: [
             const SizedBox(height: 8),
+            if (imageUrl == null) ...[
+              TextField(
+                controller: promptController,
+                decoration: InputDecoration(
+                  labelText: gptBusy ? '生成提示词中...' : '提示词',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: gptBusy || sdBusy ? null : buildPrompt,
+                    tooltip: '重新生成提示词',
+                  ),
+                ),
+                maxLines: 5,
+                minLines: 3,
+                enabled: !gptBusy && !sdBusy,
+              ),
+              const SizedBox(height: 8),
+              if (sdBusy || showLog)
+                TextField(
+                  controller: logController,
+                  maxLines: 5,
+                  minLines: 3,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '日志',),
+                  style: const TextStyle(fontSize: 12),
+                ),
+            ] else ...[
+              Expanded(
+                child: GestureDetector(
+                  onLongPress: () {
+                    launchUrlString(imageUrlRaw ?? imageUrl!);
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      imageUrl!,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    if(gptBusy) return;
-                    buildPrompt();
-                  },
-                  child: const Text('重新提示'),
-                ),
-                const SizedBox(width: 5),
-                ElevatedButton(
-                  onPressed: () {
-                    if(sdBusy) return;
-                    makeRequest().catchError((e) {
-                      snackBarAlert(context, "error! $e");
-                    });
-                  },
-                  child: Text(sdBusy?'处理中...':'开始绘画' ),
-                ),
-                const SizedBox(width: 5),
-                // CancelButton
-                ElevatedButton(
-                  onPressed: () {
-                    cancelToken.cancel();
-                    cancelToken = CancelToken();
-                    sessionHash = null;
-                    logController.text = '';
-                    setState(() {
-                      gptBusy = false;
-                      sdBusy = false;
-                    });
-                  },
-                  child: const Text('取消绘画'),
-                ),
-              ]
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: (imageUrl == null) || showLog
-                ? TextField(
-                    controller: logController,
-                    maxLines: null,
-                    readOnly: true,
-                    decoration: const InputDecoration(border: InputBorder.none),
-                    expands: true,
-                  )
-                : GestureDetector(
-                    onLongPress: () {
-                      launchUrlString(imageUrlRaw==null?imageUrl!:imageUrlRaw!);
+                if (imageUrl == null) ...[
+                  if (sdBusy)
+                    TextButton(
+                      onPressed: () {
+                        cancelToken.cancel();
+                        cancelToken = CancelToken();
+                        setState(() {
+                          sdBusy = false;
+                          showLog = false;
+                        });
+                      },
+                      child: const Text('取消'),
+                    )
+                  else ...[
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('取消'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: gptBusy || promptController.text.isEmpty
+                          ? null
+                          : () {
+                              makeRequest().catchError((e) {
+                                snackBarAlert(context, "error! $e");
+                                setState(() {
+                                  sdBusy = false;
+                                });
+                              });
+                            },
+                      child: const Text('开始'),
+                    ),
+                  ],
+                ] else ...[
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        imageUrl = null;
+                      });
                     },
-                    child: Image.network(imageUrl!,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child;
-                          } else {
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            );
-                          }
-                        }
-                      )
-                  )
+                    child: const Text('返回'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      makeRequest().catchError((e) {
+                        snackBarAlert(context, "error! $e");
+                        setState(() {
+                          sdBusy = false;
+                        });
+                      });
+                    },
+                    child: const Text('重绘'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context, imageUrl);
+                    },
+                    child: const Text('使用'),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
