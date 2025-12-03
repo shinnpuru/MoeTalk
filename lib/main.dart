@@ -94,6 +94,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     getApiConfigs().then((configs) {
       if (configs.isNotEmpty) {
         config = configs[0];
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showWelcomeScreen();
+        });
       }
     });
     getHistorys().then((List<List<String>> results) {
@@ -108,6 +112,87 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         students.sort((a, b) => a[0].compareTo(b[0]));
       });
     });
+  }
+
+void _showWelcomeScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => Scaffold(
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xfff2a0ac),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  '欢迎使用',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(0, 2),
+                        blurRadius: 4.0,
+                        color: Color.fromARGB(64, 0, 0, 0),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Image.asset(
+                    "assets/moetalk.png",
+                    width: 200,
+                    height: 200,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '检测到您尚未配置模型\n为了正常使用，请先进行配置',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 60),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xfff2a0ac),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 4,
+                  ),
+                  child: const Text(
+                    '开始配置',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
