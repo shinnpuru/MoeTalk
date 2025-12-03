@@ -237,3 +237,8 @@ class DecimalTextInputFormatter extends TextInputFormatter {
     return newValue;
   }
 }
+
+String getTimeStr(int timeStamp) {
+  DateTime t = DateTime.fromMillisecondsSinceEpoch(timeStamp);
+  return "${t.year}_${t.month}_${t.day}_${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+}

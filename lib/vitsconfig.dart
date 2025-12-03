@@ -94,7 +94,7 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
                 children: [
                   TextField(
                     controller: _apiController,
-                    decoration: const InputDecoration(labelText: "API地址"),
+                    decoration: const InputDecoration(labelText: "API地址（网页仅支持https）"),
                     minLines: 1,
                     maxLines: 3,
                   ),

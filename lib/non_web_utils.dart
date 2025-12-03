@@ -1,5 +1,6 @@
 // notification_permission_stub.dart
 import 'dart:io';
+import 'utils.dart';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -28,7 +29,7 @@ Future<bool> writePngFile(Uint8List outputBytes) async {
   try {
     String? outputFile = await FilePicker.platform.saveFile(
       dialogTitle: '请保存角色卡',
-      fileName: 'momoAvatar_${DateTime.now().millisecondsSinceEpoch}.png',
+      fileName: 'MoeAvatar_${getTimeStr(DateTime.now().millisecondsSinceEpoch)}.png',
       type: FileType.custom,
       allowedExtensions: ['png'],
     );
@@ -53,8 +54,8 @@ Future<bool> writeFileAndroid(String data) async {
     }
   }
   try {
-    String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-    File file = File('/storage/emulated/0/Download/momoBackup_$timeStamp.json');
+    String timeStamp = getTimeStr(DateTime.now().millisecondsSinceEpoch);
+    File file = File('/storage/emulated/0/Download/MoeBackup_$timeStamp.json');
     await file.writeAsString(data);
     debugPrint('write file: ${file.path}');
     return true;
@@ -68,8 +69,8 @@ Future<bool> writeFileWindows(String data) async {
   try {
     Directory? directory = await getDownloadsDirectory();
     String path = directory?.path ?? '';
-    String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-    File file = File('$path/momoBackup_$timeStamp.json');
+    String timeStamp = getTimeStr(DateTime.now().millisecondsSinceEpoch);
+    File file = File('$path/MoeBackup_$timeStamp.json');
     await file.writeAsString(data);
     debugPrint('write file: ${file.path}');
     return true;

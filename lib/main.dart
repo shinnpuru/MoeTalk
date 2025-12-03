@@ -27,11 +27,11 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // NotificationHelper notificationHelper = NotificationHelper();
   // await notificationHelper.initialize();
-  runApp(const MomotalkApp());
+  runApp(const MoetalkApp());
 }
 
-class MomotalkApp extends StatelessWidget {
-  const MomotalkApp({super.key});
+class MoetalkApp extends StatelessWidget {
+  const MoetalkApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -709,14 +709,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
-  String getTimeStr(int index) {
-    int timeStamp = int.parse(historys[index][1]);
-    DateTime t = DateTime.fromMillisecondsSinceEpoch(timeStamp);
-    const weekday = ["", "一", "二", "三", "四", "五", "六", "日"];
-    return "${t.year}年${t.month}月${t.day}日星期${weekday[t.weekday]}"
-        "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-  }
-
   Widget _buildChatPage() {
     return Scaffold(
       appBar: _isFullScreen
@@ -1186,7 +1178,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       child: ListTile(
                         leading: const Icon(Icons.book),
-                        title: Text(getTimeStr(index)),
+                        title: Text(getTimeStr(int.parse(historys[index][1]))),
                         subtitle: Text(historys[index][0]),
                         onTap: () {
                           setState(() {
@@ -1559,6 +1551,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         children: [
+          const ListTile(
+            title: Text('通用设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          const SizedBox(height: 8),
           Card(
             elevation: 2,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -1617,6 +1613,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
+          const ListTile(
+            title: Text('功能设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
@@ -1673,6 +1672,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
+          const ListTile(
+            title: Text('关于', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
@@ -1698,6 +1700,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     ],
                   ),
                 );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.feedback),
+              title: const Text('反馈'),
+              onTap: () {
+                launchUrlString('https://github.com/shinnpuru/MoeTalk/issues');
               },
             ),
           ),

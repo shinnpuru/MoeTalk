@@ -69,7 +69,7 @@ class SdConfigPage extends StatelessWidget {
                 children: [
                   TextField(
                     controller: apiController,
-                    decoration: const InputDecoration(labelText: "API地址"),
+                    decoration: const InputDecoration(labelText: "API地址（网页仅支持https）"),
                   ),
                   TextField(
                     controller: sdModel,

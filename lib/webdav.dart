@@ -248,7 +248,7 @@ class WebdavPageState extends State<WebdavPage> {
             const Divider(),
             // WebDAV 备份
             const ListTile(
-              title: Text('WebDAV 备份与恢复', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+              title: Text('WebDAV 备份与恢复（网页版不支持）', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),

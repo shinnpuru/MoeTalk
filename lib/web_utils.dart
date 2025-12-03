@@ -1,5 +1,6 @@
 // notification_permission_web.dart
 import 'dart:html' as html;
+import 'utils.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 
@@ -19,7 +20,7 @@ Future<bool> writeFile(String data) async {
     final blob = html.Blob([data], 'text/plain', 'native');
     final url = html.Url.createObjectUrlFromBlob(blob);
     final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', 'momoBackup_${DateTime.now().millisecondsSinceEpoch}.json')
+      ..setAttribute('download', 'MoeBackup_${getTimeStr(DateTime.now().millisecondsSinceEpoch)}.json')
       ..click();
     html.Url.revokeObjectUrl(url);
     return true;
@@ -34,7 +35,7 @@ Future<bool> writePngFile(Uint8List data) async {
     final blob = html.Blob([data], 'image/png', 'native');
     final url = html.Url.createObjectUrlFromBlob(blob);
     final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', 'momoAvatar_${DateTime.now().millisecondsSinceEpoch}.png')
+      ..setAttribute('download', 'MoeAvatar_${getTimeStr(DateTime.now().millisecondsSinceEpoch)}.png')
       ..click();
     html.Url.revokeObjectUrl(url);
     return true;
