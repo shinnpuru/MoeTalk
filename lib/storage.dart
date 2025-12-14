@@ -310,7 +310,7 @@ Future<String> getDrawCharPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("draw_char_prompt");
   if (prompt == null || prompt.isEmpty || isDefault) {
-    return "";
+    return "red hair, blue eyes, cat ears, fluffy animal ears";
   }
   return prompt;
 }

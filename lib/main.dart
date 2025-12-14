@@ -85,7 +85,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    clearMsg();
+    clearMsg(true);
     getTempHistory().then((msg) {
       if (msg != null) {
         loadHistory(msg);
@@ -372,9 +372,9 @@ void _showWelcomeScreen() {
     });
   }
 
-  void clearMsg() {
+  void clearMsg(bool clear) {
     setState(() {
-      messages.clear();
+      if(clear) messages.clear();
       getUserName().then((name) {
         userName = name;
       });
@@ -815,7 +815,7 @@ void _showWelcomeScreen() {
                   icon: const Icon(Icons.refresh),
                   color: Colors.white,
                   onPressed: () {
-                    clearMsg();
+                    clearMsg(true);
                     snackBarAlert(context, "已重置");
                   },
                 ),
@@ -1435,7 +1435,7 @@ void _showWelcomeScreen() {
                       },
                     );
                     await loadCharacterCard(context);
-                    clearMsg();
+                    clearMsg(false);
                     if (!context.mounted) return;
                     Navigator.pop(context);
                   }
@@ -1512,7 +1512,7 @@ void _showWelcomeScreen() {
                                 builder: (context) => const PromptEditor(),
                               ),
                             ).then((_) {
-                              clearMsg();
+                              clearMsg(false);
                               getStudents().then((List<List<String>> results) {
                                 setState(() {
                                   students = results;
@@ -1583,7 +1583,7 @@ void _showWelcomeScreen() {
                         setPrompt(students[index][3]);
                         setDrawCharPrompt(students[index][5]);
                         setVitsPrompt(students[index][6]);
-                        clearMsg();
+                        clearMsg(true);
                         setState(() {
                           _currentIndex = 0; // Switch to chat page
                         });

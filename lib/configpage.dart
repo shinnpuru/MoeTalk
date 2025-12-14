@@ -288,7 +288,7 @@ class ConfigPageState extends State<ConfigPage> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: urlController,
-                    decoration: const InputDecoration(labelText: 'API地址（网页仅支持https）'),
+                    decoration: const InputDecoration(labelText: 'API地址（网页版仅支持https链接）'),
                   ),
                   const SizedBox(height: 10),
                   TextField(

@@ -57,13 +57,35 @@ class PromptEditorState extends State<PromptEditor> {
   Future<void> _pickAvatar() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['png'],
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']
     );
 
-
     if (result != null && result.files.single.bytes != null) {
+      if (result.files.single.size > 1024 * 1024) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('提示'),
+                content: const Text('图片大小不能超过 1MB'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('确定'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return;
+      }
+
       String base64Image = base64Encode(result.files.single.bytes!);
-      final base64String = 'data:image/png;base64,${base64Image}';
+      final base64String = 'data:image/${result.files.single.extension};base64,$base64Image';
       setState(() {
         studentAvatarController.text = base64String;
       });
