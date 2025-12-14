@@ -93,15 +93,18 @@ Future<String?> getAudio(BuildContext context, String query) async {
   }
 }
 
-Future<void> queryAndPlayAudio(BuildContext context, String query) async {
+Future<String> queryAndPlayAudio(BuildContext context, String query) async {
   try {
     final audio = await getAudio(context, query);
     if (audio != null && audio.isNotEmpty) {
       await playAudio(context, audio);
+      return audio;
     } else {
       snackBarAlert(context, "未找到音频数据");
+      return "";
     }
   } catch (e) {
     snackBarAlert(context, "查询或播放音频时出错: $e");
+    return "";
   }
 }

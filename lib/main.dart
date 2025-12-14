@@ -57,7 +57,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isListViewMode = true; // true for list view, false for single view
   int _singleViewIndex = 0;
   bool _isFullScreen = false; // Add a state variable to control fullscreen mode
-  
+  bool _isAutoVoice = false;
+
   // Chat page variables
   final fn = FocusNode();
   final textController = TextEditingController();
@@ -80,6 +81,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   List<String>? currentStory;
   List<List<String>> students = [];
   final Map<String, ImageProvider> _avatarImageCache = {};
+  final Map<String, String> _voiceCache = {};
 
   @override
   void initState() {
@@ -114,7 +116,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     });
   }
 
-void _showWelcomeScreen() {
+  void _showWelcomeScreen() {
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -202,11 +204,11 @@ void _showWelcomeScreen() {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state){
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if(state == AppLifecycleState.resumed){
+    if (state == AppLifecycleState.resumed) {
       isForeground = true;
-      if(isAutoNotification){
+      if (isAutoNotification) {
         isAutoNotification = false;
         notification.cancelAll();
       }
@@ -219,55 +221,55 @@ void _showWelcomeScreen() {
   void didChangeMetrics() {
     super.didChangeMetrics();
     final bottom = WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
-    if(bottom>10 && !keyboardOn){
+    if (bottom > 10 && !keyboardOn) {
       debugPrint("keyboard on");
       keyboardOn = true;
-      if(ModalRoute.of(context)?.isCurrent != true){
+      if (ModalRoute.of(context)?.isCurrent != true) {
         return;
       }
-    } else if(bottom<10 && keyboardOn){
+    } else if (bottom < 10 && keyboardOn) {
       debugPrint("keyboard off");
       keyboardOn = false;
     }
   }
 
-  void updateConfig(Config c){
+  void updateConfig(Config c) {
     config = c;
     debugPrint("update config: ${c.toString()}");
   }
 
-  void onMsgPressed(int index,LongPressStartDetails details){
+  void onMsgPressed(int index, LongPressStartDetails details) {
     HapticFeedback.heavyImpact();
-    if(messages[index].type == Message.assistant){
-      assistantPopup(context, messages[index].message, details, studentName, (String edited){
+    if (messages[index].type == Message.assistant) {
+      assistantPopup(context, messages[index].message, details, studentName, (String edited) {
         debugPrint("edited: $edited");
         edited = edited.replaceAll("\n", "\\");
-        if(edited=="VOICE"){
+        if (edited == "VOICE") {
           getVoice(messages[index].message);
           return;
         }
-        if(edited=="FORMAT"){
+        if (edited == "FORMAT") {
           String msg = messages[index].message.replaceAll(":", "：");
-          String var1="$studentName：",var2="$userName：";
-          List<String> msgs = splitString(msg, [var1,var2]);
+          String var1 = "$studentName：", var2 = "$userName：";
+          List<String> msgs = splitString(msg, [var1, var2]);
           debugPrint("msgs: $msgs");
           setState(() {
             messages.removeAt(index);
-            for(int i=0;i<msgs.length;i++){
-              if(msgs[i].startsWith(var1)){
-                messages.insert(index+i, Message(
-                  message: msgs[i].substring(var1.length), 
+            for (int i = 0; i < msgs.length; i++) {
+              if (msgs[i].startsWith(var1)) {
+                messages.insert(index + i, Message(
+                  message: msgs[i].substring(var1.length),
                   type: Message.assistant));
-              } else if(msgs[i].startsWith(var2)){
-                messages.insert(index+i, Message(
-                  message: msgs[i].substring(var2.length).replaceAll("\\\\", "\\"), 
+              } else if (msgs[i].startsWith(var2)) {
+                messages.insert(index + i, Message(
+                  message: msgs[i].substring(var2.length).replaceAll("\\\\", "\\"),
                   type: Message.user));
               }
             }
           });
           return;
         }
-        if(edited=="DELETE"){
+        if (edited == "DELETE") {
           setState(() {
             messages.removeRange(index, messages.length);
           });
@@ -277,11 +279,11 @@ void _showWelcomeScreen() {
           messages[index].message = edited;
         });
       });
-    } else if(messages[index].type == Message.user){
-      userPopup(context, messages[index].message, details, (String edited,bool isResend){
+    } else if (messages[index].type == Message.user) {
+      userPopup(context, messages[index].message, details, (String edited, bool isResend) {
         debugPrint("edited: $edited");
         edited = edited.replaceAll("\n", "\\");
-        if(edited.isEmpty){
+        if (edited.isEmpty) {
           setState(() {
             messages.removeRange(index, messages.length);
           });
@@ -290,15 +292,15 @@ void _showWelcomeScreen() {
         setState(() {
           messages[index].message = edited;
         });
-        if(isResend){
+        if (isResend) {
           textController.clear();
-          messages.removeRange(index+1, messages.length);
+          messages.removeRange(index + 1, messages.length);
           sendMsg(true);
         }
       });
-    } else if(messages[index].type == Message.timestamp){
-      timePopup(context, int.parse(messages[index].message), details, (bool ifTransfer, DateTime? newTime){
-        if(ifTransfer){
+    } else if (messages[index].type == Message.timestamp) {
+      timePopup(context, int.parse(messages[index].message), details, (bool ifTransfer, DateTime? newTime) {
+        if (ifTransfer) {
           setState(() {
             messages[index].type = Message.system;
             messages[index].message = timestampToSystemMsg(messages[index].message);
@@ -310,10 +312,10 @@ void _showWelcomeScreen() {
           });
         }
       });
-    } else if(messages[index].type == Message.system){
-      systemPopup(context, messages[index].message, (String edited,bool isSend){
+    } else if (messages[index].type == Message.system) {
+      systemPopup(context, messages[index].message, (String edited, bool isSend) {
         debugPrint("edited: $edited");
-        if(edited.isEmpty){
+        if (edited.isEmpty) {
           setState(() {
             messages.removeAt(index);
           });
@@ -321,14 +323,14 @@ void _showWelcomeScreen() {
           setState(() {
             messages[index].message = edited;
           });
-          if(isSend){
-            messages.removeRange(index+1, messages.length);
-            sendMsg(true,forceSend: true);
+          if (isSend) {
+            messages.removeRange(index + 1, messages.length);
+            sendMsg(true, forceSend: true);
           }
         }
       });
-    } else if(messages[index].type == Message.image){
-      imagePopup(context, details, (int edited){
+    } else if (messages[index].type == Message.image) {
+      imagePopup(context, details, (int edited) {
         if (edited == 0) {
           setState(() {
             backgroundImage = DecorationImage(
@@ -341,10 +343,10 @@ void _showWelcomeScreen() {
             );
           });
         }
-        if(edited==2){
+        if (edited == 2) {
           launchUrlString(messages[index].message);
-        } 
-        if(edited==1){
+        }
+        if (edited == 1) {
           setState(() {
             messages.removeAt(index);
           });
@@ -364,7 +366,7 @@ void _showWelcomeScreen() {
   void updateResponse(String response) {
     setState(() {
       response = response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
-      for(var m in response.split("\\")) {
+      for (var m in response.split("\\")) {
         if (m.isEmpty) continue;
         debugPrint("response chunk: $m");
         messages.add(Message(message: m, type: Message.assistant));
@@ -374,15 +376,16 @@ void _showWelcomeScreen() {
 
   void clearMsg(bool clear) {
     setState(() {
-      if(clear) messages.clear();
+      if (clear) messages.clear();
+      _voiceCache.clear();
       getUserName().then((name) {
         userName = name;
       });
-      getStudentName().then((name){
+      getStudentName().then((name) {
         studentName = name;
       });
-      getAvatar().then((avt){
-        avatar = avt;      
+      getAvatar().then((avt) {
+        avatar = avt;
         setState(() {
           backgroundImage = DecorationImage(
             image: (avatar.isNotEmpty && avatar.startsWith('http'))
@@ -399,7 +402,7 @@ void _showWelcomeScreen() {
         });
       });
       getOriginalMsg().then((originalMsg) {
-        for(var m in originalMsg.split("\\")) {
+        for (var m in originalMsg.split("\\")) {
           messages.add(Message(message: m, type: Message.assistant));
         }
         setState(() {
@@ -417,14 +420,14 @@ void _showWelcomeScreen() {
     debugPrint("model: ${config.model}");
   }
 
-  Future<void> sendMsg(bool realSend,{bool forceSend=false}) async {
+  Future<void> sendMsg(bool realSend, {bool forceSend = false}) async {
     if (inputLock) {
       return;
     }
-    if(!forceSend){
-      if((!realSend)||(realSend&&textController.text.isNotEmpty)){
+    if (!forceSend) {
+      if ((!realSend) || (realSend && textController.text.isNotEmpty)) {
         setState(() {
-          if(messages.last.type == Message.user){
+          if (messages.last.type == Message.user) {
             userMsg = "$userMsg\\${textController.text}";
             messages.last.message = userMsg;
           } else {
@@ -437,7 +440,9 @@ void _showWelcomeScreen() {
         setState(() {
           _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
         });
-        if(!realSend){return;}
+        if (!realSend) {
+          return;
+        }
       }
       userMsg = "";
     }
@@ -446,12 +451,12 @@ void _showWelcomeScreen() {
       debugPrint("inputLocked");
     });
     List<List<String>> msg = await parseMsg(
-      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getEndPrompt(), type: Message.system)]
+      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getEndPrompt(), type: Message.system)]
     );
     logMsg(msg);
     try {
       String response = "";
-      await completion(config, msg, 
+      await completion(config, msg,
         (String resp) async {
           resp = resp.replaceAll(RegExp(r'[\n\\]+'), r'\');
           resp = randomizeBackslashes(resp);
@@ -464,7 +469,7 @@ void _showWelcomeScreen() {
           });
           debugPrint("inputUnlocked");
           setTempHistory(msgListToJson(messages));
-        }, (err){
+        }, (err) {
           setState(() {
             inputLock = false;
           });
@@ -477,7 +482,7 @@ void _showWelcomeScreen() {
       });
       debugPrint("inputUnlocked");
       debugPrint(e.toString());
-      if(!mounted) return;
+      if (!mounted) return;
       snackBarAlert(context, e.toString());
     }
   }
@@ -486,6 +491,15 @@ void _showWelcomeScreen() {
     if (text.isEmpty) {
       snackBarAlert(context, "当前消息为空");
       return;
+    }
+
+    if (_voiceCache.containsKey(text)) {
+      try {
+        await playAudio(context, _voiceCache[text]!);
+        return;
+      } catch (e) {
+        _voiceCache.remove(text);
+      }
     }
 
     showDialog(
@@ -516,7 +530,10 @@ void _showWelcomeScreen() {
     );
 
     try {
-      await queryAndPlayAudio(context, text);
+      String? path = await queryAndPlayAudio(context, text);
+      if (path != "") {
+        _voiceCache[text] = path;
+      }
       if (!context.mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
@@ -528,15 +545,15 @@ void _showWelcomeScreen() {
 
   Future<void> getMsg() async {
     List<List<String>> msg = await parseMsg(
-      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getInspirePrompt(), type: Message.system)]
+      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getInspirePrompt(), type: Message.system)]
     );
-    
+
     String result = "";
     for (var m in msg) {
       debugPrint("${m[0]}: ${m[1]}");
     }
     debugPrint("model: ${config.model}");
-    
+
     // 显示加载对话框
     showDialog(
       context: context,
@@ -561,7 +578,7 @@ void _showWelcomeScreen() {
       }, () async {
         debugPrint("done.");
         Navigator.of(context).pop(); // 关闭加载对话框
-        
+
         // 解析生成的候选项
         List<String> candidates = result
             .replaceAll(RegExp(await getResponseRegex()), '')
@@ -569,11 +586,11 @@ void _showWelcomeScreen() {
             .map((e) => e.trim())
             .where((e) => e.isNotEmpty)
             .toList();
-        
+
         if (candidates.isEmpty) {
           candidates = [result.replaceAll(RegExp(await getResponseRegex()), '').trim()];
         }
-        
+
         // 显示候选项选择对话框
         showDialog(
           context: context,
@@ -633,14 +650,14 @@ void _showWelcomeScreen() {
 
   Future<void> getDraw() async {
     List<List<String>> msg = await parseMsg(
-      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getDrawPrompt(), type: Message.system)]
+      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
     );
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AiDraw(msg:msg, config: config)
-    ).then((imageUrl){
-      if(imageUrl!=null){
+      builder: (context) => AiDraw(msg: msg, config: config)
+    ).then((imageUrl) {
+      if (imageUrl != null) {
         setState(() {
           backgroundImage = DecorationImage(
             image: NetworkImage(imageUrl),
@@ -659,7 +676,7 @@ void _showWelcomeScreen() {
     });
   }
 
-  void _showStatusDialog(){
+  void _showStatusDialog() {
     // 编辑器
     final controller = TextEditingController(text: _characterStatus);
     // 显示状态信息对话框
@@ -668,7 +685,7 @@ void _showWelcomeScreen() {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('$studentName的状态'),
-            content: SingleChildScrollView(
+          content: SingleChildScrollView(
             child: MarkdownBody(
               data: _characterStatus!,
             ),
@@ -696,7 +713,7 @@ void _showWelcomeScreen() {
                       ),
                       TextButton(
                         onPressed: () {
-                          if(controller.text.isNotEmpty){
+                          if (controller.text.isNotEmpty) {
                             setState(() {
                               _characterStatus = controller.text;
                             });
@@ -711,7 +728,7 @@ void _showWelcomeScreen() {
                 );
               },
               child: const Text('编辑'),
-            ),            
+            ),
             // 重新查询
             TextButton(
               onPressed: () {
@@ -733,24 +750,23 @@ void _showWelcomeScreen() {
               child: const Text('确认添加'),
             ),
           ],
-          
         );
       },
     );
   }
 
-  Future<void> getStatus({bool forceGet=false}) async {
+  Future<void> getStatus({bool forceGet = false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
-    List<List<String>> msg = await parseMsg(
-      messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getStatusPrompt(), type: Message.system)]
+      List<List<String>> msg = await parseMsg(
+        messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getStatusPrompt(), type: Message.system)]
       );
-      
+
       String result = "";
       for (var m in msg) {
         debugPrint("${m[0]}: ${m[1]}");
       }
       debugPrint("model: ${config.model}");
-      
+
       // 显示加载对话框
       showDialog(
         context: context,
@@ -788,8 +804,7 @@ void _showWelcomeScreen() {
         Navigator.of(context).pop(); // 关闭加载对话框
         snackBarAlert(context, "获取状态失败: $e");
       }
-    }
-    else{
+    } else {
       _showStatusDialog();
     }
   }
@@ -829,7 +844,7 @@ void _showWelcomeScreen() {
                       MaterialPageRoute(
                         builder: (context) => MsgEditor(msgs: messages)
                       )
-                    ).then((msgs){setState(() {});});
+                    ).then((msgs) { setState(() {}); });
                   }
                 ),
                 // Save
@@ -837,19 +852,19 @@ void _showWelcomeScreen() {
                   icon: const Icon(Icons.save),
                   color: Colors.white,
                   onPressed: () async {
-                      if(!context.mounted) return;
+                      if (!context.mounted) return;
                       String? value = await namingHistory(
-                        context, 
-                        "", 
-                        config, 
+                        context,
+                        "",
+                        config,
                         await parseMsg(
-                          messages, currentStory!=null?jsonToMsg(currentStory![2]):[], [Message(message: await getSummaryPrompt(), type:Message.system)]
+                          messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getSummaryPrompt(), type: Message.system)]
                         )
                       );
                       if (value != null) {
                         debugPrint(value);
-                        addHistory(msgListToJson(messages),value);
-                        if(!context.mounted) return;
+                        addHistory(msgListToJson(messages), value);
+                        if (!context.mounted) return;
                         snackBarAlert(context, "已保存");
                         getHistorys().then((List<List<String>> results) {
                           setState(() {
@@ -886,13 +901,13 @@ void _showWelcomeScreen() {
                           SchedulerBinding.instance.addPostFrameCallback((_) {
                             if (scrollController.hasClients) {
                               scrollController.animateTo(
-                                scrollController.position.maxScrollExtent  * _singleViewIndex / (messages.isEmpty ? 1 : messages.length) ,
+                                scrollController.position.maxScrollExtent * _singleViewIndex / (messages.isEmpty ? 1 : messages.length),
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOut,
                               );
                             }
                           });
-                          
+
                           return ListView.builder(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             controller: scrollController,
@@ -937,7 +952,7 @@ void _showWelcomeScreen() {
                         }),
                       )
                     : (messages.isEmpty
-                        ? const Align(alignment: Alignment.bottomCenter,child: Text("没有消息。"))
+                        ? const Align(alignment: Alignment.bottomCenter, child: Text("没有消息。"))
                         : GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
@@ -960,6 +975,9 @@ void _showWelcomeScreen() {
                                     _singleViewIndex = _singleViewIndex == messages.length - 1
                                         ? _singleViewIndex - 1
                                         : _singleViewIndex + 1;
+                                  }
+                                  if (_isAutoVoice && messages[_singleViewIndex].type == Message.assistant) {
+                                    getVoice(messages[_singleViewIndex].message);
                                   }
                                 }
                               });
@@ -1000,10 +1018,10 @@ void _showWelcomeScreen() {
                         child: TextField(
                             focusNode: fn,
                             controller: textController,
-                            onEditingComplete: (){
-                              if(textController.text.isEmpty && userMsg.isNotEmpty){
+                            onEditingComplete: () {
+                              if (textController.text.isEmpty && userMsg.isNotEmpty) {
                                 sendMsg(true);
-                              } else if(textController.text.isNotEmpty){
+                              } else if (textController.text.isNotEmpty) {
                                 sendMsg(false);
                               }
                             },
@@ -1050,7 +1068,7 @@ void _showWelcomeScreen() {
                     children: [
                       _buildToolButton(
                         icon: Icons.monitor_heart,
-                        label: '状态',
+                        label: '查看状态',
                         onTap: () {
                           getStatus();
                           setState(() {
@@ -1060,7 +1078,7 @@ void _showWelcomeScreen() {
                       ),
                       _buildToolButton(
                         icon: Icons.draw,
-                        label: '绘图',
+                        label: '开始绘图',
                         onTap: () {
                           getDraw();
                           setState(() {
@@ -1069,19 +1087,18 @@ void _showWelcomeScreen() {
                         },
                       ),
                       _buildToolButton(
-                        icon: Icons.speaker,
-                        label: '语音',
+                        icon: _isAutoVoice ? Icons.volume_up : Icons.volume_off,
+                        label: _isAutoVoice ? '自动语音' : '手动语音',
                         onTap: () {
-                          debugPrint(_singleViewIndex.toString());
-                          getVoice(messages.isNotEmpty ? messages[_singleViewIndex].message : "");
                           setState(() {
+                            _isAutoVoice = !_isAutoVoice;
                             _isToolsExpanded = false;
                           });
                         },
                       ),
                       _buildToolButton(
                         icon: Icons.auto_awesome,
-                        label: '灵感',
+                        label: '获得灵感',
                         onTap: () {
                           getMsg();
                           setState(() {
@@ -1094,7 +1111,7 @@ void _showWelcomeScreen() {
                         icon: _isFullScreen
                             ? Icons.fullscreen_exit
                             : Icons.fullscreen,
-                        label: _isFullScreen ? '退出全屏' : '全屏',
+                        label: _isFullScreen ? '退出全屏' : '进入全屏',
                         onTap: () {
                           setState(() {
                             _isFullScreen = !_isFullScreen;
@@ -1203,7 +1220,7 @@ void _showWelcomeScreen() {
                     List<Message> storyMsgs = jsonToMsg(currentStory![2]);
                     List<String> msgContents = storyMsgs.map((m) => m.message).toList();
                     bool success = await downloadHistorytoJson(currentStory![0], msgContents);
-                    if(success && context.mounted){
+                    if (success && context.mounted) {
                       snackBarAlert(context, "故事已导出");
                     }
                   },
@@ -1827,7 +1844,7 @@ void _showWelcomeScreen() {
 
     return Scaffold(
       body: currentPage,
-      bottomNavigationBar: _isFullScreen?null:
+      bottomNavigationBar: _isFullScreen ? null :
       BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {

@@ -282,7 +282,7 @@ Future<String> getVitsPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("vits_prompt");
   if (prompt == null || prompt.isEmpty || isDefault) {
-    return r"assets/tyc-samplevoice-1-titlecall.wav";
+    return r"https://raw.githubusercontent.com/shinnpuru/MoeTalk/refs/heads/main/assets/tyc-samplevoice-1-titlecall.wav";
   }
   return prompt;
 }
