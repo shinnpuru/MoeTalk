@@ -89,37 +89,39 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     getLanguage().then((lang) {
-      setState(() {
-        I18n.locale = lang;
-        _characterStatus = I18n.t('no_status');
-      });
-    });
-    clearMsg(true);
-    getTempHistory().then((msg) {
-      if (msg != null) {
-        loadHistory(msg);
-      }
-    });
-    getApiConfigs().then((configs) {
-      if (configs.isNotEmpty) {
-        config = configs[0];
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _showWelcomeScreen();
+      if (mounted) {
+        setState(() {
+          I18n.locale = lang;
+          _characterStatus = I18n.t('no_status');
+        });
+        clearMsg(true);
+        getTempHistory().then((msg) {
+          if (msg != null) {
+            loadHistory(msg);
+          }
+        });
+        getApiConfigs().then((configs) {
+          if (configs.isNotEmpty) {
+            config = configs[0];
+          } else {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _showWelcomeScreen();
+            });
+          }
+        });
+        getHistorys().then((List<List<String>> results) {
+          setState(() {
+            historys = results;
+            historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+          });
+        });
+        getStudents().then((List<List<String>> results) {
+          setState(() {
+            students = results;
+            students.sort((a, b) => a[0].compareTo(b[0]));
+          });
         });
       }
-    });
-    getHistorys().then((List<List<String>> results) {
-      setState(() {
-        historys = results;
-        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-      });
-    });
-    getStudents().then((List<List<String>> results) {
-      setState(() {
-        students = results;
-        students.sort((a, b) => a[0].compareTo(b[0]));
-      });
     });
   }
 
