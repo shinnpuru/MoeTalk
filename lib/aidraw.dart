@@ -367,8 +367,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                   maxLines: 5,
                   minLines: 3,
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
                     labelText: I18n.t('log'),),
                   style: const TextStyle(fontSize: 12),
                 ),
