@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'storage.dart';
+import 'i18n.dart';
 
 import 'utils.dart' show snackBarAlert, Config, DecimalTextInputFormatter;
 
@@ -66,24 +67,24 @@ class ConfigPageState extends State<ConfigPage> {
       barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('确认删除'),
+          title: Text(I18n.t('confirm_delete')),
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('您确定要删除 "$config" 吗？'),
-                const Text('此操作无法撤销。'),
+                Text(I18n.t('delete_confirm_msg').replaceFirst('?', config)),
+                Text(I18n.t('cannot_undo')),
               ],
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('取消'),
+              child: Text(I18n.t('cancel')),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('删除'),
+              child: Text(I18n.t('delete')),
               onPressed: () {
                 setState(() {
                   for (Config c in apiConfigs) {
@@ -148,7 +149,7 @@ class ConfigPageState extends State<ConfigPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('模型配置'),
+        title: Text(I18n.t('model_config')),
         actions: [
           // 初始化
           IconButton(
@@ -199,8 +200,8 @@ class ConfigPageState extends State<ConfigPage> {
         child: 
         SingleChildScrollView(child: Column(
           children: [
-            const ListTile(
-              title: Text('预设管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('preset_manage'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -211,21 +212,21 @@ class ConfigPageState extends State<ConfigPage> {
                       Expanded(
                         child: TextField(
                           controller: nameController,
-                          decoration: const InputDecoration(labelText: '名称'),
+                          decoration: InputDecoration(labelText: I18n.t('name')),
                         ),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
-                        child: const Text('保存预设'),
+                        child: Text(I18n.t('save_preset')),
                         onPressed: () {
                           if (nameController.text.isEmpty ||
                               urlController.text.isEmpty ||
                               keyController.text.isEmpty ||
                               modelController.text.isEmpty) {
-                            snackBarAlert(context, "请填写所有字段");
+                            snackBarAlert(context, I18n.t('please_fill_all'));
                           } else {
                             saveConfig();
-                            snackBarAlert(context, "保存成功");
+                            snackBarAlert(context, I18n.t('save_success'));
                           }
                         },
                       ),
@@ -234,7 +235,7 @@ class ConfigPageState extends State<ConfigPage> {
                   const SizedBox(height: 20),
                   DropdownButton<String>(
                   value: selectedConfig,
-                  hint: const Text('选择预设'),
+                  hint: Text(I18n.t('select_preset')),
                   isExpanded: true,
                   items: apiConfigs.map((Config config) {
                     return DropdownMenuItem<String>(
@@ -278,8 +279,8 @@ class ConfigPageState extends State<ConfigPage> {
               )
             ),
             const SizedBox(height: 20),
-            const ListTile(
-              title: Text('配置参数', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('config_params'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -288,17 +289,17 @@ class ConfigPageState extends State<ConfigPage> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: urlController,
-                    decoration: const InputDecoration(labelText: 'API地址（网页版仅支持https链接）'),
+                    decoration: InputDecoration(labelText: I18n.t('api_url')),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: keyController,
-                    decoration: const InputDecoration(labelText: 'API密钥'),
+                    decoration: InputDecoration(labelText: I18n.t('api_key')),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: modelController,
-                    decoration: const InputDecoration(labelText: '模型'),
+                    decoration: InputDecoration(labelText: I18n.t('model')),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -306,7 +307,7 @@ class ConfigPageState extends State<ConfigPage> {
                       Expanded(
                         child: TextField(
                           controller: temperatureController,
-                          decoration: const InputDecoration(labelText: '温度'),
+                          decoration: InputDecoration(labelText: I18n.t('temperature')),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           inputFormatters: [DecimalTextInputFormatter()],
                         ),
@@ -315,7 +316,7 @@ class ConfigPageState extends State<ConfigPage> {
                       Expanded(
                         child: TextField(
                           controller: frequencyPenaltyController,
-                          decoration: const InputDecoration(labelText: '频率惩罚（可选）'),
+                          decoration: InputDecoration(labelText: I18n.t('frequency_penalty')),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           inputFormatters: [DecimalTextInputFormatter()],
                         ),
@@ -328,7 +329,7 @@ class ConfigPageState extends State<ConfigPage> {
                 Expanded(
                   child: TextField(
                     controller: presencePenaltyController,
-                    decoration: const InputDecoration(labelText: '存在惩罚（可选）'),
+                    decoration: InputDecoration(labelText: I18n.t('presence_penalty')),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [DecimalTextInputFormatter()],
                   ),
@@ -337,7 +338,7 @@ class ConfigPageState extends State<ConfigPage> {
                 Expanded(
                   child: TextField(
                     controller: maxTokensController,
-                    decoration: const InputDecoration(labelText: '最大输出长度'),
+                    decoration: InputDecoration(labelText: I18n.t('max_output_length')),
                     keyboardType: const TextInputType.numberWithOptions(),
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),

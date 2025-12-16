@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'utils.dart' show Message;
+import 'i18n.dart';
 
 class MsgEditor extends StatefulWidget {
   final List<Message> msgs;
@@ -21,12 +22,12 @@ class MsgEditorState extends State<MsgEditor> {
 
   String typeDesc(int type){
     switch(type){
-      case Message.user: return "用户";
-      case Message.assistant: return "角色";
-      case Message.system: return "系统";
-      case Message.timestamp: return "时间";
-      case Message.image: return "图像";
-      default: return "? ";
+      case Message.user: return I18n.t('user');
+      case Message.assistant: return I18n.t('assistant');
+      case Message.system: return I18n.t('system');
+      case Message.timestamp: return I18n.t('time');
+      case Message.image: return I18n.t('image');
+      default: return "${I18n.t('unknown')} ";
     }
   }
 
@@ -35,23 +36,23 @@ class MsgEditorState extends State<MsgEditor> {
     final newMessage = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('编辑消息'),
+        title: Text(I18n.t('msg_editor')),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLines: null,
-          decoration: const InputDecoration(hintText: '消息内容'),
+          decoration: InputDecoration(hintText: I18n.t('msg_content')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(I18n.t('cancel')),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context, controller.text);
             },
-            child: const Text('保存'),
+            child: Text(I18n.t('save')),
           ),
         ],
       ),
@@ -100,7 +101,7 @@ class MsgEditorState extends State<MsgEditor> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('消息编辑器'),
+        title: Text(I18n.t('msg_editor')),
         actions: [
           IconButton(
             onPressed: () {
@@ -123,7 +124,7 @@ class MsgEditorState extends State<MsgEditor> {
                     selected.fillRange(0, selected.length, true);
                   });
                 },
-                child: const Text('全选'),
+                child: Text(I18n.t('select_all')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -133,12 +134,12 @@ class MsgEditorState extends State<MsgEditor> {
                     selected.fillRange(0, selected.length, false);
                   });
                 },
-                child: const Text('全不选'),
+                child: Text(I18n.t('deselect_all')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _addMessage,
-                child: const Text('添加'),
+                child: Text(I18n.t('add')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -155,7 +156,7 @@ class MsgEditorState extends State<MsgEditor> {
                     selected.removeWhere((isSelected) => isSelected);
                   });
                 },
-                child: const Text('删除'),
+                child: Text(I18n.t('delete')),
               ),
             ],
           )

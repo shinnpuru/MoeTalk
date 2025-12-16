@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'storage.dart';
+import 'i18n.dart';
 
 class PromptEditor extends StatefulWidget {
   const PromptEditor({super.key});
@@ -67,11 +68,11 @@ class PromptEditorState extends State<PromptEditor> {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('提示'),
-                content: const Text('图片大小不能超过 1MB'),
+                title: Text(I18n.t('hint')),
+                content: Text(I18n.t('image_size_limit')),
                 actions: <Widget>[
                   TextButton(
-                    child: const Text('确定'),
+                    child: Text(I18n.t('confirm')),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
@@ -100,7 +101,7 @@ class PromptEditorState extends State<PromptEditor> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('编辑 $title'),
+          title: Text('${I18n.t('edit_title')}$title'),
           content: TextField(
             controller: dialogController,
             maxLines: multiLine ? 5 : 1,
@@ -112,13 +113,13 @@ class PromptEditorState extends State<PromptEditor> {
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('取消'),
+              child: Text(I18n.t('cancel')),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('确定'),
+              child: Text(I18n.t('confirm')),
               onPressed: () {
                 setState(() {
                   controller.text = dialogController.text;
@@ -136,7 +137,7 @@ class PromptEditorState extends State<PromptEditor> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('角色编辑器'),
+        title: Text(I18n.t('character_editor')),
         actions: [
           // 初始化
           IconButton(
@@ -169,8 +170,8 @@ class PromptEditorState extends State<PromptEditor> {
       body: ListView(
         padding: const EdgeInsets.all(8.0),
         children: <Widget>[
-          const ListTile(
-            title: Text('角色头像（点击更换）'),
+          ListTile(
+            title: Text(I18n.t('character_avatar')),
           ),
           GestureDetector(
             onTap: _pickAvatar,
@@ -186,27 +187,27 @@ class PromptEditorState extends State<PromptEditor> {
             ),
           ),
           ListTile(
-            title: const Text('角色名'),
+            title: Text(I18n.t('character_name')),
             subtitle: Text(
               studentNameController.text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             onTap: () =>
-                _showEditDialog(context, '角色名', studentNameController),
+                _showEditDialog(context, I18n.t('character_name'), studentNameController),
           ),
           ListTile(
-            title: const Text('初始对话'),
+            title: Text(I18n.t('initial_dialogue')),
             subtitle: Text(
               originMsgController.text,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            onTap: () => _showEditDialog(context, '初始对话', originMsgController,
+            onTap: () => _showEditDialog(context, I18n.t('initial_dialogue'), originMsgController,
                 multiLine: true),
           ),
           ListTile(
-            title: const Text('设定提示词'),
+            title: Text(I18n.t('setting_prompt')),
             subtitle: Text(
               controller.text,
               maxLines: null,
@@ -214,26 +215,26 @@ class PromptEditorState extends State<PromptEditor> {
               style: const TextStyle(fontFamily: "Courier"),
             ),
             onTap: () =>
-                _showEditDialog(context, '设定提示词', controller, multiLine: true),
+                _showEditDialog(context, I18n.t('setting_prompt'), controller, multiLine: true),
           ),
           ListTile(
-            title: const Text('绘画提示词'),
+            title: Text(I18n.t('draw_prompt')),
             subtitle: Text(
               drawCharPromptController.text,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            onTap: () => _showEditDialog(context, '绘画提示词', drawCharPromptController,
+            onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawCharPromptController,
                 multiLine: true),
           ),
           ListTile(
-            title: const Text('语音参考'),
+            title: Text(I18n.t('voice_ref')),
             subtitle: Text(
               vitsPromptController.text,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            onTap: () => _showEditDialog(context, '语音参考', vitsPromptController,
+            onTap: () => _showEditDialog(context, I18n.t('voice_ref'), vitsPromptController,
                 multiLine: true),
           ),
         ],
