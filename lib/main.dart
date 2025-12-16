@@ -22,6 +22,7 @@ import 'formatconfig.dart';
 import 'vitsconfig.dart';
 import 'vits.dart';
 import 'aidrawconfig.dart';
+import 'i18n.dart';
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,7 +76,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool isForeground = true;
   bool isAutoNotification = false;
   bool _isToolsExpanded = false;
-  String? _characterStatus = "暂无状态";
+  String? _characterStatus;
   List<Message> messages = [];
   List<List<String>> historys = [];
   List<String>? currentStory;
@@ -87,6 +88,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    getLanguage().then((lang) {
+      setState(() {
+        I18n.locale = lang;
+        _characterStatus = I18n.t('no_status');
+      });
+    });
     clearMsg(true);
     getTempHistory().then((msg) {
       if (msg != null) {
@@ -130,9 +137,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  '欢迎使用',
-                  style: TextStyle(
+                Text(
+                  I18n.t('welcome'),
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -155,10 +162,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '检测到您尚未配置模型\n为了正常使用，请先进行配置',
+                Text(
+                  I18n.t('no_model_config'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.white70,
                     height: 1.5,
@@ -184,9 +191,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     ),
                     elevation: 4,
                   ),
-                  child: const Text(
-                    '开始配置',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  child: Text(
+                    I18n.t('start_config'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -489,7 +496,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> getVoice(String text) async {
     if (text.isEmpty) {
-      snackBarAlert(context, "当前消息为空");
+      snackBarAlert(context, I18n.t('msg_empty'));
       return;
     }
 
@@ -512,7 +519,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              const Text('正在播放语音...'),
+              Text(I18n.t('playing_voice')),
               const SizedBox(height: 16),
               // Display text here if needed
               TextField(
@@ -539,7 +546,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      snackBarAlert(context, "语音生成失败: $e");
+      snackBarAlert(context, "${I18n.t('voice_gen_failed')}: $e");
     }
   }
 
@@ -559,13 +566,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const AlertDialog(
+        return AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在生成候选回复'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(I18n.t('gen_candidate_resp')),
             ],
           ),
         );
@@ -596,7 +603,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('选择回复'),
+              title: Text(I18n.t('select_reply')),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView.builder(
@@ -606,7 +613,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     return Card(
                       child: ListTile(
                         title: Text(
-                          '选项 ${index + 1}',
+                          '${I18n.t('option')} ${index + 1}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(candidates[index]),
@@ -624,7 +631,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: const Text('取消'),
+                  child: Text(I18n.t('cancel')),
                 ),
                 TextButton(
                   onPressed: () {
@@ -632,7 +639,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     Navigator.of(context).pop();
                     getMsg();
                   },
-                  child: const Text('重新生成'),
+                  child: Text(I18n.t('regenerate')),
                 ),
               ],
             );
@@ -684,7 +691,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('$studentName的状态'),
+          title: Text('$studentName${I18n.t('status_suffix')}'),
           content: SingleChildScrollView(
             child: MarkdownBody(
               data: _characterStatus!,
@@ -698,7 +705,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('编辑状态'),
+                    title: Text(I18n.t('edit_status')),
                     content: TextField(
                       maxLines: null,
                       minLines: 1,
@@ -709,7 +716,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         onPressed: () {
                           controller.clear();
                         },
-                        child: const Text('清空'),
+                        child: Text(I18n.t('clear')),
                       ),
                       TextButton(
                         onPressed: () {
@@ -721,13 +728,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           Navigator.of(context).pop();
                           _showStatusDialog();
                         },
-                        child: const Text('确定'),
+                        child: Text(I18n.t('confirm')),
                       ),
                     ],
                   ),
                 );
               },
-              child: const Text('编辑'),
+              child: Text(I18n.t('edit')),
             ),
             // 重新查询
             TextButton(
@@ -735,7 +742,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 Navigator.of(context).pop();
                 getStatus(forceGet: true);
               },
-              child: const Text('重新获取'),
+              child: Text(I18n.t('refresh')),
             ),
             // 添加到对话
             TextButton(
@@ -747,7 +754,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 });
                 setTempHistory(msgListToJson(messages));
               },
-              child: const Text('确认添加'),
+              child: Text(I18n.t('add_to_chat')),
             ),
           ],
         );
@@ -756,7 +763,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getStatus({bool forceGet = false}) async {
-    if (forceGet || _characterStatus == null || _characterStatus == "暂无状态") {
+    if (forceGet || _characterStatus == null || _characterStatus == I18n.t("no_status")) {
       List<List<String>> msg = await parseMsg(
         messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getStatusPrompt(), type: Message.system)]
       );
@@ -772,13 +779,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return const AlertDialog(
+          return AlertDialog(
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('正在分析角色状态'),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(I18n.t('analyzing_status')),
               ],
             ),
           );
@@ -798,11 +805,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           _showStatusDialog();
         }, (e) {
           Navigator.of(context).pop(); // 关闭加载对话框
-          snackBarAlert(context, "获取状态失败: $e");
+          snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
         });
       } catch (e) {
         Navigator.of(context).pop(); // 关闭加载对话框
-        snackBarAlert(context, "获取状态失败: $e");
+        snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
       }
     } else {
       _showStatusDialog();
@@ -831,7 +838,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   color: Colors.white,
                   onPressed: () {
                     clearMsg(true);
-                    snackBarAlert(context, "已重置");
+                    snackBarAlert(context, I18n.t('reset'));
                   },
                 ),
                 // Edit
@@ -865,7 +872,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         debugPrint(value);
                         addHistory(msgListToJson(messages), value);
                         if (!context.mounted) return;
-                        snackBarAlert(context, "已保存");
+                        snackBarAlert(context, I18n.t('saved'));
                         getHistorys().then((List<List<String>> results) {
                           setState(() {
                             historys = results;
@@ -952,7 +959,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         }),
                       )
                     : (messages.isEmpty
-                        ? const Align(alignment: Alignment.bottomCenter, child: Text("没有消息。"))
+                        ? Align(alignment: Alignment.bottomCenter, child: Text(I18n.t('no_messages')))
                         : GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
@@ -1032,7 +1039,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                 horizontal: 10,
                                 vertical: 8,
                               ),
-                              hintText: inputLock ? '回复中' : '请输入您的消息...',
+                              hintText: inputLock ? I18n.t('replying') : I18n.t('enter_message'),
                             ))),
                     const SizedBox(width: 5),
                     // tools button
@@ -1068,7 +1075,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     children: [
                       _buildToolButton(
                         icon: Icons.monitor_heart,
-                        label: '查看状态',
+                        label: I18n.t('status'),
                         onTap: () {
                           getStatus();
                           setState(() {
@@ -1078,7 +1085,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: Icons.draw,
-                        label: '开始绘图',
+                        label: I18n.t('draw'),
                         onTap: () {
                           getDraw();
                           setState(() {
@@ -1088,7 +1095,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: _isAutoVoice ? Icons.volume_up : Icons.volume_off,
-                        label: _isAutoVoice ? '自动语音' : '手动语音',
+                        label: _isAutoVoice ? I18n.t('auto_voice') : I18n.t('manual_voice'),
                         onTap: () {
                           setState(() {
                             _isAutoVoice = !_isAutoVoice;
@@ -1098,7 +1105,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: Icons.auto_awesome,
-                        label: '获得灵感',
+                        label: I18n.t('get_inspired'),
                         onTap: () {
                           getMsg();
                           setState(() {
@@ -1111,7 +1118,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         icon: _isFullScreen
                             ? Icons.fullscreen_exit
                             : Icons.fullscreen,
-                        label: _isFullScreen ? '退出全屏' : '进入全屏',
+                        label: _isFullScreen ? I18n.t('exit_fullscreen') : I18n.t('enter_fullscreen'),
                         onTap: () {
                           setState(() {
                             _isFullScreen = !_isFullScreen;
@@ -1175,7 +1182,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('故事列表', style: TextStyle(color: Colors.white)),
+        title: Text(I18n.t('story_list'), style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
@@ -1184,8 +1191,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       ),
       body: Column(
         children: [
-          const ListTile(
-            title: Text('故事操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('story_operations'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -1194,7 +1201,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_upload),
-                  label: const Text('导入故事'),
+                  label: Text(I18n.t('import_story')),
                   onPressed: () async {
                     String? jsonString = await pickFile();
                     if (jsonString != null) {
@@ -1204,24 +1211,24 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           historys = results;
                           historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
                         });
-                        snackBarAlert(context, "故事导入成功");
+                        snackBarAlert(context, I18n.t('story_imported'));
                       });
                     }
                   },
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_download),
-                  label: const Text('导出故事'),
+                  label: Text(I18n.t('export_story')),
                   onPressed: () async {
                     if (currentStory == null) {
-                      snackBarAlert(context, "没有设置当前故事");
+                      snackBarAlert(context, I18n.t('no_current_story'));
                       return;
                     }
                     List<Message> storyMsgs = jsonToMsg(currentStory![2]);
                     List<String> msgContents = storyMsgs.map((m) => m.message).toList();
                     bool success = await downloadHistorytoJson(currentStory![0], msgContents);
                     if (success && context.mounted) {
-                      snackBarAlert(context, "故事已导出");
+                      snackBarAlert(context, I18n.t('story_exported'));
                     }
                   },
                 ),
@@ -1230,8 +1237,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           ),
           const Divider(),
           if (currentStory != null) ...[
-            const ListTile(
-              title: Text('当前故事', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('current_story'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -1249,7 +1256,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       setState(() {
                         currentStory = null;
                       });
-                      snackBarAlert(context, "已卸载当前故事");
+                      snackBarAlert(context, I18n.t('story_unloaded'));
                     },
                   ),
                 ),
@@ -1257,8 +1264,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
             const Divider(),
           ],
-          const ListTile(
-            title: Text('故事池', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('story_pool'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           Expanded(
             child: ListView.builder(
@@ -1286,7 +1293,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           setState(() {
                             currentStory = historys[index];
                           });
-                          snackBarAlert(context, "已将 ${historys[index][0]} 设置为当前故事");
+                          snackBarAlert(context, "${I18n.t('set_as_current_story').replaceFirst('...', historys[index][0])}");
                         },
                         onLongPress: () {
                           showDialog(
@@ -1298,7 +1305,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                 children: [
                                   ListTile(
                                     leading: const Icon(Icons.download),
-                                    title: const Text('加载到对话'),
+                                    title: Text(I18n.t('load_into_chat')),
                                     onTap: () {
                                       Navigator.pop(context);
                                       loadHistory(historys[index][2]);
@@ -1309,7 +1316,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   ),
                                   ListTile(
                                     leading: const Icon(Icons.edit),
-                                    title: const Text('编辑'),
+                                    title: Text(I18n.t('edit')),
                                     onTap: () {
                                       Navigator.pop(context);
                                       List<Message> storyMsgs = jsonToMsg(historys[index][2]);
@@ -1336,18 +1343,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   ),
                                   ListTile(
                                     leading: const Icon(Icons.delete),
-                                    title: const Text('删除'),
+                                    title: Text(I18n.t('delete')),
                                     onTap: () {
                                       Navigator.pop(context);
                                       showDialog(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text('删除故事'),
-                                          content: const Text('你确定要删除这个故事吗？'),
+                                          title: Text(I18n.t('delete_story')),
+                                          content: Text(I18n.t('delete_story_confirm')),
                                           actions: [
                                             TextButton(
                                               onPressed: () => Navigator.pop(context),
-                                              child: const Text('取消'),
+                                              child: Text(I18n.t('cancel')),
                                             ),
                                             TextButton(
                                               onPressed: () {
@@ -1360,7 +1367,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                                 });
                                                 Navigator.pop(context);
                                               },
-                                              child: const Text('删除'),
+                                              child: Text(I18n.t('delete')),
                                             ),
                                           ],
                                         ),
@@ -1412,7 +1419,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('角色列表', style: TextStyle(color: Colors.white)),
+        title: Text(I18n.t('character_list'), style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
@@ -1422,8 +1429,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         children: [
-          const ListTile(
-            title: Text('角色卡操作', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('character_operations'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1432,20 +1439,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_upload),
-                  label: const Text('导入角色'),
+                  label: Text(I18n.t('import_character')),
                   onPressed: () async {
                     // 显示加载对话框
                     showDialog(
                       context: context,
                       barrierDismissible: false,
                       builder: (BuildContext context) {
-                        return const AlertDialog(
+                        return AlertDialog(
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('正在导入角色...'),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(I18n.t('importing_character')),
                             ],
                           ),
                         );
@@ -1459,20 +1466,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.file_download),
-                  label: const Text('导出角色'),
+                  label: Text(I18n.t('export_character')),
                   onPressed: () async {
                     // 显示加载对话框
                     showDialog(
                       context: context,
                       barrierDismissible: false,
                       builder: (BuildContext context) {
-                        return const AlertDialog(
+                        return AlertDialog(
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('正在导出角色...'),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(I18n.t('exporting_character')),
                             ],
                           ),
                         );
@@ -1489,8 +1496,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
           ),
           const Divider(),
-          const ListTile(
-            title: Text('当前角色', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('current_character'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -1560,8 +1567,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               ),
             ),
           const Divider(),
-          const ListTile(
-            title: Text('角色池', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('character_pool'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           ListView.builder(
             shrinkWrap: true,
@@ -1608,12 +1615,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       onLongPress: () => showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text('删除角色'),
-                          content: const Text('你确定要删除这个角色吗？'),
+                          title: Text(I18n.t('delete_character')),
+                          content: Text(I18n.t('delete_character_confirm')),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
-                              child: const Text('取消'),
+                              child: Text(I18n.t('cancel')),
                             ),
                             TextButton(
                               onPressed: () {
@@ -1623,7 +1630,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                 });
                                 Navigator.pop(context);
                               },
-                              child: const Text('删除'),
+                              child: Text(I18n.t('delete')),
                             ),
                           ],
                         ),
@@ -1643,7 +1650,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Widget _buildSettingsPage() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置', style: TextStyle(color: Colors.white)),
+        title: Text(I18n.t('settings'), style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             color: Color(0xfff2a0ac)
@@ -1653,8 +1660,46 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         children: [
-          const ListTile(
-            title: Text('通用设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('general_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.language),
+              title: Text(I18n.t('language')),
+              onTap: () {
+                showDialog(context: context, builder: (context) {
+                  return SimpleDialog(
+                    title: Text(I18n.t('language')),
+                    children: [
+                      SimpleDialogOption(
+                        onPressed: () {
+                          setLanguage('zh');
+                          setState(() {
+                            I18n.locale = 'zh';
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('中文'),
+                      ),
+                      SimpleDialogOption(
+                        onPressed: () {
+                          setLanguage('en');
+                          setState(() {
+                            I18n.locale = 'en';
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('English'),
+                      ),
+                    ],
+                  );
+                });
+              },
+            ),
           ),
           const SizedBox(height: 8),
           Card(
@@ -1662,7 +1707,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.backup),
-              title: const Text('备份配置'),
+              title: Text(I18n.t('backup_config')),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1687,7 +1732,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.settings),
-              title: const Text('模型配置'),
+              title: Text(I18n.t('model_config')),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1704,7 +1749,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.format_shapes),
-              title: const Text('格式配置'),
+              title: Text(I18n.t('format_config')),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1715,8 +1760,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
-          const ListTile(
-            title: Text('功能设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('feature_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           Card(
@@ -1724,7 +1769,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.draw),
-              title: const Text('绘图配置'), 
+              title: Text(I18n.t('drawing_config')),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1752,7 +1797,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.speaker),
-              title: const Text('语音配置'),
+              title: Text(I18n.t('voice_config')),
               onTap: () {
                 Navigator.push(
                   context,
@@ -1774,8 +1819,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
-          const ListTile(
-            title: Text('关于', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ListTile(
+            title: Text(I18n.t('about'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           Card(
@@ -1783,17 +1828,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.info),
-              title: const Text('关于'),
+              title: Text(I18n.t('about')),
               onTap: () {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('关于'),
-                    content: const Text("""MoeTalk 是一个基于Flutter的开源聊天应用，使用大语言模型进行对话生成，使用扩散模型进行语音和图像合成。
-                    
-您的数据完全存储在您的设备上，本应用不会收集任何个人信息。
-                    
-代码地址：https://github.com/shinnpuru/MoeTalk"""),
+                    title: Text(I18n.t('about')),
+                    content: Text(I18n.t('about_text')),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
@@ -1811,7 +1852,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.feedback),
-              title: const Text('反馈'),
+              title: Text(I18n.t('feedback')),
               onTap: () {
                 launchUrlString('https://github.com/shinnpuru/MoeTalk/issues');
               },
@@ -1855,22 +1896,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xfff2a0ac),
         unselectedItemColor: Colors.grey,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: '聊天',
+            icon: const Icon(Icons.chat),
+            label: I18n.t('chat'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: '故事',
+            icon: const Icon(Icons.book),
+            label: I18n.t('story'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: '角色',
+            icon: const Icon(Icons.people),
+            label: I18n.t('role'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '设置',
+            icon: const Icon(Icons.settings),
+            label: I18n.t('settings'),
           ),
         ],
       ),

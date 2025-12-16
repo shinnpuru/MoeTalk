@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'i18n.dart';
 
 void assistantPopup(BuildContext context, String msg, LongPressStartDetails details,
                     String stuName, Function(String) onEdited) {
@@ -13,15 +14,15 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
     context: context,
     position: position,
     items: [
-      const PopupMenuItem(value: 0, child: Text('语音')),
-      const PopupMenuItem(value: 1, child: Text('编辑')),
-      const PopupMenuItem(value: 2, child: Text('删除')),
+      PopupMenuItem(value: 0, child: Text(I18n.t('voice'))),
+      PopupMenuItem(value: 1, child: Text(I18n.t('edit'))),
+      PopupMenuItem(value: 2, child: Text(I18n.t('delete'))),
     ],
   ).then((value) {
     if (value == 1) {
       showDialog(context: context, builder: (context) {
         return AlertDialog(
-          title: const Text('编辑'),
+          title: Text(I18n.t('edit')),
           content: TextField(
             maxLines: null,
             minLines: 1,
@@ -32,14 +33,14 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
               onPressed: () {
                 controller.clear();
               },
-              child: const Text('清空'),
+              child: Text(I18n.t('clear')),
             ),
             TextButton(
               onPressed: () {
                 onEdited(controller.text);
                 Navigator.of(context).pop();
               },
-              child: const Text('确定'),
+              child: Text(I18n.t('confirm')),
             )
           ],
         );
@@ -63,14 +64,14 @@ void userPopup(BuildContext context, String msg, LongPressStartDetails details, 
     context: context,
     position: position,
     items: [
-      const PopupMenuItem(value: 1, child: Text('编辑')),
-      const PopupMenuItem(value: 2, child: Text('重发'))
+      PopupMenuItem(value: 1, child: Text(I18n.t('edit'))),
+      PopupMenuItem(value: 2, child: Text(I18n.t('resend')))
     ],
   ).then((value) {
     if (value == 1) {
       showDialog(context: context, builder: (context) {
         return AlertDialog(
-          title: const Text('编辑'),
+          title: Text(I18n.t('edit')),
           content: TextField(
             maxLines: null,
             minLines: 1,
@@ -81,21 +82,21 @@ void userPopup(BuildContext context, String msg, LongPressStartDetails details, 
               onPressed: () {
                 controller.clear();
               },
-              child: const Text('清空'),
+              child: Text(I18n.t('clear')),
             ),
             TextButton(
               onPressed: () {
                 onEdited(controller.text, false);
                 Navigator.of(context).pop();
               },
-              child: const Text('确定'),
+              child: Text(I18n.t('confirm')),
             ),
             TextButton(
               onPressed: () {
                 onEdited(controller.text, true);
                 Navigator.of(context).pop();
               },
-              child: const Text('确定并重发'),
+              child: Text(I18n.t('confirm_resend')),
             )
           ],
         );
@@ -110,7 +111,7 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
   TextEditingController controller = TextEditingController(text: msg);
   showDialog(context: context, builder: (context) {
     return AlertDialog(
-      title: const Text('编辑系统指令'),
+      title: Text(I18n.t('edit_system_instruction')),
       content: TextField(
         maxLines: null,
         minLines: 1,
@@ -121,14 +122,14 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
           onPressed: () {
             controller.clear();
           },
-          child: const Text('清空'),
+          child: Text(I18n.t('clear')),
         ),
         TextButton(
           onPressed: () {
             onEdited(controller.text,false);
             Navigator.of(context).pop();
           },
-          child: const Text('确定'),
+          child: Text(I18n.t('confirm')),
         ),
       ],
     );
@@ -146,8 +147,8 @@ void timePopup(BuildContext context, int oldTime, LongPressStartDetails details,
     context: context,
     position: position,
     items: [
-      const PopupMenuItem(value: 1, child: Text('编辑')),
-      const PopupMenuItem(value: 2, child: Text('转为系统指令'))
+      PopupMenuItem(value: 1, child: Text(I18n.t('edit'))),
+      PopupMenuItem(value: 2, child: Text(I18n.t('turn_to_system_instruction')))
     ],
   ).then((value) {
     if (value == 1) {
@@ -191,9 +192,9 @@ void imagePopup(BuildContext context, LongPressStartDetails details, Function(in
     context: context,
     position: position,
     items: [
-      const PopupMenuItem(value: 1, child: Text('移除')),
-      const PopupMenuItem(value: 2, child: Text('保存')),
-      const PopupMenuItem(value: 0, child: Text('设为背景'))
+      PopupMenuItem(value: 1, child: Text(I18n.t('remove'))),
+      PopupMenuItem(value: 2, child: Text(I18n.t('save'))),
+      PopupMenuItem(value: 0, child: Text(I18n.t('set_background')))
     ],
   ).then((value) {
     onEdited(value!);

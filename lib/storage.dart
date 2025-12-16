@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io' if (kIsWeb) 'dart:html' as html;
 import 'non_web_utils.dart'
     if (dart.library.html) 'web_utils.dart';
+import 'i18n.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
@@ -460,6 +461,20 @@ Future<void> setSdConfig(SdConfig config) async {
   await prefs.setStringList("sd_config", configList);
 }
 
+Future<void> setLanguage(String language) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("language", language);
+}
+
+Future<String> getLanguage() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? language = prefs.getString("language");
+  if (language == null || language.isEmpty) {
+    return "zh";
+  }
+  return language;
+}
+
 Future<SdConfig> getSdConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','',''];
@@ -600,13 +615,13 @@ Future<void> loadCharacterCard(context) async {
           // 6. UTF-8 解码 (从 List<int> 变为 String)
           jsonString = utf8.decode(decodedBytes);
 
-          debugPrint("解码后的 JSON 字符串: $jsonString");
+          debugPrint("${I18n.t('decoded_json')}$jsonString");
         } catch (e) {
-          snackBarAlert(context,"解码 'chara' 数据时出错: $e");
+          snackBarAlert(context,"${I18n.t('decode_chara_error')}$e");
           return;
         }
       } else {
-        snackBarAlert(context,"错误: 未找到 'chara' 元数据。");
+        snackBarAlert(context,I18n.t('chara_metadata_not_found'));
         return;
       }
     }
@@ -615,7 +630,7 @@ Future<void> loadCharacterCard(context) async {
     }
 
     if(jsonString.isEmpty){
-      snackBarAlert(context,"错误: JSON 字符串为空。");
+      snackBarAlert(context,I18n.t('json_empty'));
       return;
     }
     // 7. 解析 JSON 并恢复 SharedPreferences
@@ -635,17 +650,17 @@ Future<void> loadCharacterCard(context) async {
               context: context,
               builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('导入角色书'),
-                content: const Text('检测到角色卡中包含角色书，是否将其作为故事导入？'),
+                title: Text(I18n.t('import_character_book')),
+                content: Text(I18n.t('import_character_book_msg')),
                 actions: <Widget>[
                 TextButton(
-                  child: const Text('取消'),
+                  child: Text(I18n.t('cancel')),
                   onPressed: () {
                   Navigator.of(context).pop(false);
                   },
                 ),
                 TextButton(
-                  child: const Text('导入'),
+                  child: Text(I18n.t('import_character')),
                   onPressed: () {
                   Navigator.of(context).pop(true);
                   },
@@ -658,7 +673,7 @@ Future<void> loadCharacterCard(context) async {
             if (confirmImport == true) {
               final String bookJsonString = jsonEncode(characterBook);
               await restoreHistoryFromJson(bookJsonString);
-              snackBarAlert(context, '角色书已作为故事导入。');
+              snackBarAlert(context, I18n.t('character_book_imported'));
             }
           }
         }
@@ -754,7 +769,7 @@ Future<void> downloadCharacterCard(context) async {
     // 6. 提示用户保存文件 (区分 Web 和其他平台)
     await writePngFile(outputBytes);
   } catch (e) {
-    debugPrint("下载角色卡时出错: $e");
-    snackBarAlert(context, "下载角色卡时出错: $e");
+    debugPrint("${I18n.t('download_card_error')}$e");
+    snackBarAlert(context, "${I18n.t('download_card_error')}$e");
   }
 }

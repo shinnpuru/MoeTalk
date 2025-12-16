@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'storage.dart';
 import 'openai.dart' show completion;
 import 'utils.dart' show snackBarAlert, Config;
+import 'i18n.dart';
 
 Future<String?> namingHistory(BuildContext context,String timeStr,Config config, List<List<String>> msg) async {
   return showDialog(context: context, builder: (context) {
     final TextEditingController controller = TextEditingController(text: timeStr);
     return AlertDialog(
-      title: const Text('命名历史'),
+      title: Text(I18n.t('naming_history')),
       content: TextField(
         maxLines: null,
         minLines: 1,
@@ -18,7 +19,7 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: const Text('取消'),
+          child: Text(I18n.t('cancel')),
         ),
         TextButton(
           onPressed: () async {
@@ -27,17 +28,17 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
               debugPrint("${m[0]}: ${m[1]}");
             }
             debugPrint("model: ${config.model}");
-            controller.text = "生成中...";
+            controller.text = I18n.t('generating');
             await completion(config, msg, (chunk) async {
               result += chunk;
               controller.text = result.replaceAll(RegExp(await getResponseRegex()), '');
             }, (){
-              snackBarAlert(context, "完成");
+              snackBarAlert(context, I18n.t('finish'));
             }, (e){
-              snackBarAlert(context, "错误: $e");
+              snackBarAlert(context, "${I18n.t('error')}: $e");
             });
           },
-          child: const Text('AI'),
+          child: Text(I18n.t('ai')),
         ),
         TextButton(
           onPressed: () {
@@ -47,7 +48,7 @@ Future<String?> namingHistory(BuildContext context,String timeStr,Config config,
               Navigator.of(context).pop(controller.text);
             }
           },
-          child: const Text('确定'),
+          child: Text(I18n.t('confirm')),
         ),
       ],
     );

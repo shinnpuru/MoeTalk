@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'storage.dart';
 import 'utils.dart';
+import 'i18n.dart';
 
 class VitsConfigPage extends StatefulWidget {
   final VitsConfig vitsConfig;
@@ -53,7 +54,7 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('语音配置'),
+        title: Text(I18n.t('voice_config')),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -81,9 +82,9 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            const ListTile(
-              title: Text("基础配置",
-                  style: TextStyle(
+            ListTile(
+              title: Text(I18n.t('base_config'),
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
@@ -94,7 +95,7 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
                 children: [
                   TextField(
                     controller: _apiController,
-                    decoration: const InputDecoration(labelText: "API地址（网页版仅支持https链接）"),
+                    decoration: InputDecoration(labelText: I18n.t('api_url')),
                     minLines: 1,
                     maxLines: 3,
                   ),
@@ -102,9 +103,9 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
               )
             ),
             const SizedBox(height: 16),
-            const ListTile(
-              title: Text("情感参数",
-                  style: TextStyle(
+            ListTile(
+              title: Text(I18n.t('emotion_params'),
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
@@ -113,14 +114,14 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child:  Column(
                 children: [
-                  _buildSlider("快乐", _happy, (val) => setState(() => _happy = val)),
-                  _buildSlider("悲伤", _sad, (val) => setState(() => _sad = val)),
-                  _buildSlider("愤怒", _angry, (val) => setState(() => _angry = val)),
-                  _buildSlider("恐惧", _afraid, (val) => setState(() => _afraid = val)),
-                  _buildSlider("厌恶", _disgusted, (val) => setState(() => _disgusted = val)),
-                  _buildSlider("忧郁", _melancholic, (val) => setState(() => _melancholic = val)),
-                  _buildSlider("惊讶", _surprised, (val) => setState(() => _surprised = val)),
-                  _buildSlider("平静", _calm, (val) => setState(() => _calm = val)),
+                  _buildSlider(I18n.t('happy'), _happy, (val) => setState(() => _happy = val)),
+                  _buildSlider(I18n.t('sad'), _sad, (val) => setState(() => _sad = val)),
+                  _buildSlider(I18n.t('angry'), _angry, (val) => setState(() => _angry = val)),
+                  _buildSlider(I18n.t('afraid'), _afraid, (val) => setState(() => _afraid = val)),
+                  _buildSlider(I18n.t('disgusted'), _disgusted, (val) => setState(() => _disgusted = val)),
+                  _buildSlider(I18n.t('melancholic'), _melancholic, (val) => setState(() => _melancholic = val)),
+                  _buildSlider(I18n.t('surprised'), _surprised, (val) => setState(() => _surprised = val)),
+                  _buildSlider(I18n.t('calm'), _calm, (val) => setState(() => _calm = val)),
                 ]
               )
             )
