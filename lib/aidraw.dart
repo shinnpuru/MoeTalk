@@ -6,6 +6,7 @@ import 'utils.dart';
 import 'openai.dart';
 import 'notifications.dart';
 import 'storage.dart';
+import 'i18n.dart';
 
 class AiDraw extends StatefulWidget {
   final List<List<String>>? msg;
@@ -52,7 +53,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           gptBusy = false;
         });
         logController.text = '$error\n${logController.text}';
-        snackBarAlert(context, "出错了！$error");
+        snackBarAlert(context, "${I18n.t('error')} $error");
       });
   }
 
@@ -347,12 +348,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
               TextField(
                 controller: promptController,
                 decoration: InputDecoration(
-                  labelText: gptBusy ? '生成提示词中...' : '提示词',
+                  labelText: gptBusy ? I18n.t('generating_prompt') : I18n.t('prompt'),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: gptBusy || sdBusy ? null : buildPrompt,
-                    tooltip: '重新生成提示词',
+                    tooltip: I18n.t('regenerate_prompt'),
                   ),
                 ),
                 maxLines: 5,
@@ -366,9 +367,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                   maxLines: 5,
                   minLines: 3,
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: '日志',),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: I18n.t('log'),),
                   style: const TextStyle(fontSize: 12),
                 ),
             ] else ...[
@@ -413,12 +414,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                           showLog = false;
                         });
                       },
-                      child: const Text('取消'),
+                      child: Text(I18n.t('cancel')),
                     )
                   else ...[
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('取消'),
+                      child: Text(I18n.t('cancel')),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -426,13 +427,13 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                           ? null
                           : () {
                               makeRequest().catchError((e) {
-                                snackBarAlert(context, "error! $e");
+                                snackBarAlert(context, "${I18n.t('error')} $e");
                                 setState(() {
                                   sdBusy = false;
                                 });
                               });
                             },
-                      child: const Text('开始'),
+                      child: Text(I18n.t('start')),
                     ),
                   ],
                 ] else ...[
@@ -442,26 +443,26 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                         imageUrl = null;
                       });
                     },
-                    child: const Text('返回'),
+                    child: Text(I18n.t('back')),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () {
                       makeRequest().catchError((e) {
-                        snackBarAlert(context, "error! $e");
+                        snackBarAlert(context, "${I18n.t('error')} $e");
                         setState(() {
                           sdBusy = false;
                         });
                       });
                     },
-                    child: const Text('重绘'),
+                    child: Text(I18n.t('redraw')),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context, imageUrl);
                     },
-                    child: const Text('使用'),
+                    child: Text(I18n.t('use')),
                   ),
                 ],
               ],

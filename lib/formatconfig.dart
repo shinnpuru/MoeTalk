@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'storage.dart';
 import 'msgeditor.dart';
+import 'i18n.dart';
 
 class FormatConfigPage extends StatefulWidget {
   const FormatConfigPage({super.key});
@@ -64,7 +65,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('编辑 $title'),
+          title: Text('${I18n.t('edit_title')}$title'),
           content: TextField(
             controller: dialogController,
             maxLines: multiLine ? 5 : 1,
@@ -76,13 +77,13 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('取消'),
+              child: Text(I18n.t('cancel')),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('确定'),
+              child: Text(I18n.t('confirm')),
               onPressed: () {
                 setState(() {
                   controller.text = dialogController.text;
@@ -100,7 +101,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('格式配置'),
+        title: Text(I18n.t('format_config')),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -122,8 +123,8 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
         child: ListView(
           children: [
             const SizedBox(height: 16),
-            const ListTile(
-              title: Text('通用提示词', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('common_prompt'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -131,8 +132,8 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
                 children: [
                   TextField(
                     controller: userName,
-                    decoration: const InputDecoration(
-                      labelText: '用户名称',
+                    decoration: InputDecoration(
+                      labelText: I18n.t('user_name'),
                     ),
                     style: const TextStyle(fontSize: 16,fontFamily: "Courier"),
                   ),
@@ -141,8 +142,8 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
             ),
             const SizedBox(height: 8),
             ListTile(
-              title: const Text('上下文模板'),
-              subtitle: const Text("提示：用户名称在提示词中可用{{user}}代替，角色名称可用{{char}}代替。"),
+              title: Text(I18n.t('context_template')),
+              subtitle: Text(I18n.t('context_template_hint')),
               onTap: () async {
                 var msgs = await getContextTemplate();
                 if (context.mounted) {
@@ -154,62 +155,62 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
               },
             ),
             ListTile(
-              title: const Text('输出正则过滤'),
+              title: Text(I18n.t('output_regex')),
               subtitle: Text(
                 responseRegex.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '输出正则过滤', responseRegex),
+              onTap: () => _showEditDialog(context, I18n.t('output_regex'), responseRegex),
             ),
             const SizedBox(height: 16),
-            const ListTile(
-              title: Text('功能提示词', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('prompt_config'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)), // Reuse or create new key? prompt_config maps to "提示词配置" in aidrawconfig, maybe fine or create 'feature_prompts'
             ),
             ListTile(
-              title: const Text('聊天提示词'),
+              title: Text(I18n.t('chat_prompt')),
               subtitle: Text(
                 endPrompt.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '聊天提示词', endPrompt, multiLine: true),
+              onTap: () => _showEditDialog(context, I18n.t('chat_prompt'), endPrompt, multiLine: true),
             ),
             ListTile(
-              title: const Text('绘画提示词'),
+              title: Text(I18n.t('draw_prompt')),
               subtitle: Text(
                 drawPrompt.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '绘画提示词', drawPrompt, multiLine: true),
+              onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawPrompt, multiLine: true),
             ),
             ListTile(
-              title: const Text('状态提示词'),
+              title: Text(I18n.t('status_prompt')),
               subtitle: Text(
                 statusPrompt.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '状态提示词', statusPrompt, multiLine: true),
+              onTap: () => _showEditDialog(context, I18n.t('status_prompt'), statusPrompt, multiLine: true),
             ),
             ListTile(
-              title: const Text('灵感提示词'),
+              title: Text(I18n.t('inspire_prompt')),
               subtitle: Text(
                 inspirePrompt.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '灵感提示词', inspirePrompt, multiLine: true),
+              onTap: () => _showEditDialog(context, I18n.t('inspire_prompt'), inspirePrompt, multiLine: true),
             ),
             ListTile(
-              title: const Text('总结提示词'),
+              title: Text(I18n.t('summary_prompt')),
               subtitle: Text(
                 summaryPrompt.text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showEditDialog(context, '总结提示词', summaryPrompt, multiLine: true),
+              onTap: () => _showEditDialog(context, I18n.t('summary_prompt'), summaryPrompt, multiLine: true),
             ),
           ],
         ),

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:webdav_client/webdav_client.dart';
 import 'storage.dart';
 import 'utils.dart' show snackBarAlert;
+import 'i18n.dart';
 
 // Conditional import
 import 'non_web_utils.dart'
@@ -34,9 +35,9 @@ class WebdavPageState extends State<WebdavPage> {
       var client = newClient(urlController.text, user: usernameController.text, password: passwordController.text);
       await client.ping();
       if(!context.mounted) return;
-      snackBarAlert(context, "Ping OK");
+      snackBarAlert(context, I18n.t('ping_ok'));
     } catch (e) {
-      snackBarAlert(context, "Ping Failed: $e");
+      snackBarAlert(context, "${I18n.t('ping_failed')}$e");
     }
   }
 
@@ -53,9 +54,9 @@ class WebdavPageState extends State<WebdavPage> {
         });
       },);
       if(!context.mounted) return;
-      snackBarAlert(context, "Backup OK");
+      snackBarAlert(context, I18n.t('backup_ok'));
     } catch (e) {
-      snackBarAlert(context, "Backup Failed: $e");
+      snackBarAlert(context, "${I18n.t('backup_failed')}$e");
     }
   }
 
@@ -93,7 +94,7 @@ class WebdavPageState extends State<WebdavPage> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('取消'),
+              child: Text(I18n.t('cancel')),
             ),
             // 覆盖
             TextButton(
@@ -101,7 +102,7 @@ class WebdavPageState extends State<WebdavPage> {
                 backupCurrent("moetalk/${messageRecords[index][1]}");
                 Navigator.of(context).pop();
               }, 
-              child: const Text('覆盖')
+              child: Text(I18n.t('overwrite'))
             ),
             // 恢复
             TextButton(
@@ -109,7 +110,7 @@ class WebdavPageState extends State<WebdavPage> {
                 widget.onRefresh(loadedMessage);
                 Navigator.of(context).popUntil((route) => route.isFirst);
               }, 
-              child: const Text('恢复')
+              child: Text(I18n.t('file_restore'))
             )
           ],
         );
@@ -142,7 +143,7 @@ class WebdavPageState extends State<WebdavPage> {
         });
       });
     } catch (e) {
-      snackBarAlert(context, "Refresh Failed: $e");
+      snackBarAlert(context, "${I18n.t('refresh_failed')}$e");
     }
   }
 
@@ -164,7 +165,7 @@ class WebdavPageState extends State<WebdavPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('备份配置'),
+        title: Text(I18n.t('backup_config')),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -181,26 +182,26 @@ class WebdavPageState extends State<WebdavPage> {
         child: Column(
           children: <Widget>[
             // 本地备份
-            const ListTile(
-              title: Text('本地备份与恢复', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('local_backup_restore'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  child: const Text('下载配置'),
+                  child: Text(I18n.t('download_config')),
                   onPressed: () async {
                     String j = await convertToJson();
                     debugPrint(j);
                     if(await writeFile(j)){
-                      snackBarAlert(context, "下载成功");
+                      snackBarAlert(context, I18n.t('download_success'));
                     } else {
-                      snackBarAlert(context, "下载失败");
+                      snackBarAlert(context, I18n.t('download_failed'));
                     }
                   },
                 ),
                 ElevatedButton(
-                  child: const Text('文件恢复'),
+                  child: Text(I18n.t('file_restore')),
                   onPressed: () async {
                     String? j = await pickFile();
                     if (j != null) {
@@ -209,17 +210,17 @@ class WebdavPageState extends State<WebdavPage> {
                           context: context,
                           builder: (BuildContext context) {
                           return AlertDialog(
-                            title: const Text('确认恢复'),
-                            content: const Text('此操作将覆盖当前配置，是否继续？'),
+                            title: Text(I18n.t('confirm_restore')),
+                            content: Text(I18n.t('restore_confirm_msg')),
                             actions: <Widget>[
                             TextButton(
-                              child: const Text('取消'),
+                              child: Text(I18n.t('cancel')),
                               onPressed: () {
                               Navigator.of(context).pop(false);
                               },
                             ),
                             TextButton(
-                              child: const Text('确定'),
+                              child: Text(I18n.t('confirm')),
                               onPressed: () {
                               Navigator.of(context).pop(true);
                               },
@@ -233,13 +234,13 @@ class WebdavPageState extends State<WebdavPage> {
                           return;
                         }
                         await restoreFromJson(j);
-                        snackBarAlert(context, "恢复成功");
+                        snackBarAlert(context, I18n.t('restore_success'));
                       } catch (e) {
-                        snackBarAlert(context, "恢复失败");
+                        snackBarAlert(context, I18n.t('restore_failed'));
                         return;
                       }
                     } else {
-                      snackBarAlert(context, "未选择文件");
+                      snackBarAlert(context, I18n.t('no_file_selected'));
                     }
                   },
                 ),
@@ -247,8 +248,8 @@ class WebdavPageState extends State<WebdavPage> {
             ),
             const Divider(),
             // WebDAV 备份
-            const ListTile(
-              title: Text('WebDAV 备份与恢复（网页版不支持此功能）', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ListTile(
+              title: Text(I18n.t('webdav_backup_restore'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -263,8 +264,8 @@ class WebdavPageState extends State<WebdavPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
                 controller: usernameController,
-                decoration: const InputDecoration(
-                  labelText: '用户名',
+                decoration: InputDecoration(
+                  labelText: I18n.t('username'),
                 ),
               ),
             ),
@@ -272,8 +273,8 @@ class WebdavPageState extends State<WebdavPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
                 controller: passwordController,
-                decoration: const InputDecoration(
-                  labelText: '密码',
+                decoration: InputDecoration(
+                  labelText: I18n.t('password'),
                 ),
               ),
             ),
@@ -283,17 +284,17 @@ class WebdavPageState extends State<WebdavPage> {
               children: [
                 ElevatedButton(
                   onPressed: testWebdav, 
-                  child: const Text('测试')),
+                  child: Text(I18n.t('test'))),
                 ElevatedButton(
                   onPressed: freshList,
-                  child: const Text('刷新'),
+                  child: Text(I18n.t('refresh')),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     int timestamp = DateTime.now().millisecondsSinceEpoch;
                     backupCurrent("moetalk/$timestamp.json");
                   },
-                  child: const Text('备份'),
+                  child: Text(I18n.t('backup')),
                 ),
               ]
             ),
@@ -310,7 +311,7 @@ class WebdavPageState extends State<WebdavPage> {
                   border: Border.all(color: Colors.grey),
                   borderRadius: BorderRadius.circular(12.0),
                 ),
-                child: messageRecords.isEmpty ? const Center(child: Text('无记录')) :
+                child: messageRecords.isEmpty ? Center(child: Text(I18n.t('no_records'))) :
                 ListView.builder(
                   itemCount: messageRecords.length,
                   itemBuilder: (BuildContext context, int index) {

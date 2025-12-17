@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'storage.dart';
 import 'utils.dart';
+import 'i18n.dart';
 
 class SdConfigPage extends StatelessWidget {
   final SdConfig sdConfig;
@@ -24,7 +25,7 @@ class SdConfigPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('绘图配置'),
+        title: Text(I18n.t('drawing_config')),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -56,9 +57,9 @@ class SdConfigPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const ListTile(
-              title: Text("基础配置",
-                  style: TextStyle(
+            ListTile(
+              title: Text(I18n.t('base_config'),
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
@@ -69,18 +70,18 @@ class SdConfigPage extends StatelessWidget {
                 children: [
                   TextField(
                     controller: apiController,
-                    decoration: const InputDecoration(labelText: "API地址（网页版仅支持https链接）"),
+                    decoration: InputDecoration(labelText: I18n.t('api_url')),
                   ),
                   TextField(
                     controller: sdModel,
-                    decoration: const InputDecoration(labelText: "模型"),
+                    decoration: InputDecoration(labelText: I18n.t('model')),
                   ),
                 ]
               )
             ),
-            const ListTile(
-              title: Text("采样配置",
-                  style: TextStyle(
+            ListTile(
+              title: Text(I18n.t('sampler_config'),
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
@@ -91,14 +92,14 @@ class SdConfigPage extends StatelessWidget {
                 children: [
                   TextField(
                     controller: sdSampler,
-                    decoration: const InputDecoration(labelText: "采样器"),
+                    decoration: InputDecoration(labelText: I18n.t('sampler')),
                   ),
                   Row(children: [
                     Expanded(
                       child: TextField(
                         controller: sdWidth,
                         inputFormatters: [DecimalTextInputFormatter()],
-                        decoration: const InputDecoration(labelText: "宽度"),
+                        decoration: InputDecoration(labelText: I18n.t('width')),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -106,7 +107,7 @@ class SdConfigPage extends StatelessWidget {
                       child: TextField(
                         controller: sdHeight,
                         inputFormatters: [DecimalTextInputFormatter()],
-                        decoration: const InputDecoration(labelText: "高度"),
+                        decoration: InputDecoration(labelText: I18n.t('height')),
                       ),
                     ),
                   ]),
@@ -115,23 +116,23 @@ class SdConfigPage extends StatelessWidget {
                       child: TextField(
                         controller: sdStep,
                         inputFormatters: [DecimalTextInputFormatter()],
-                        decoration: const InputDecoration(labelText: "步数"),
+                        decoration: InputDecoration(labelText: I18n.t('steps')),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: sdCFG,
-                        decoration: const InputDecoration(labelText: "CFG"),
+                        decoration: InputDecoration(labelText: I18n.t('cfg')),
                       ),
                     ),
                   ]),
                 ]
               )
             ),
-            const ListTile(
-              title: Text("提示词配置",
-                  style: TextStyle(
+            ListTile(
+              title: Text(I18n.t('prompt_config'),
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey)),
@@ -142,13 +143,13 @@ class SdConfigPage extends StatelessWidget {
                 children: [
                   TextField(
                     controller: sdPrompt,
-                    decoration: const InputDecoration(labelText: "正向提示词(输入 VERB 作为动作占位符，输入 CHAR 作为角色占位符)"),
+                    decoration: InputDecoration(labelText: I18n.t('positive_prompt')),
                     minLines: 2,
                     maxLines: 4,
                   ),
                   TextField(
                     controller: sdNegative,
-                    decoration: const InputDecoration(labelText: "负向提示词"),
+                    decoration: InputDecoration(labelText: I18n.t('negative_prompt')),
                     minLines: 2,
                     maxLines: 4,
                   ),

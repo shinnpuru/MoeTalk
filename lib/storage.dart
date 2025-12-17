@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io' if (kIsWeb) 'dart:html' as html;
 import 'non_web_utils.dart'
     if (dart.library.html) 'web_utils.dart';
+import 'i18n.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
@@ -197,7 +198,7 @@ Future<String> getUserName() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("user_name");
   if (name == null || name.isEmpty) {
-    return "老师";
+    return I18n.t('default_user_name');
   }
   return name;
 }
@@ -206,7 +207,7 @@ Future<String> getStudentName({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("name");
   if (name == null || isDefault) {
-    return "昕蒲";
+    return I18n.t('default_student_name');
   }
   return name;
 }
@@ -220,7 +221,7 @@ Future<String> getOriginalMsg({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? msg = prefs.getString("first_mes");
   if (msg == null || isDefault) {
-    return "你好，我是昕蒲。请问有什么可以帮助你的吗？";
+    return I18n.t('default_first_msg');
   }
   return msg;
 }
@@ -234,7 +235,7 @@ Future<String> getPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("description");
   if (prompt == null || isDefault) {
-    prompt = "你是一个AI助手，名叫昕蒲。你可以回答用户的问题，提供帮助和建议。请使用中文与用户交流。";
+    prompt = I18n.t('default_prompt');
   }
   return prompt.trimLeft();
 }
@@ -296,7 +297,7 @@ Future<String?> getDrawUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? url = prefs.getString("draw_url");
   if (url == null || url.isEmpty) {
-    return "https://r3gm-diffusecraft.hf.space";
+    return "https://john6666-diffusecraftmod.hf.space";
   }
   return url;
 }
@@ -323,7 +324,7 @@ Future<String> getDrawPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("draw_prompt");
   if (format == null || format.isEmpty) {
-    return "你的任务是根据当前{{char}}的状态，生成一系列提示词，以指导扩散模型生成图像。提示词应该是一系列描述性的英语单词或短语，能够引导模型生成符合描述的图像，具体来说，是danbooru数据集中的标签。提示词用逗号分隔，没有换行。你的回复必须仅包含图片描述，不要包含任何其他说明等内容。画风应该是二次元风格，但不需要在提示词中写明画风。不要加入1girl, masterpiece等过于宽泛的词汇。示例：blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table。请先总结当前的场景、视角、构图、服装、动作、表情等描述画面的详细内容，然后在||后面输出提示词。";
+    return I18n.t('default_draw_prompt');
   }
   return format;
 }
@@ -337,7 +338,7 @@ Future<String> getInspirePrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("inspire_prompt");
   if (format == null || format.isEmpty) {
-    return "根据上下文，以{{user}}的口吻用一句话回复{{char}}。生成3个不同风格的候选回复，不需要标号，用||分隔。";
+    return I18n.t('default_inspire_prompt');
   }
   return format;
 }
@@ -351,7 +352,7 @@ Future<String> getStatusPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("status_prompt");
   if (format == null || format.isEmpty) {
-    return "简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。";
+    return I18n.t('default_status_prompt');
   }
   return format;
 }
@@ -365,7 +366,7 @@ Future<String> getSummaryPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("summary_prompt");
   if (format == null || format.isEmpty) {
-    return "根据上下文，以{{char}}的口吻用一句话总结该对话。";
+    return I18n.t('default_summary_prompt');
   }
   return format;
 }
@@ -379,7 +380,7 @@ Future<String> getEndPrompt() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? format = prefs.getString("system_prompt");
   if (format == null || format.isEmpty) {
-    return "请你扮演{{char}}用一段或多段话回复并推进剧情，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。";
+    return I18n.t('default_end_prompt');
       }
   return format;
 }
@@ -394,14 +395,14 @@ Future<List<Message>> getContextTemplate() async {
   String? json = prefs.getString("context_template");
   if (json == null || json.isEmpty) {
     return [
-      Message(type: Message.system, message: "现在开始角色扮演游戏，你叫{{char}}，下面是你的角色设定。"),
-      Message(type: Message.system, message: "charDescription"),
-      Message(type: Message.system, message: "下面是世界观。"),
-      Message(type: Message.system, message: "worldInfo"),
-      Message(type: Message.system, message: "下面是{{char}}和{{user}}的对话历史。"),
-      Message(type: Message.system, message: "chatHistory"),
-      Message(type: Message.system, message: "下面是需要完成的任务。"),
-      Message(type: Message.system, message: "callFunction"),
+      Message(type: Message.system, message: I18n.t('context_template_system')),
+      Message(type: Message.system, message: I18n.t('context_template_description')),
+      Message(type: Message.system, message: I18n.t('context_template_world')),
+      Message(type: Message.system, message: I18n.t('context_template_world_info')),
+      Message(type: Message.system, message: I18n.t('context_template_history')),
+      Message(type: Message.system, message: I18n.t('context_template_chat_history')),
+      Message(type: Message.system, message: I18n.t('context_template_task')),
+      Message(type: Message.system, message: I18n.t('context_template_call_function')),
     ];
   }
   return jsonToMsg(json);
@@ -458,6 +459,20 @@ Future<void> setSdConfig(SdConfig config) async {
     config.sampler, config.width?.toString()??'', config.height?.toString()??'',
     config.steps?.toString()??'', config.cfg?.toString()??''];
   await prefs.setStringList("sd_config", configList);
+}
+
+Future<void> setLanguage(String language) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("language", language);
+}
+
+Future<String> getLanguage() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? language = prefs.getString("language");
+  if (language == null || language.isEmpty) {
+    return "zh";
+  }
+  return language;
 }
 
 Future<SdConfig> getSdConfig() async {
@@ -600,13 +615,13 @@ Future<void> loadCharacterCard(context) async {
           // 6. UTF-8 解码 (从 List<int> 变为 String)
           jsonString = utf8.decode(decodedBytes);
 
-          debugPrint("解码后的 JSON 字符串: $jsonString");
+          debugPrint("${I18n.t('decoded_json')}$jsonString");
         } catch (e) {
-          snackBarAlert(context,"解码 'chara' 数据时出错: $e");
+          snackBarAlert(context,"${I18n.t('decode_chara_error')}$e");
           return;
         }
       } else {
-        snackBarAlert(context,"错误: 未找到 'chara' 元数据。");
+        snackBarAlert(context,I18n.t('chara_metadata_not_found'));
         return;
       }
     }
@@ -615,7 +630,7 @@ Future<void> loadCharacterCard(context) async {
     }
 
     if(jsonString.isEmpty){
-      snackBarAlert(context,"错误: JSON 字符串为空。");
+      snackBarAlert(context,I18n.t('json_empty'));
       return;
     }
     // 7. 解析 JSON 并恢复 SharedPreferences
@@ -635,17 +650,17 @@ Future<void> loadCharacterCard(context) async {
               context: context,
               builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('导入角色书'),
-                content: const Text('检测到角色卡中包含角色书，是否将其作为故事导入？'),
+                title: Text(I18n.t('import_character_book')),
+                content: Text(I18n.t('import_character_book_msg')),
                 actions: <Widget>[
                 TextButton(
-                  child: const Text('取消'),
+                  child: Text(I18n.t('cancel')),
                   onPressed: () {
                   Navigator.of(context).pop(false);
                   },
                 ),
                 TextButton(
-                  child: const Text('导入'),
+                  child: Text(I18n.t('import_character')),
                   onPressed: () {
                   Navigator.of(context).pop(true);
                   },
@@ -658,7 +673,7 @@ Future<void> loadCharacterCard(context) async {
             if (confirmImport == true) {
               final String bookJsonString = jsonEncode(characterBook);
               await restoreHistoryFromJson(bookJsonString);
-              snackBarAlert(context, '角色书已作为故事导入。');
+              snackBarAlert(context, I18n.t('character_book_imported'));
             }
           }
         }
@@ -754,7 +769,7 @@ Future<void> downloadCharacterCard(context) async {
     // 6. 提示用户保存文件 (区分 Web 和其他平台)
     await writePngFile(outputBytes);
   } catch (e) {
-    debugPrint("下载角色卡时出错: $e");
-    snackBarAlert(context, "下载角色卡时出错: $e");
+    debugPrint("${I18n.t('download_card_error')}$e");
+    snackBarAlert(context, "${I18n.t('download_card_error')}$e");
   }
 }
