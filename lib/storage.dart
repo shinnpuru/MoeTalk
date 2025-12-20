@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:typed_data';   // 用于 Uint8List
+// 用于 Uint8List
 import 'package:image/image.dart' as img; // 导入 image 包并重命名，避免冲突
 import 'utils.dart';
 import 'package:http/http.dart' as http;
-import 'dart:io' if (kIsWeb) 'dart:html' as html;
 import 'non_web_utils.dart'
     if (dart.library.html) 'web_utils.dart';
 import 'i18n.dart';

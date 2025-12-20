@@ -1295,7 +1295,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           setState(() {
                             currentStory = historys[index];
                           });
-                          snackBarAlert(context, "${I18n.t('set_as_current_story').replaceFirst('...', historys[index][0])}");
+                          snackBarAlert(context, I18n.t('set_as_current_story').replaceFirst('...', historys[index][0]));
                         },
                         onLongPress: () {
                           showDialog(

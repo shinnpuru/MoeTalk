@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 
 class I18n {
   static final Map<String, Map<String, String>> _localizedValues = {
