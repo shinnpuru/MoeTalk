@@ -129,78 +129,124 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (context) => Scaffold(
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xfff2a0ac),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  I18n.t('welcome'),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(0, 2),
-                        blurRadius: 4.0,
-                        color: Color.fromARGB(64, 0, 0, 0),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Image.asset(
-                    "assets/moetalk.png",
-                    width: 200,
-                    height: 200,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  I18n.t('no_model_config'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 60),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xfff2a0ac),
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) {
+            return Scaffold(
+              body: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xfff2a0ac),
                     ),
-                    elevation: 4,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          I18n.t('welcome'),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 2),
+                                blurRadius: 4.0,
+                                color: Color.fromARGB(64, 0, 0, 0),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          child: Image.asset(
+                            "assets/moetalk.png",
+                            width: 200,
+                            height: 200,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          I18n.t('no_model_config'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 60),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xfff2a0ac),
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            elevation: 4,
+                          ),
+                          child: Text(
+                            I18n.t('start_config'),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                    I18n.t('start_config'),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Positioned(
+                    top: 40,
+                    right: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.language, color: Colors.white),
+                      onPressed: () {
+                        showDialog(context: context, builder: (context) {
+                          return SimpleDialog(
+                            title: Text(I18n.t('language')),
+                            children: [
+                              SimpleDialogOption(
+                                onPressed: () {
+                                  setLanguage('zh');
+                                  this.setState(() {
+                                    I18n.locale = 'zh';
+                                  });
+                                  setState(() {});
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('中文'),
+                              ),
+                              SimpleDialogOption(
+                                onPressed: () {
+                                  setLanguage('en');
+                                  this.setState(() {
+                                    I18n.locale = 'en';
+                                  });
+                                  setState(() {});
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('English'),
+                              ),
+                            ],
+                          );
+                        });
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          }
         ),
       ),
     );
