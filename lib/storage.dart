@@ -480,16 +480,16 @@ Future<SdConfig> getSdConfig() async {
     sampler: configList[3], width: int.tryParse(configList[4]), height: int.tryParse(configList[5]),
     steps: int.tryParse(configList[6]), cfg: int.tryParse(configList[7]));
   if(memConfig.prompt.isEmpty) {
-    memConfig.prompt = '1girl, CHAR, VERB, masterpiece, best quality, newest, absurdres, highres, safe,';
+    memConfig.prompt = '1girl, CHAR, VERB, masterpiece,best quality,amazing quality';
   }
   if(memConfig.negativePrompt.isEmpty) {
-    memConfig.negativePrompt = 'nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro';
+    memConfig.negativePrompt = 'nsfw, bad quality,worst quality,worst detail,sketch,censor';
   }
   if(memConfig.model.isEmpty) {
-    memConfig.model = 'Laxhar/noobai-XL-Vpred-1.0';
+    memConfig.model = 'John6666/wai-nsfw-illustrious-sdxl-v150-sdxl';
   }
   if(memConfig.sampler.isEmpty) {
-    memConfig.sampler = 'Euler';
+    memConfig.sampler = 'Euler a';
   }
   memConfig.width ??= 1024;
   memConfig.height ??= 1600;
