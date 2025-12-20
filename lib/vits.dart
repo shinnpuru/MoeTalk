@@ -75,10 +75,10 @@ Future<String?> getAudio(BuildContext context, String query) async {
     debugPrint("Session Hash: $sessionHash");
     
     // 匹配音频链接
-    final regex = RegExp('/tmp/gradio/\\S+?\\.wav');
+    final regex = RegExp('spk_\\S+?\\.wav');
     final match = regex.firstMatch(audioResponse.data.toString());
     if (match != null) {
-      final audioPath = "${url}gradio_api/file=${match.group(0)}";
+      final audioPath = "${url}gradio_api/file=outputs/${match.group(0)}";
       debugPrint("Audio path: $audioPath");
 
       return audioPath;
@@ -100,7 +100,6 @@ Future<String> queryAndPlayAudio(BuildContext context, String query) async {
       await playAudio(context, audio);
       return audio;
     } else {
-      snackBarAlert(context, "未找到音频数据");
       return "";
     }
   } catch (e) {
