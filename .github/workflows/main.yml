@@ -24,7 +24,6 @@ jobs:
     name: deploy
     needs: web
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Download artifact
