@@ -33117,7 +33117,7 @@ n=J
 s=3
 return A.m(A.bN(),$async$aeg)
 case 3:p=o.bS(n.j(b.a,"draw_url"))
-if(p==null||p.length===0){q="https://john6666-diffusecraftmod.hf.space"
+if(p==null||p.length===0){q="https://dnkjckjnc-diffusecraftmod.hf.space"
 s=1
 break}q=p
 s=1
@@ -121194,50 +121194,49 @@ return A.v($async$A4,r)},
 kS(){return this.aKE()},
 aKE(){var s=0,r=A.w(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3
 var $async$kS=A.x(function(b4,b5){if(b4===1){o.push(b5)
-s=p}for(;;)switch(s){case 0:b1={}
-b2=m.w
-A.bH().$1(b2.length===0?m.w="https://r3gm-diffusecraft.hf.space":b2)
+s=p}for(;;)switch(s){case 0:b2={}
+A.bH().$1(m.w)
 m.L(new A.afO(m))
-b2=m.w
-b=A.b6g(A.b0k(!B.e.fW(b2,"/")?m.w=b2+"/":b2))
-b2=m.z
-if(b2!=null){a=m.r
-a0=m.CW
-a0===$&&A.a()
-a0=a!==a0.c
-a=a0}else a=!0
-b2=A.r(b2)
-a0=m.e
-s=a?3:5
+b=m.w
+a=A.b6g(A.b0k(!B.e.fW(b,"/")?m.w=b+"/":b))
+b=m.z
+if(b!=null){a0=m.r
+a1=m.CW
+a1===$&&A.a()
+a1=a0!==a1.c
+a0=a1}else a0=!0
+b=A.r(b)
+a1=m.e
+s=a0?3:5
 break
-case 3:a0.sb8(0,b2+"\n"+a0.a.a)
-b2=m.CW
-b2===$&&A.a()
-a0.sb8(0,"\u6b63\u5728\u52a0\u8f7d "+b2.c+" ...\n"+a0.a.a)
-b2=A.an(["data",A.b([m.CW.c,"None","txt2img","Automatic"],t.s)],t.N,t.yp)
+case 3:a1.sb8(0,b+"\n"+a1.a.a)
+b=m.CW
+b===$&&A.a()
+a1.sb8(0,"\u6b63\u5728\u52a0\u8f7d "+b.c+" ...\n"+a1.a.a)
+b=A.an(["data",A.b([m.CW.c,"None","txt2img","Automatic"],t.s)],t.N,t.yp)
 b3=J
 s=6
-return A.m(b.a9i("/gradio_api/call/load_new_model",m.ch,b2,t.z),$async$kS)
-case 6:a1=b3.cC(b5.a)
-b2=B.e.X(a1,11,a1.length-1)
-m.z=b2
-A.bH().$1("/call/load_new_model/"+b2)
-b2=t.Ic
-a=t.L4
-a2=new A.qE(new A.b3(new A.ad($.ab,b2),a))
-m.ch=a2
+return A.m(a.a9i("/gradio_api/call/load_new_model",m.ch,b,t.z),$async$kS)
+case 6:a2=b3.cC(b5.a)
+b=B.e.X(a2,11,a2.length-1)
+m.z=b
+A.bH().$1("/call/load_new_model/"+b)
+b=t.Ic
+a0=t.L4
+a3=new A.qE(new A.b3(new A.ad($.ab,b),a0))
+m.ch=a3
 s=7
-return A.m(b.Ju(0,"/gradio_api/call/load_new_model/"+A.r(m.z),a2,A.YJ(null,B.jU,null),t.Ol),$async$kS)
+return A.m(a.Ju(0,"/gradio_api/call/load_new_model/"+A.r(m.z),a3,A.YJ(null,B.jU,null),t.Ol),$async$kS)
 case 7:l=b5
-a2=new A.qa(A.ky(l.a.b,"stream",t.K),t.j7)
+a3=new A.qa(A.ky(l.a.b,"stream",t.K),t.j7)
 p=8
 case 11:s=13
-return A.m(a2.t(),$async$kS)
+return A.m(a3.t(),$async$kS)
 case 13:if(!b5){s=12
-break}k=a2.gK(0)
-a3=new A.tG(!1).vg(k,0,null,!0)
-a4=a0.a
-a0.dq(0,a4.jf(B.U,B.ac,a3+a4.a))
+break}k=a3.gK(0)
+a4=new A.tG(!1).vg(k,0,null,!0)
+a5=a1.a
+a1.dq(0,a5.jf(B.U,B.ac,a4+a5.a))
 s=11
 break
 case 12:n.push(10)
@@ -121246,90 +121245,90 @@ break
 case 8:n=[2]
 case 9:p=2
 s=14
-return A.m(a2.aQ(0),$async$kS)
+return A.m(a3.aQ(0),$async$kS)
 case 14:s=n.pop()
 break
-case 10:m.ch=new A.qE(new A.b3(new A.ad($.ab,b2),a))
+case 10:m.ch=new A.qE(new A.b3(new A.ad($.ab,b),a0))
 s=4
 break
-case 5:a0.sb8(0,"\u4f1a\u8bdd\u5df2\u7ecf\u5b58\u5728\n\u7ed8\u753b\u54c8\u5e0c\u503c:"+b2)
-case 4:b2=m.CW
-b2===$&&A.a()
-m.r=b2.c
-a0.sb8(0,"\u6b63\u5728\u7ed8\u753b...\n"+a0.a.a)
-b2=m.CW
-a=b2.a
-if(!B.e.v(a,"CHAR"))a=b2.a=a+", CHAR"
-if(!B.e.v(a,"VERB"))b2.a=a+", VERB"
+case 5:a1.sb8(0,"\u4f1a\u8bdd\u5df2\u7ecf\u5b58\u5728\n\u7ed8\u753b\u54c8\u5e0c\u503c:"+b)
+case 4:b=m.CW
+b===$&&A.a()
+m.r=b.c
+a1.sb8(0,"\u6b63\u5728\u7ed8\u753b...\n"+a1.a.a)
+b=m.CW
+a0=b.a
+if(!B.e.v(a0,"CHAR"))a0=b.a=a0+", CHAR"
+if(!B.e.v(a0,"VERB"))b.a=a0+", VERB"
 s=15
 return A.m(A.y9(!1),$async$kS)
-case 15:a5=b5
-b2=m.CW.a
-a=m.f.a.a
-b2=A.cu(b2,"VERB",a)
-a6=A.cu(b2,"CHAR",a5)
-A.bH().$1(a6)
-b2=m.CW
-a=b2.b
-a2=b2.r
-a3=b2.d
-a4=b2.f
-if(a4==null)a4=1600
-a7=b2.e
-if(a7==null)a7=1024
-b2=A.an(["data",[a6,a,1,a2,7,!0,-1,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,a3,"Automatic","Automatic",a4,a7,b2.c,null,"txt2img",null,null,512,1024,null,null,null,0.55,100,200,1,1,1,9,1,0,1,!1,"Classic",null,1.2,0,8,30,0.55,"Use same sampler","","",!1,!0,"Use same schedule type",-1,"Automatic",1,!0,!1,!0,!0,!0,"model,seed","./images",!1,!1,!1,!0,1,0.55,!1,!1,!1,!0,!1,"Use same sampler",!1,"","",0.35,!0,!1,!1,4,4,32,!1,"","",0.35,!1,!0,!1,4,4,32,!1,0,null,null,"plus_face","original",0.7,null,null,"base","style",0.7,0,null,1,0.5,!1,!1,59]],t.N,t.Dn)
+case 15:a6=b5
+b=m.CW.a
+a0=m.f.a.a
+b=A.cu(b,"VERB",a0)
+a7=A.cu(b,"CHAR",a6)
+A.bH().$1(a7)
+b=m.CW
+a0=b.b
+a3=b.r
+a4=b.d
+a5=b.f
+if(a5==null)a5=1600
+a8=b.e
+if(a8==null)a8=1024
+b=A.an(["data",[a7,a0,1,a3,7,!0,-1,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,null,0.33,a4,"Automatic","Automatic",a5,a8,b.c,null,"txt2img",null,null,512,1024,null,null,null,0.55,100,200,1,1,1,9,1,0,1,!1,"Classic",null,1.2,0,8,30,0.55,"Use same sampler","","",!1,!0,"Use same schedule type",-1,"Automatic",1,!0,!1,!0,!0,!0,"model,seed","./images",!1,!1,!1,!0,1,0.55,!1,!1,!1,!0,!1,"Use same sampler",!1,"","",0.35,!0,!1,!1,4,4,32,!1,"","",0.35,!1,!0,!1,4,4,32,!1,0,null,null,"plus_face","original",0.7,null,null,"base","style",0.7,0,null,1,0.5,!1,!1,59]],t.N,t.Dn)
 s=16
-return A.m(b.a9i("/gradio_api/call/sd_gen_generate_pipeline",m.ch,b2,t.z),$async$kS)
-case 16:a8=b5
-b2=t.Ic
-a7=t.L4
-m.ch=new A.qE(new A.b3(new A.ad($.ab,b2),a7))
-a1=J.cC(a8.a)
-a4=B.e.X(a1,11,a1.length-1)
-m.z=a4
-A.bH().$1("/call/sd_gen_generate_pipeline/"+a4)
-a4=m.z
-a3=A.YJ(null,B.jU,null)
+return A.m(a.a9i("/gradio_api/call/sd_gen_generate_pipeline",m.ch,b,t.z),$async$kS)
+case 16:a9=b5
+b=t.Ic
+a8=t.L4
+m.ch=new A.qE(new A.b3(new A.ad($.ab,b),a8))
+a2=J.cC(a9.a)
+a5=B.e.X(a2,11,a2.length-1)
+m.z=a5
+A.bH().$1("/call/sd_gen_generate_pipeline/"+a5)
+a5=m.z
+a4=A.YJ(null,B.jU,null)
 s=17
-return A.m(b.Ju(0,"/gradio_api/call/sd_gen_generate_pipeline/"+A.r(a4),m.ch,a3,t.Ol),$async$kS)
+return A.m(a.Ju(0,"/gradio_api/call/sd_gen_generate_pipeline/"+A.r(a5),m.ch,a4,t.Ol),$async$kS)
 case 17:j=b5
-b1.a=""
+b2.a=""
 i=A.aJ('download=\\\\"(.+?)\\\\"',!0,!1,!1)
 h=A.aJ('href=\\\\"(.+?)\\\\"',!0,!1,!1)
-a3=new A.qa(A.ky(j.a.b,"stream",t.K),t.j7)
+a4=new A.qa(A.ky(j.a.b,"stream",t.K),t.j7)
 p=18
-a=m.ay
+a0=m.ay
 case 21:s=23
-return A.m(a3.t(),$async$kS)
+return A.m(a4.t(),$async$kS)
 case 23:if(!b5){s=22
-break}g=a3.gK(0)
+break}g=a4.gK(0)
 f=new A.tG(!1).vg(g,0,null,!0)
-a2=J.b4X(f,a0.a.a)
-a0.dq(0,a0.a.jf(B.U,B.ac,a2))
+a3=J.b4X(f,a1.a.a)
+a1.dq(0,a1.a.jf(B.U,B.ac,a3))
 e=J.af5(i,f)
 A.bH().$1(A.b1i(e,"(",")"))
-if(!J.j7(e)){a2=J.Eo(e).b[1]
-a2.toString
-b1.a=a2}a2=f
-a4=J.af(a2)
-a9=a4.gp(a2)
-if(0>a9)A.Z(A.di(0,0,a4.gp(a2),null,null))
-if(A.Sa(a2,"COMPLETE",0)){if(b1.a.length===0){n=[1]
+if(!J.j7(e)){a3=J.Eo(e).b[1]
+a3.toString
+b2.a=a3}a3=f
+a5=J.af(a3)
+b0=a5.gp(a3)
+if(0>b0)A.Z(A.di(0,0,a5.gp(a3),null,null))
+if(A.Sa(a3,"COMPLETE",0)){if(b2.a.length===0){n=[1]
 s=19
 break}if(m.c==null){n=[1]
 s=19
-break}new A.afP(b1,m).$0()
+break}new A.afP(b2,m).$0()
 m.c.dj()
-if(!m.ax)a.Di(0,"\u7ed8\u753b\u5b8c\u6210\uff01",!1,"\u7ed8\u753b")}a2=f
-a4=J.af(a2)
-a9=a4.gp(a2)
-if(0>a9)A.Z(A.di(0,0,a4.gp(a2),null,null))
-if(A.Sa(a2,"COMPLETE",0)){d=h.fn(f)
-a2=d
-b0=null
-if(!(a2==null)){a2=a2.b[1]
-if(!(a2==null)){a2=A.cu(a2,'\\"',"")
-b0=a2}}c=b0
+if(!m.ax)a0.Di(0,"\u7ed8\u753b\u5b8c\u6210\uff01",!1,"\u7ed8\u753b")}a3=f
+a5=J.af(a3)
+b0=a5.gp(a3)
+if(0>b0)A.Z(A.di(0,0,a5.gp(a3),null,null))
+if(A.Sa(a3,"COMPLETE",0)){d=h.fn(f)
+a3=d
+b1=null
+if(!(a3==null)){a3=a3.b[1]
+if(!(a3==null)){a3=A.cu(a3,'\\"',"")
+b1=a3}}c=b1
 if(c!=null)m.y=m.w+c
 A.bH().$1(m.y)}s=21
 break
@@ -121339,10 +121338,10 @@ break
 case 18:n=[2]
 case 19:p=2
 s=24
-return A.m(a3.aQ(0),$async$kS)
+return A.m(a4.aQ(0),$async$kS)
 case 24:s=n.pop()
 break
-case 20:m.ch=new A.qE(new A.b3(new A.ad($.ab,b2),a7))
+case 20:m.ch=new A.qE(new A.b3(new A.ad($.ab,b),a8))
 case 1:return A.u(q,r)
 case 2:return A.t(o.at(-1),r)}})
 return A.v($async$kS,r)},
