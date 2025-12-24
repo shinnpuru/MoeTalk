@@ -58,9 +58,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   }
 
   Future<void> makeRequest() async {
-    if(url.isEmpty) {
-      url = 'https://r3gm-diffusecraft.hf.space';
-    }
     debugPrint(url);
     setState(() {
       sdBusy = true;

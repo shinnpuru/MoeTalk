@@ -295,7 +295,7 @@ Future<String?> getDrawUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? url = prefs.getString("draw_url");
   if (url == null || url.isEmpty) {
-    return "https://john6666-diffusecraftmod.hf.space";
+    return "https://dnkjckjnc-diffusecraftmod.hf.space";
   }
   return url;
 }
