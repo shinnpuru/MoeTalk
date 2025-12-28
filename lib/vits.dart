@@ -74,11 +74,21 @@ Future<String?> getAudio(BuildContext context, String query) async {
     );
     debugPrint("Session Hash: $sessionHash");
     
-    // 匹配音频链接
-    final regex = RegExp('spk_\\S+?\\.wav');
+    // 匹配Linux音频链接
+    final regex = RegExp('/tmp/gradio/\\S+?\\.wav');
     final match = regex.firstMatch(audioResponse.data.toString());
     if (match != null) {
-      final audioPath = "${url}gradio_api/file=outputs/${match.group(0)}";
+      final audioPath = "${url}gradio_api/file=${match.group(0)}";
+      debugPrint("Audio path: $audioPath");
+
+      return audioPath;
+    } 
+
+    // 匹配Windows音频链接
+    final regexWin = RegExp('spk_\\S+?\\.wav');
+    final matchWin = regexWin.firstMatch(audioResponse.data.toString());
+    if (matchWin != null) {
+      final audioPath = "${url}gradio_api/file=outputs/${matchWin.group(0)}";
       debugPrint("Audio path: $audioPath");
 
       return audioPath;
