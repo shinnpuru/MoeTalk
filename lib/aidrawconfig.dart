@@ -3,26 +3,75 @@ import 'storage.dart';
 import 'utils.dart';
 import 'i18n.dart';
 
-class SdConfigPage extends StatelessWidget {
+class SdConfigPage extends StatefulWidget {
   final SdConfig sdConfig;
-  
+
   const SdConfigPage({super.key, required this.sdConfig});
 
   @override
-  Widget build(BuildContext context) {
-    TextEditingController apiController = TextEditingController();
-    TextEditingController sdPrompt = TextEditingController(text: sdConfig.prompt);
-    TextEditingController sdNegative = TextEditingController(text: sdConfig.negativePrompt);
-    TextEditingController sdModel = TextEditingController(text: sdConfig.model);
-    TextEditingController sdSampler = TextEditingController(text: sdConfig.sampler);
-    TextEditingController sdWidth = TextEditingController(text: sdConfig.width.toString());
-    TextEditingController sdHeight = TextEditingController(text: sdConfig.height.toString());
-    TextEditingController sdStep = TextEditingController(text: sdConfig.steps.toString());
-    TextEditingController sdCFG = TextEditingController(text: sdConfig.cfg.toString());
+  State<SdConfigPage> createState() => _SdConfigPageState();
+}
+
+class _SdConfigPageState extends State<SdConfigPage> {
+  // SD controllers
+  final TextEditingController apiController = TextEditingController();
+  late final TextEditingController sdPrompt;
+  late final TextEditingController sdNegative;
+  late final TextEditingController sdModel;
+  late final TextEditingController sdSampler;
+  late final TextEditingController sdWidth;
+  late final TextEditingController sdHeight;
+  late final TextEditingController sdStep;
+  late final TextEditingController sdCFG;
+
+  // Aidraw LLM selection
+  List<Config> apiConfigs = [];
+  String? aidrawSelectedConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.sdConfig;
+    sdPrompt = TextEditingController(text: s.prompt);
+    sdNegative = TextEditingController(text: s.negativePrompt);
+    sdModel = TextEditingController(text: s.model);
+    sdSampler = TextEditingController(text: s.sampler);
+    sdWidth = TextEditingController(text: s.width.toString());
+    sdHeight = TextEditingController(text: s.height.toString());
+    sdStep = TextEditingController(text: s.steps.toString());
+    sdCFG = TextEditingController(text: s.cfg.toString());
+
     getDrawUrl().then((value) {
-      apiController.text = value?? '';
+      if (!mounted) return;
+      apiController.text = value ?? '';
     });
 
+    getApiConfigs().then((cfgs) async {
+      final name = await getAidrawApiName();
+      if (!mounted) return;
+      setState(() {
+        apiConfigs = cfgs;
+        aidrawSelectedConfig = name ?? (apiConfigs.isNotEmpty ? apiConfigs.first.name : null);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    apiController.dispose();
+    sdPrompt.dispose();
+    sdNegative.dispose();
+    sdModel.dispose();
+    sdSampler.dispose();
+    sdWidth.dispose();
+    sdHeight.dispose();
+    sdStep.dispose();
+    sdCFG.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(I18n.t('drawing_config')),
@@ -55,19 +104,50 @@ class SdConfigPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            ListTile(
-              title: Text(I18n.t('base_config'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child:  Column(
-                children: [
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              ListTile(
+                title: Text(I18n.t('aidraw_prompt_llm'),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(children: [
+                  Expanded(
+                    child: DropdownButton<String>(
+                      value: aidrawSelectedConfig,
+                      isExpanded: true,
+                      items: apiConfigs
+                          .map((c) => DropdownMenuItem<String>(
+                                value: c.name,
+                                child: Text(c.name),
+                              ))
+                          .toList(),
+                      onChanged: (String? newValue) async {
+                        setState(() {
+                          aidrawSelectedConfig = newValue;
+                        });
+                        if (newValue != null) await setAidrawApiConfig(newValue);
+                      },
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                title: Text(I18n.t('base_config'),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(children: [
                   TextField(
                     controller: apiController,
                     decoration: InputDecoration(labelText: I18n.t('api_url')),
@@ -76,20 +156,19 @@ class SdConfigPage extends StatelessWidget {
                     controller: sdModel,
                     decoration: InputDecoration(labelText: I18n.t('model')),
                   ),
-                ]
-              )
-            ),
-            ListTile(
-              title: Text(I18n.t('sampler_config'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child:  Column(
-                children: [
+                ]),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                title: Text(I18n.t('sampler_config'),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(children: [
                   TextField(
                     controller: sdSampler,
                     decoration: InputDecoration(labelText: I18n.t('sampler')),
@@ -127,20 +206,19 @@ class SdConfigPage extends StatelessWidget {
                       ),
                     ),
                   ]),
-                ]
-              )
-            ),
-            ListTile(
-              title: Text(I18n.t('prompt_config'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child:  Column(
-                children: [
+                ]),
+              ),
+
+              ListTile(
+                title: Text(I18n.t('prompt_config'),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(children: [
                   TextField(
                     controller: sdPrompt,
                     decoration: InputDecoration(labelText: I18n.t('positive_prompt')),
@@ -153,10 +231,10 @@ class SdConfigPage extends StatelessWidget {
                     minLines: 2,
                     maxLines: 4,
                   ),
-                ]
-              )
-            )
-          ],
+                ]),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -207,74 +207,48 @@ class ConfigPageState extends State<ConfigPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child:  Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          decoration: InputDecoration(labelText: I18n.t('name')),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        child: Text(I18n.t('save_preset')),
-                        onPressed: () {
-                          if (nameController.text.isEmpty ||
-                              urlController.text.isEmpty ||
-                              keyController.text.isEmpty ||
-                              modelController.text.isEmpty) {
-                            snackBarAlert(context, I18n.t('please_fill_all'));
-                          } else {
-                            saveConfig();
-                            snackBarAlert(context, I18n.t('save_success'));
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
                   DropdownButton<String>(
-                  value: selectedConfig,
-                  hint: Text(I18n.t('select_preset')),
-                  isExpanded: true,
-                  items: apiConfigs.map((Config config) {
-                    return DropdownMenuItem<String>(
-                      value: config.name,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(config.name),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () {
-                              deleteConfirm(context, config.name);
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedConfig = newValue;
-                      for (Config c in apiConfigs) {
-                        if (c.name == newValue) {
-                          nameController.text = c.name;
-                          urlController.text = c.baseUrl;
-                          keyController.text = c.apiKey;
-                          modelController.text = c.model;
-                          temperatureController.text = c.temperature ?? "";
-                          frequencyPenaltyController.text = c.frequencyPenalty ?? "";
-                          presencePenaltyController.text = c.presencePenalty ?? "";
-                          maxTokensController.text = c.maxTokens ?? "";
-                          widget.updateFunc(c);
-                          break;
+                    value: selectedConfig,
+                    hint: Text(I18n.t('select_preset')),
+                    isExpanded: true,
+                    items: apiConfigs.map((Config config) {
+                      return DropdownMenuItem<String>(
+                        value: config.name,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(config.name),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () {
+                                deleteConfirm(context, config.name);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        selectedConfig = newValue;
+                        for (Config c in apiConfigs) {
+                          if (c.name == newValue) {
+                            nameController.text = c.name;
+                            urlController.text = c.baseUrl;
+                            keyController.text = c.apiKey;
+                            modelController.text = c.model;
+                            temperatureController.text = c.temperature ?? "";
+                            frequencyPenaltyController.text = c.frequencyPenalty ?? "";
+                            presencePenaltyController.text = c.presencePenalty ?? "";
+                            maxTokensController.text = c.maxTokens ?? "";
+                            widget.updateFunc(c);
+                            break;
+                          }
                         }
-                      }
-                    });
-                    setCurrentApiConfig(selectedConfig!);
-                  },
-                ),
+                      });
+                      setCurrentApiConfig(selectedConfig!);
+                    },
+                  ),
                 ]
               )
             ),
@@ -286,6 +260,10 @@ class ConfigPageState extends State<ConfigPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child:  Column(
                 children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: I18n.t('name')),
+                  ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: urlController,
@@ -325,26 +303,41 @@ class ConfigPageState extends State<ConfigPage> {
                   ),
                   const SizedBox(height: 10),
                   Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: presencePenaltyController,
-                    decoration: InputDecoration(labelText: I18n.t('presence_penalty')),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [DecimalTextInputFormatter()],
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: presencePenaltyController,
+                          decoration: InputDecoration(labelText: I18n.t('presence_penalty')),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [DecimalTextInputFormatter()],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: maxTokensController,
+                          decoration: InputDecoration(labelText: I18n.t('max_output_length')),
+                          keyboardType: const TextInputType.numberWithOptions(),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: maxTokensController,
-                    decoration: InputDecoration(labelText: I18n.t('max_output_length')),
-                    keyboardType: const TextInputType.numberWithOptions(),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    child: Text(I18n.t('save_preset')),
+                    onPressed: () {
+                      if (nameController.text.isEmpty ||
+                          urlController.text.isEmpty ||
+                          keyController.text.isEmpty ||
+                          modelController.text.isEmpty) {
+                        snackBarAlert(context, I18n.t('please_fill_all'));
+                      } else {
+                        saveConfig();
+                        snackBarAlert(context, I18n.t('save_success'));
+                      }
+                    },
                   ),
-                ),
-              ],
-            ),
                 ]
               )
             )

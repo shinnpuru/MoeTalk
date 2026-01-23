@@ -38,7 +38,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     });
     List<List<String>> messages = widget.msg?? [];
     String result = '';
-    await completion(widget.config, messages,
+    final Config? aidrawCfg = await getAidrawApiConfig();
+    final Config configToUse = aidrawCfg ?? widget.config;
+    await completion(configToUse, messages,
       (String data) async{
         result += data.replaceAll("\n", " ");
         promptController.text = result.split('||').last.replaceAll(RegExp(await getResponseRegex()), '');

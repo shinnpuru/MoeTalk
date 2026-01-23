@@ -47,6 +47,48 @@ Future<void> setCurrentApiConfig(String name) async {
   debugPrint("set current api $name");
 }
 
+// Aidraw prompt LLM selection
+Future<void> setAidrawApiConfig(String name) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("aidraw_api", "api_$name");
+  debugPrint("set aidraw api $name");
+}
+
+Future<String?> getAidrawApiName() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? key = prefs.getString("aidraw_api");
+  if (key == null || key.isEmpty) return null;
+  return key.replaceFirst("api_", "");
+}
+
+Future<Config?> getAidrawApiConfig() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? key = prefs.getString("aidraw_api");
+  if (key == null || key.isEmpty) return null;
+  final List<String>? cfg = prefs.getStringList(key);
+  if (cfg == null) return null;
+  if (cfg.length == 3) {
+    return Config(
+      name: key.replaceFirst("api_", ""),
+      baseUrl: cfg[0],
+      apiKey: cfg[1],
+      model: cfg[2],
+    );
+  } else if (cfg.length == 7) {
+    return Config(
+      name: key.replaceFirst("api_", ""),
+      baseUrl: cfg[0],
+      apiKey: cfg[1],
+      model: cfg[2],
+      temperature: cfg[3],
+      frequencyPenalty: cfg[4],
+      presencePenalty: cfg[5],
+      maxTokens: cfg[6],
+    );
+  }
+  return null;
+}
+
 Future<void> deleteApiConfig(String name) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.remove("api_$name");
