@@ -7,7 +7,8 @@
 <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
 </div>
 
-# MoeTalk - 你的随身 AI 伴侣
+<h1 align="center">MoeTalk</h1>
+
 
 **将你最喜欢的角色带入现实！** 
 
