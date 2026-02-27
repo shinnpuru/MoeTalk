@@ -7,6 +7,7 @@ import 'openai.dart';
 import 'notifications.dart';
 import 'storage.dart';
 import 'i18n.dart';
+import 'civitai_client.dart';
 
 class AiDraw extends StatefulWidget {
   final List<List<String>>? msg;
@@ -25,12 +26,13 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   String url="";
   String? imageUrl;
   String? imageUrlRaw;
-  String? sessionHash;
+  String? jobToken;
   bool gptBusy = false, sdBusy = false, showLog = false;
   bool isForeground = true;
   final notification = NotificationHelper();
   CancelToken cancelToken = CancelToken();
   late SdConfig sdConfig;
+  CivitaiClient? civitaiClient;
 
   Future<void> buildPrompt() async {
     setState(() {
@@ -60,230 +62,138 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   }
 
   Future<void> makeRequest() async {
-    debugPrint(url);
     setState(() {
       sdBusy = true;
       showLog = true;
     });
-    if(!url.endsWith('/')) {
-      url += '/';
-    }
-    final dio = Dio(BaseOptions(baseUrl: url));
-    if(sessionHash==null || lastModel != sdConfig.model) {
-      logController.text = '$sessionHash\n${logController.text}';
-      logController.text = '正在加载 ${sdConfig.model} ...\n${logController.text}';
-      final Response response = await dio.post(
-        "/gradio_api/call/load_new_model",
-        data: {
-          "data": [sdConfig.model, "None", "txt2img", "Automatic"],
-        },
-        cancelToken: cancelToken,
-      );
-      final data = response.data.toString();
-      sessionHash = data.substring(11,data.length-1);
-      debugPrint("/call/load_new_model/$sessionHash");
-      cancelToken = CancelToken();
-      final Response<ResponseBody> loadModelQueue = await dio.get<ResponseBody>(
-        "/gradio_api/call/load_new_model/$sessionHash",
-        options: Options(responseType: ResponseType.stream),
-        cancelToken: cancelToken,
-      );
-      await for (var chunk in loadModelQueue.data!.stream) {
-        logController.text = utf8.decode(chunk) + logController.text;
-      }
-      cancelToken = CancelToken();
-    } else {
-      logController.text = '会话已经存在\n绘画哈希值:$sessionHash';
-    }
-    lastModel = sdConfig.model;
-    logController.text = '正在绘画...\n${logController.text}';
-    if(!sdConfig.prompt.contains("CHAR")){
-      sdConfig.prompt+= ", CHAR";
-    }
-    if(!sdConfig.prompt.contains("VERB")){
-      sdConfig.prompt+= ", VERB";
-    }
-    String? charPrompt = await getDrawCharPrompt();
-    String finalPrompt = sdConfig.prompt.replaceAll("VERB", promptController.text).replaceAll("CHAR", charPrompt);
-    debugPrint(finalPrompt);
-    final Response response = await dio.post(
-      "/gradio_api/call/sd_gen_generate_pipeline",
-      data: {
-        "data": [
-          finalPrompt,
-          sdConfig.negativePrompt,
-          1,
-          sdConfig.steps,
-          7,
-          true,
-          -1,
-          null,
-          0.33,
-          null,
-          0.33,
-          null,
-          0.33,
-          null,
-          0.33,
-          null,
-          0.33,
-          null,
-          0.33,
-          null,
-          0.33,
-          sdConfig.sampler,
-          "Automatic",
-          "Automatic",
-          sdConfig.height??1600,
-          sdConfig.width??1024,
-          sdConfig.model,
-          null,//"vaes/sdxl_vae-fp16fix-c-1.1-b-0.5.safetensors",
-          "txt2img",
-          null,
-          null,
-          512,
-          1024,
-          null,
-          null,
-          null,
-          0.55,
-          100,
-          200,
-          1,
-          1,
-          1,
-          9,
-          1,
-		      0,
-		      1,
-          false,
-          "Classic",
-          null,
-          1.2,
-          0,
-          8,
-          30,
-          0.55,
-          "Use same sampler",
-          "",
-          "",
-          false,
-          true,
-		      "Use same schedule type",
-          -1,
-          "Automatic",
-          1,
-          true,
-          false,
-          true,
-          true,
-          true,
-          "model,seed",
-          "./images",
-          false,
-          false,
-          false,
-          true,
-          1,
-          0.55,
-          false,
-          false,
-          false,
-          true,
-          false,
-          "Use same sampler",
-          false,
-          "",
-          "",
-          0.35,
-          true,
-          false,
-          false,
-          4,
-          4,
-          32,
-          false,
-          "",
-          "",
-          0.35,
-          false,
-          true,
-          false,
-          4,
-          4,
-          32,
-          false,
-		      0,
-          null,
-          null,
-          "plus_face",
-          "original",
-          0.7,
-          null,
-          null,
-          "base",
-          "style",
-          0.7,
-          0,
-          null,
-          1,
-          0.5,
-          false,
-          false,
-          59
-        ],
-      },
-      cancelToken: cancelToken,
-    );
-    cancelToken = CancelToken();
-    final data = response.data.toString();
-    sessionHash = data.substring(11,data.length-1);
-    debugPrint("/call/sd_gen_generate_pipeline/$sessionHash");
 
-    // Inference queue
-    final Response<ResponseBody> inferQueue = await dio.get<ResponseBody>(
-      "/gradio_api/call/sd_gen_generate_pipeline/$sessionHash",
-      options: Options(responseType: ResponseType.stream),
-      cancelToken: cancelToken,
-    );
-    String lastUrl = '';
-    final regexWebp = RegExp(r'download=\\"(.+?)\\"');
-    final regexPng = RegExp(r'href=\\"(.+?)\\"');
-    await for (var chunk in inferQueue.data!.stream) {
-      String data = utf8.decode(chunk);
-      logController.text = data + logController.text;
-      final match = regexWebp.allMatches(data);
-      debugPrint(match.toString());
-      if (match.isNotEmpty) {
-        lastUrl = match.last.group(1)!;
+    try {
+      // Initialize Civitai client if API token is available
+      if (sdConfig.civitaiApiToken == null || sdConfig.civitaiApiToken!.isEmpty) {
+        throw Exception('Civitai API token is not configured');
       }
-      if (data.contains('COMPLETE')) {
-        if(lastUrl.isEmpty) return;
-        if(!mounted) return;
-        setState(() {
-          imageUrl = "${url}gradio_api/file=images/$lastUrl";
-          debugPrint(imageUrl);
-          sdBusy = false;
-          showLog = false;
-        });
-        if(!isForeground) {
-          notification.showNotification(
-            title: '绘画',
-            body: '绘画完成！',
-            showAvator: false
-          );
+
+      civitaiClient = CivitaiClient(apiToken: sdConfig.civitaiApiToken!);
+      
+      logController.text = 'Initializing Civitai API...\n${logController.text}';
+      
+      // Prepare prompt
+      if(!sdConfig.prompt.contains("CHAR")){
+        sdConfig.prompt += ", CHAR";
+      }
+      if(!sdConfig.prompt.contains("VERB")){
+        sdConfig.prompt += ", VERB";
+      }
+      String? charPrompt = await getDrawCharPrompt();
+      String finalPrompt = sdConfig.prompt
+          .replaceAll("VERB", promptController.text)
+          .replaceAll("CHAR", charPrompt);
+      
+      debugPrint('Final prompt: $finalPrompt');
+      logController.text = 'Generating image with prompt:\n$finalPrompt\n${logController.text}';
+      
+      // Get LoRA configuration
+      String? lora = await getDrawLora();
+      Map<String, dynamic>? additionalNetworks;
+      if (lora != null && lora.isNotEmpty) {
+        // Parse LoRA configuration
+        // Format 1: <AIR1:weight1>,<AIR2:weight2> for multiple LoRAs
+        // Format 2: Single LoRA URN with weight 1.0
+        
+        final loraPattern = RegExp(r'<([^:]+):([0-9.]+)>');
+        final matches = loraPattern.allMatches(lora);
+        
+        if (matches.isNotEmpty) {
+          // Multiple LoRA format: <AIR1:weight1>,<AIR2:weight2>
+          additionalNetworks = {};
+          for (var match in matches) {
+            String airUrn = match.group(1)!;
+            double weight = double.tryParse(match.group(2)!) ?? 1.0;
+            additionalNetworks[airUrn] = {'strength': weight};
+            logController.text = 'Using LoRA: $airUrn (weight: $weight)\n${logController.text}';
+          }
+        } else {
+          // Single LoRA format with weight 1.0
+          additionalNetworks = {
+            lora: {'strength': 1.0},
+          };
+          logController.text = 'Using LoRA: $lora (weight: 1.0)\n${logController.text}';
         }
       }
-      if (data.contains('COMPLETE')) {
-          Match? match = regexPng.firstMatch(data);
-          String? filePath = match?.group(1)?.replaceAll('\\"', '');
-          if(filePath != null) {
-            imageUrlRaw = url + filePath;
+      
+      // Create image generation request
+      final input = ImageInput(
+        model: sdConfig.model,
+        params: ImageParams(
+          prompt: finalPrompt,
+          negativePrompt: sdConfig.negativePrompt,
+          width: sdConfig.width ?? 1024,
+          height: sdConfig.height ?? 1600,
+          steps: sdConfig.steps ?? 28,
+          cfgScale: (sdConfig.cfg ?? 7).toDouble(),
+          scheduler: sdConfig.sampler,
+          seed: sdConfig.seed,
+          clipSkip: sdConfig.clipSkip,
+        ),
+        additionalNetworks: additionalNetworks,
+      );
+
+      logController.text = 'Submitting job to Civitai...\n${logController.text}';
+      
+      // Submit the job and wait for completion
+      final response = await civitaiClient!.image.create(
+        input: input,
+        wait: true,
+        timeout: const Duration(minutes: 10),
+        pollInterval: const Duration(seconds: 2),
+      );
+
+      jobToken = response.token;
+      logController.text = 'Job token: $jobToken\n${logController.text}';
+
+      // Check if we have completed jobs with images
+      if (response.jobs.isNotEmpty) {
+        for (var job in response.jobs) {
+          final url = job.imageUrl;
+          if (url != null && url.isNotEmpty) {
+            logController.text = 'Image generated successfully!\n${logController.text}';
+            setState(() {
+              imageUrl = url;
+              imageUrlRaw = url;
+              sdBusy = false;
+              showLog = false;
+            });
+            
+            if(!isForeground) {
+              notification.showNotification(
+                title: '绘画',
+                body: '绘画完成！',
+                showAvator: false
+              );
+            }
+            return;
           }
-          debugPrint(imageUrlRaw);
+        }
+      }
+
+      // If we get here, no image was generated
+      logController.text = 'Warning: Job completed but no image was returned\n${logController.text}';
+      setState(() {
+        sdBusy = false;
+        showLog = true;
+      });
+      
+    } catch (e) {
+      debugPrint('Error during image generation: $e');
+      logController.text = 'Error: $e\n${logController.text}';
+      setState(() {
+        sdBusy = false;
+        showLog = true;
+      });
+      if (mounted) {
+        snackBarAlert(context, "${I18n.t('error')} $e");
       }
     }
-    cancelToken = CancelToken();
   }
 
   @override
@@ -300,15 +210,6 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    getDrawUrl().then((value) {
-      debugPrint('Fetched draw URL: $value');
-      if (mounted) {
-        setState(() {
-          url = value ?? '';
-        });
-      }
-    });
-    // debugPrint(url); // This would print the initial empty 'url'
 
     if (widget.msg != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -320,9 +221,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 
     getSdConfig().then((memConfig) {
       if (mounted) {
-        // Assuming sdConfig might be used in a way that doesn't require setState here,
-        // or its update is handled elsewhere if it needs to trigger a rebuild.
-        sdConfig = memConfig;
+        setState(() {
+          sdConfig = memConfig;
+        });
       }
     });
   }

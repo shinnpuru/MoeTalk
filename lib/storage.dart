@@ -328,20 +328,6 @@ Future<String> getVitsPrompt({bool isDefault=false}) async {
   return prompt;
 }
 
-Future<void> setDrawUrl(String url) async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString("draw_url", url);
-}
-
-Future<String?> getDrawUrl() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? url = prefs.getString("draw_url");
-  if (url == null || url.isEmpty) {
-    return "https://dnkjckjnc-diffusecraftmod.hf.space";
-  }
-  return url;
-}
-
 Future<void> setDrawCharPrompt(String url) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("draw_char_prompt", url);
@@ -355,6 +341,45 @@ Future<String> getDrawCharPrompt({bool isDefault=false}) async {
   }
   return prompt;
 }
+
+Future<void> setDrawLora(String lora) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("draw_lora", lora);
+}
+
+Future<String> getDrawLora({bool isDefault=false}) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? lora = prefs.getString("draw_lora");
+  if (lora == null || lora.isEmpty || isDefault) {
+    return "";
+  }
+  return lora;
+}
+
+Future<void> setCivitaiApiToken(String token) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("civitai_api_token", token);
+}
+
+Future<String?> getCivitaiApiToken() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("civitai_api_token");
+}
+
+Future<void> setCivitaiModel(String model) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("civitai_model", model);
+}
+
+Future<String> getCivitaiModel() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? model = prefs.getString("civitai_model");
+  if (model == null || model.isEmpty) {
+    return "urn:air:sdxl:checkpoint:civitai:101055@128078";
+  }
+  return model;
+}
+
 Future<void> setDrawPrompt(String format) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("draw_prompt", format);
@@ -495,10 +520,22 @@ Future<VitsConfig> getVitsConfig() async {
 
 Future<void> setSdConfig(SdConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = [config.prompt, config.negativePrompt, config.model, 
-    config.sampler, config.width?.toString()??'', config.height?.toString()??'',
-    config.steps?.toString()??'', config.cfg?.toString()??''];
+  List<String> configList = [
+    config.prompt, 
+    config.negativePrompt, 
+    config.model, 
+    config.sampler, 
+    config.width?.toString()??'', 
+    config.height?.toString()??'',
+    config.steps?.toString()??'', 
+    config.cfg?.toString()??'',
+    config.seed?.toString()??'',
+    config.clipSkip?.toString()??'',
+  ];
   await prefs.setStringList("sd_config", configList);
+  if (config.civitaiApiToken != null) {
+    await setCivitaiApiToken(config.civitaiApiToken!);
+  }
 }
 
 Future<void> setLanguage(String language) async {
@@ -517,10 +554,24 @@ Future<String> getLanguage() async {
 
 Future<SdConfig> getSdConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','',''];
-  final memConfig = SdConfig(prompt: configList[0], negativePrompt: configList[1], model: configList[2],
-    sampler: configList[3], width: int.tryParse(configList[4]), height: int.tryParse(configList[5]),
-    steps: int.tryParse(configList[6]), cfg: int.tryParse(configList[7]));
+  List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','','','',''];
+  while (configList.length < 10) {
+    configList.add('');
+  }
+  final civitaiToken = await getCivitaiApiToken();
+  final memConfig = SdConfig(
+    prompt: configList[0], 
+    negativePrompt: configList[1], 
+    model: configList[2],
+    sampler: configList[3], 
+    width: int.tryParse(configList[4]), 
+    height: int.tryParse(configList[5]),
+    steps: int.tryParse(configList[6]), 
+    cfg: int.tryParse(configList[7]),
+    seed: int.tryParse(configList[8]),
+    clipSkip: int.tryParse(configList[9]),
+    civitaiApiToken: civitaiToken,
+  );
   if(memConfig.prompt.isEmpty) {
     memConfig.prompt = '1girl, CHAR, VERB, masterpiece,best quality,amazing quality';
   }
@@ -528,14 +579,14 @@ Future<SdConfig> getSdConfig() async {
     memConfig.negativePrompt = 'nsfw, bad quality,worst quality,worst detail,sketch,censor';
   }
   if(memConfig.model.isEmpty) {
-    memConfig.model = 'John6666/wai-nsfw-illustrious-sdxl-v150-sdxl';
+    memConfig.model = 'urn:air:sdxl:checkpoint:civitai:827184@2514310';
   }
   if(memConfig.sampler.isEmpty) {
-    memConfig.sampler = 'Euler a';
+    memConfig.sampler = 'EulerA';
   }
   memConfig.width ??= 1024;
   memConfig.height ??= 1600;
-  memConfig.steps ??= 28;
+  memConfig.steps ??= 25;
   memConfig.cfg ??= 5;
   return memConfig;
 }
@@ -728,6 +779,9 @@ Future<void> loadCharacterCard(context) async {
           if (extensions.containsKey("vits_prompt")) {
             await prefs.setString("vits_prompt", extensions["vits_prompt"]);
           }
+          if (extensions.containsKey("draw_lora")) {
+            await prefs.setString("draw_lora", extensions["draw_lora"]);
+          }
         }
       }
     }
@@ -752,6 +806,7 @@ Future<void> downloadCharacterCard(context) async {
     final firstMes = await getOriginalMsg();
     final drawCharPrompt = await getDrawCharPrompt();
     final vitsPrompt = await getVitsPrompt();
+    final drawLora = await getDrawLora();
 
     final characterData = {
       "spec": "chara_card_v2",
@@ -762,7 +817,8 @@ Future<void> downloadCharacterCard(context) async {
         "first_mes": firstMes,
         "extensions": {
           "draw_prompt": drawCharPrompt,
-          "vits_prompt": vitsPrompt
+          "vits_prompt": vitsPrompt,
+          "draw_lora": drawLora
         }
       }
     };

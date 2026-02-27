@@ -79,7 +79,7 @@ Contributions are welcome! If you have ideas for new features, bug fixes, or imp
 
 ## 💖 Thanks
 
-This software is developed based on [MisonoTalk](https://github.com/k96e/MisonoTalk), using [DiffuseCraft](https://huggingface.co/spaces/r3gm/DiffuseCraft) and [IndexTTS](https://huggingface.co/spaces/IndexTeam/IndexTTS-2-Demo) as backends。Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
+This software is developed based on [MisonoTalk](https://github.com/k96e/MisonoTalk). Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/).
 
 ## 📄 License
 

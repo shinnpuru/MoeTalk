@@ -18,6 +18,7 @@ class PromptEditorState extends State<PromptEditor> {
   TextEditingController studentAvatarController = TextEditingController();
   TextEditingController drawCharPromptController = TextEditingController();
   TextEditingController vitsPromptController = TextEditingController();
+  TextEditingController drawLoraController = TextEditingController();
 
   @override
   void initState() {
@@ -50,6 +51,11 @@ class PromptEditorState extends State<PromptEditor> {
     getVitsPrompt().then((String value) {
       setState(() {
         vitsPromptController.text = value;
+      });
+    });
+    getDrawLora().then((String value) {
+      setState(() {
+        drawLoraController.text = value;
       });
     });
   }
@@ -148,6 +154,7 @@ class PromptEditorState extends State<PromptEditor> {
               studentAvatarController.text = await getAvatar(isDefault: true);
               drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
               vitsPromptController.text = await getVitsPrompt(isDefault: true);
+              drawLoraController.text = await getDrawLora(isDefault: true);
               setState(() {});
             },
           ),
@@ -161,6 +168,7 @@ class PromptEditorState extends State<PromptEditor> {
               setAvatar(studentAvatarController.text);
               setDrawCharPrompt(drawCharPromptController.text);
               setVitsPrompt(vitsPromptController.text);
+              setDrawLora(drawLoraController.text);
               Navigator.pop(context);
             },
           ),
@@ -225,6 +233,21 @@ class PromptEditorState extends State<PromptEditor> {
             ),
             onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawCharPromptController,
                 multiLine: true),
+          ),
+          ListTile(
+            title: const Text('LoRA'),
+            subtitle: Text(
+              drawLoraController.text.isEmpty 
+                ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>' 
+                : drawLoraController.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: drawLoraController.text.isEmpty ? Colors.grey : null,
+                fontStyle: drawLoraController.text.isEmpty ? FontStyle.italic : null,
+              ),
+            ),
+            onTap: () => _showEditDialog(context, 'LoRA (Single or <URN:weight>,<URN:weight>)', drawLoraController, multiLine: true),
           ),
           ListTile(
             title: Text(I18n.t('voice_ref')),

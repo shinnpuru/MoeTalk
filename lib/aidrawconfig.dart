@@ -14,7 +14,7 @@ class SdConfigPage extends StatefulWidget {
 
 class _SdConfigPageState extends State<SdConfigPage> {
   // SD controllers
-  final TextEditingController apiController = TextEditingController();
+  final TextEditingController civitaiApiTokenController = TextEditingController();
   late final TextEditingController sdPrompt;
   late final TextEditingController sdNegative;
   late final TextEditingController sdModel;
@@ -23,6 +23,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
   late final TextEditingController sdHeight;
   late final TextEditingController sdStep;
   late final TextEditingController sdCFG;
+  late final TextEditingController sdSeed;
+  late final TextEditingController sdClipSkip;
 
   // Aidraw LLM selection
   List<Config> apiConfigs = [];
@@ -40,11 +42,9 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdHeight = TextEditingController(text: s.height.toString());
     sdStep = TextEditingController(text: s.steps.toString());
     sdCFG = TextEditingController(text: s.cfg.toString());
-
-    getDrawUrl().then((value) {
-      if (!mounted) return;
-      apiController.text = value ?? '';
-    });
+    sdSeed = TextEditingController(text: s.seed?.toString() ?? '');
+    sdClipSkip = TextEditingController(text: s.clipSkip?.toString() ?? '');
+    civitaiApiTokenController.text = s.civitaiApiToken ?? '';
 
     getApiConfigs().then((cfgs) async {
       final name = await getAidrawApiName();
@@ -58,7 +58,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
 
   @override
   void dispose() {
-    apiController.dispose();
+    civitaiApiTokenController.dispose();
     sdPrompt.dispose();
     sdNegative.dispose();
     sdModel.dispose();
@@ -67,6 +67,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdHeight.dispose();
     sdStep.dispose();
     sdCFG.dispose();
+    sdSeed.dispose();
+    sdClipSkip.dispose();
     super.dispose();
   }
 
@@ -94,9 +96,11 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 height: int.parse(sdHeight.text),
                 steps: int.parse(sdStep.text),
                 cfg: int.parse(sdCFG.text),
+                civitaiApiToken: civitaiApiTokenController.text.isNotEmpty ? civitaiApiTokenController.text : null,
+                seed: int.tryParse(sdSeed.text),
+                clipSkip: int.tryParse(sdClipSkip.text),
               );
               setSdConfig(updatedConfig);
-              setDrawUrl(apiController.text);
               Navigator.of(context).pop();
             },
           ),
@@ -149,12 +153,19 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(children: [
                   TextField(
-                    controller: apiController,
-                    decoration: InputDecoration(labelText: I18n.t('api_url')),
+                    controller: civitaiApiTokenController,
+                    decoration: const InputDecoration(
+                      labelText: 'Civitai API Token',
+                      helperText: 'Get your token from civitai.com',
+                    ),
+                    obscureText: true,
                   ),
                   TextField(
                     controller: sdModel,
-                    decoration: InputDecoration(labelText: I18n.t('model')),
+                    decoration: const InputDecoration(
+                      labelText: 'Model URN',
+                      helperText: 'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078',
+                    ),
                   ),
                 ]),
               ),
@@ -171,7 +182,10 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 child: Column(children: [
                   TextField(
                     controller: sdSampler,
-                    decoration: InputDecoration(labelText: I18n.t('sampler')),
+                    decoration: const InputDecoration(
+                      labelText: 'Sampler/Scheduler',
+                      helperText: 'e.g., EulerA, DPM++ 2M Karras, Euler',
+                    ),
                   ),
                   Row(children: [
                     Expanded(
@@ -203,6 +217,29 @@ class _SdConfigPageState extends State<SdConfigPage> {
                       child: TextField(
                         controller: sdCFG,
                         decoration: InputDecoration(labelText: I18n.t('cfg')),
+                      ),
+                    ),
+                  ]),
+                  Row(children: [
+                    Expanded(
+                      child: TextField(
+                        controller: sdSeed,
+                        inputFormatters: [DecimalTextInputFormatter()],
+                        decoration: const InputDecoration(
+                          labelText: 'Seed',
+                          helperText: 'Optional: -1 for random',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: sdClipSkip,
+                        inputFormatters: [DecimalTextInputFormatter()],
+                        decoration: const InputDecoration(
+                          labelText: 'Clip Skip',
+                          helperText: 'Optional: 1-2',
+                        ),
                       ),
                     ),
                   ]),

@@ -87,9 +87,23 @@ class SdConfig {
   int? height;
   int? steps;
   int? cfg;
+  String? civitaiApiToken;
+  int? seed;
+  int? clipSkip;
 
-  SdConfig({required this.prompt, required this.negativePrompt, required this.model, 
-    required this.sampler, this.width, this.height, this.steps, this.cfg});
+  SdConfig({
+    required this.prompt, 
+    required this.negativePrompt, 
+    required this.model, 
+    required this.sampler, 
+    this.width, 
+    this.height, 
+    this.steps, 
+    this.cfg,
+    this.civitaiApiToken,
+    this.seed,
+    this.clipSkip,
+  });
 }
 
 String msgListToJson(List<Message> messages) {
