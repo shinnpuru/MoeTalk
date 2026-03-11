@@ -59,7 +59,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _singleViewIndex = 0;
   bool _isFullScreen = false; // Add a state variable to control fullscreen mode
   bool _isAutoVoice = false;
-  bool _isAutoDraw = false;
 
   // Chat page variables
   final fn = FocusNode();
@@ -525,9 +524,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           });
           debugPrint("inputUnlocked");
           setTempHistory(msgListToJson(messages));
-          if (_isAutoDraw) {
-            getDraw();
-          }
         }, (err) {
           setState(() {
             inputLock = false;
@@ -711,118 +707,46 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     List<List<String>> msg = await parseMsg(
       messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
     );
+
+    Future<void> handleResult(dynamic result) async {
+      if (result is List && result.length == 2 && result[0] is Future<String?>) {
+        snackBarAlert(context, I18n.t('generating') ?? "开始绘图...");
+        try {
+          String? url = await result[0];
+          if (url != null && mounted) {
+            var previewResult = await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AiDraw(msg: null, config: config, initialImageUrl: url, initialPrompt: result[1])
+            );
+            await handleResult(previewResult);
+          }
+        } catch (e) {
+          if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
+        }
+      } else if (result is String) {
+        setState(() {
+          backgroundImage = DecorationImage(
+            image: NetworkImage(result),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.8),
+              BlendMode.dstATop,
+            ),
+          );
+          messages.add(Message(message: result, type: Message.image));
+        });
+        setTempHistory(msgListToJson(messages));
+      }
+    }
+
     var result = await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AiDraw(msg: msg, config: config)
     );
 
-    if (result is Map && (result['action'] == 'start' || result['action'] == 'redraw')) {
-      String prompt = result['prompt'];
-      SdConfig sdConfig = result['sdConfig'];
-
-      snackBarAlert(context, I18n.t('generating'));
-
-      try {
-        String? finalUrl = await generateImageTask(
-          promptText: prompt,
-          sdConfig: sdConfig,
-        );
-
-        if (finalUrl != null && mounted) {
-           if (!isForeground) {
-              notification.showNotification(
-                title: '绘画',
-                body: '绘画完成！',
-                showAvator: false
-              );
-           }
-
-           var previewResult = await showDialog(
-             context: context,
-             barrierDismissible: false,
-             builder: (context) => AiDraw(msg: null, config: config, initialImageUrl: finalUrl, promptForRedraw: prompt)
-           );
-
-           if (previewResult is String) {
-             setState(() {
-               backgroundImage = DecorationImage(
-                 image: NetworkImage(previewResult),
-                 fit: BoxFit.cover,
-                 colorFilter: ColorFilter.mode(
-                   Colors.white.withOpacity(0.8),
-                   BlendMode.dstATop,
-                 ),
-               );
-               messages.add(Message(message: previewResult, type: Message.image));
-             });
-             setTempHistory(msgListToJson(messages));
-           } else if (previewResult is Map && previewResult['action'] == 'redraw') {
-              // Recursively call getDraw if they want to redraw from preview
-              // We simulate the dialog returning 'redraw' again by calling a helper or simply passing it back to a loop.
-              // A simpler way: just show snackbar and call a handler.
-              handleRedraw(previewResult['prompt'], previewResult['sdConfig']);
-           }
-        }
-      } catch (e) {
-        if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
-      }
-    } else if (result is String) {
-      setState(() {
-        backgroundImage = DecorationImage(
-          image: NetworkImage(result),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.white.withOpacity(0.8),
-            BlendMode.dstATop,
-          ),
-        );
-        messages.add(Message(message: result, type: Message.image));
-      });
-      setTempHistory(msgListToJson(messages));
-    }
-  }
-
-  Future<void> handleRedraw(String prompt, SdConfig sdConfig) async {
-    snackBarAlert(context, I18n.t('generating'));
-    try {
-      String? finalUrl = await generateImageTask(
-        promptText: prompt,
-        sdConfig: sdConfig,
-      );
-      if (finalUrl != null && mounted) {
-          if (!isForeground) {
-            notification.showNotification(
-              title: '绘画',
-              body: '绘画完成！',
-              showAvator: false
-            );
-          }
-          var previewResult = await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AiDraw(msg: null, config: config, initialImageUrl: finalUrl, promptForRedraw: prompt)
-          );
-          if (previewResult is String) {
-            setState(() {
-              backgroundImage = DecorationImage(
-                image: NetworkImage(previewResult),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.8),
-                  BlendMode.dstATop,
-                ),
-              );
-              messages.add(Message(message: previewResult, type: Message.image));
-            });
-            setTempHistory(msgListToJson(messages));
-          } else if (previewResult is Map && previewResult['action'] == 'redraw') {
-            handleRedraw(previewResult['prompt'], previewResult['sdConfig']);
-          }
-      }
-    } catch (e) {
-      if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
-    }
+    await handleResult(result);
   }
 
   void _showStatusDialog() {
@@ -1226,11 +1150,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         },
                       ),
                       _buildToolButton(
-                        icon: _isAutoDraw ? Icons.brush : Icons.brush_outlined,
-                        label: _isAutoDraw ? I18n.t('auto_draw') : I18n.t('manual_draw'),
+                        icon: Icons.draw,
+                        label: I18n.t('draw'),
                         onTap: () {
+                          getDraw();
                           setState(() {
-                            _isAutoDraw = !_isAutoDraw;
                             _isToolsExpanded = false;
                           });
                         },
