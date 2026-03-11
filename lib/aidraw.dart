@@ -9,10 +9,87 @@ import 'storage.dart';
 import 'i18n.dart';
 import 'civitai_client.dart';
 
+Future<String?> generateImageTask({
+  required String promptText,
+  required SdConfig sdConfig,
+}) async {
+  if (sdConfig.civitaiApiToken == null || sdConfig.civitaiApiToken!.isEmpty) {
+    throw Exception('Civitai API token is not configured');
+  }
+
+  final civitaiClient = CivitaiClient(apiToken: sdConfig.civitaiApiToken!);
+
+  String prompt = sdConfig.prompt;
+  if(!prompt.contains("CHAR")){
+    prompt += ", CHAR";
+  }
+  if(!prompt.contains("VERB")){
+    prompt += ", VERB";
+  }
+  String? charPrompt = await getDrawCharPrompt();
+  String finalPrompt = prompt
+      .replaceAll("VERB", promptText)
+      .replaceAll("CHAR", charPrompt);
+
+  String? lora = await getDrawLora();
+  Map<String, dynamic>? additionalNetworks;
+  if (lora != null && lora.isNotEmpty) {
+    final loraPattern = RegExp(r'<([^:]+):([0-9.]+)>');
+    final matches = loraPattern.allMatches(lora);
+    if (matches.isNotEmpty) {
+      additionalNetworks = {};
+      for (var match in matches) {
+        String airUrn = match.group(1)!;
+        double weight = double.tryParse(match.group(2)!) ?? 1.0;
+        additionalNetworks[airUrn] = {'strength': weight};
+      }
+    } else {
+      additionalNetworks = {
+        lora: {'strength': 1.0},
+      };
+    }
+  }
+
+  final input = ImageInput(
+    model: sdConfig.model,
+    params: ImageParams(
+      prompt: finalPrompt,
+      negativePrompt: sdConfig.negativePrompt,
+      width: sdConfig.width ?? 1024,
+      height: sdConfig.height ?? 1600,
+      steps: sdConfig.steps ?? 28,
+      cfgScale: (sdConfig.cfg ?? 7).toDouble(),
+      scheduler: sdConfig.sampler,
+      seed: sdConfig.seed,
+      clipSkip: sdConfig.clipSkip,
+    ),
+    additionalNetworks: additionalNetworks,
+  );
+
+  final response = await civitaiClient.image.create(
+    input: input,
+    wait: true,
+    timeout: const Duration(minutes: 10),
+    pollInterval: const Duration(seconds: 2),
+  );
+
+  if (response.jobs.isNotEmpty) {
+    for (var job in response.jobs) {
+      final url = job.imageUrl;
+      if (url != null && url.isNotEmpty) {
+        return url;
+      }
+    }
+  }
+  return null;
+}
+
 class AiDraw extends StatefulWidget {
   final List<List<String>>? msg;
   final Config config;
-  const AiDraw({super.key, required this.msg, required this.config});
+  final String? initialImageUrl;
+  final String? promptForRedraw;
+  const AiDraw({super.key, required this.msg, required this.config, this.initialImageUrl, this.promptForRedraw});
 
   @override
   AiDrawState createState() => AiDrawState();
@@ -211,6 +288,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    if (widget.initialImageUrl != null) {
+      imageUrl = widget.initialImageUrl;
+      imageUrlRaw = widget.initialImageUrl;
+    }
+    if (widget.promptForRedraw != null) {
+      promptController.text = widget.promptForRedraw!;
+    }
+
     if (widget.msg != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -326,11 +411,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                       onPressed: gptBusy || promptController.text.isEmpty
                           ? null
                           : () {
-                              makeRequest().catchError((e) {
-                                snackBarAlert(context, "${I18n.t('error')} $e");
-                                setState(() {
-                                  sdBusy = false;
-                                });
+                              Navigator.pop(context, {
+                                'action': 'start',
+                                'prompt': promptController.text,
+                                'sdConfig': sdConfig,
                               });
                             },
                       child: Text(I18n.t('start')),
@@ -348,11 +432,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () {
-                      makeRequest().catchError((e) {
-                        snackBarAlert(context, "${I18n.t('error')} $e");
-                        setState(() {
-                          sdBusy = false;
-                        });
+                      Navigator.pop(context, {
+                        'action': 'redraw',
+                        'prompt': promptController.text,
+                        'sdConfig': sdConfig,
                       });
                     },
                     child: Text(I18n.t('redraw')),
