@@ -300,6 +300,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       assistantPopup(context, messages[index].message, details, studentName, (String edited) {
         debugPrint("edited: $edited");
         edited = edited.replaceAll("\n", "\\");
+        if (edited == "DRAW") {
+          getDraw(beforeIndex: index);
+          return;
+        }
         if (edited == "VOICE") {
           getVoice(messages[index].message);
           return;
@@ -338,6 +342,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     } else if (messages[index].type == Message.user) {
       userPopup(context, messages[index].message, details, (String edited, bool isResend) {
         debugPrint("edited: $edited");
+        if (edited == "DRAW") {
+          getDraw(beforeIndex: index);
+          return;
+        }
         edited = edited.replaceAll("\n", "\\");
         if (edited.isEmpty) {
           setState(() {
@@ -371,6 +379,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     } else if (messages[index].type == Message.system) {
       systemPopup(context, messages[index].message, (String edited, bool isSend) {
         debugPrint("edited: $edited");
+        if (edited == "DRAW") {
+          getDraw(beforeIndex: index);
+          return;
+        }
         if (edited.isEmpty) {
           setState(() {
             messages.removeAt(index);
@@ -707,9 +719,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> getDraw() async {
+  Future<void> getDraw({int? beforeIndex}) async {
+    final List<Message> drawMessages = beforeIndex == null
+        ? List<Message>.from(messages)
+        : messages.take(beforeIndex).toList();
     List<List<String>> msg = await parseMsg(
-      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
+      drawMessages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
     );
     var result = await showDialog(
       context: context,

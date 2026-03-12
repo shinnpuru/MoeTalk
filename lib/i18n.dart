@@ -243,7 +243,7 @@ class I18n {
       'replying': '回复中',
       'enter_message': '请输入您的消息...',
       'status': '查看状态',
-      'draw': '开始绘图',
+      'draw': '绘图',
       'auto_voice': '自动语音',
       'auto_draw': '自动绘图',
       'manual_draw': '手动绘图',

@@ -17,6 +17,7 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
       PopupMenuItem(value: 0, child: Text(I18n.t('voice'))),
       PopupMenuItem(value: 1, child: Text(I18n.t('edit'))),
       PopupMenuItem(value: 2, child: Text(I18n.t('delete'))),
+      PopupMenuItem(value: 3, child: Text(I18n.t('draw'))),
     ],
   ).then((value) {
     if (value == 1) {
@@ -49,6 +50,8 @@ void assistantPopup(BuildContext context, String msg, LongPressStartDetails deta
       onEdited("DELETE");
     } else if (value == 0) {
       onEdited("VOICE");
+    } else if (value == 3) {
+      onEdited("DRAW");
     }
   });
 }
@@ -65,7 +68,8 @@ void userPopup(BuildContext context, String msg, LongPressStartDetails details, 
     position: position,
     items: [
       PopupMenuItem(value: 1, child: Text(I18n.t('edit'))),
-      PopupMenuItem(value: 2, child: Text(I18n.t('resend')))
+      PopupMenuItem(value: 2, child: Text(I18n.t('resend'))),
+      PopupMenuItem(value: 3, child: Text(I18n.t('draw')))
     ],
   ).then((value) {
     if (value == 1) {
@@ -103,6 +107,8 @@ void userPopup(BuildContext context, String msg, LongPressStartDetails details, 
       });
     } else if (value == 2) {
       onEdited(msg, true);
+    } else if (value == 3) {
+      onEdited("DRAW", false);
     }
   });
 }
@@ -130,6 +136,13 @@ void systemPopup(BuildContext context, String msg, Function(String,bool) onEdite
             Navigator.of(context).pop();
           },
           child: Text(I18n.t('confirm')),
+        ),
+        TextButton(
+          onPressed: () {
+            onEdited("DRAW", false);
+            Navigator.of(context).pop();
+          },
+          child: Text(I18n.t('draw')),
         ),
       ],
     );
