@@ -490,32 +490,53 @@ Future<String> getResponseRegex() async {
 Future<void> setVitsConfig(VitsConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = [
-    config.happy?.toString()??'',
-    config.angry?.toString()??'',
-    config.sad?.toString()??'',
-    config.afraid?.toString()??'',
-    config.disgusted?.toString()??'',
-    config.melancholic?.toString()??'',
-    config.surprised?.toString()??'',
-    config.calm?.toString()??''
+    config.language ?? 'zh-CN',
+    config.speechRate?.toString() ?? '0.5',
+    config.volume?.toString() ?? '1.0',
+    config.pitch?.toString() ?? '1.0',
+    config.voiceName ?? '',
+    config.voiceLocale ?? '',
+    (config.sharedInstance ?? true).toString(),
+    (config.focus ?? true).toString(),
   ];
   await prefs.setStringList("vits_config", configList);
 }
 
 Future<VitsConfig> getVitsConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("vits_config") ?? ['0','0','0','0','0','0','0','0'];
-  final memConfig = VitsConfig(
-    happy: double.tryParse(configList[0]) ,
-    angry: double.tryParse(configList[1]) ,
-    sad: double.tryParse(configList[2]) ,
-    afraid: double.tryParse(configList[3]) ,
-    disgusted: double.tryParse(configList[4]) ,
-    melancholic: double.tryParse(configList[5]) ,
-    surprised: double.tryParse(configList[6]) ,
-    calm: double.tryParse(configList[7]) ,
+  List<String>? configList = prefs.getStringList("vits_config");
+
+  // 兼容旧版本情绪参数配置（8个数字）
+  if (configList != null &&
+      configList.length == 8 &&
+      double.tryParse(configList[0]) != null) {
+    return VitsConfig(
+      language: 'zh-CN',
+      speechRate: 0.5,
+      volume: 1.0,
+      pitch: 1.0,
+      voiceName: '',
+      voiceLocale: '',
+      sharedInstance: true,
+      focus: true,
+    );
+  }
+
+  configList ??= ['zh-CN', '0.5', '1.0', '1.0', '', '', 'true', 'true'];
+  while (configList.length < 8) {
+    configList.add('');
+  }
+
+  return VitsConfig(
+    language: configList[0].isEmpty ? 'zh-CN' : configList[0],
+    speechRate: double.tryParse(configList[1]) ?? 0.5,
+    volume: double.tryParse(configList[2]) ?? 1.0,
+    pitch: double.tryParse(configList[3]) ?? 1.0,
+    voiceName: configList[4],
+    voiceLocale: configList[5],
+    sharedInstance: configList[6].isEmpty ? true : configList[6] == 'true',
+    focus: configList[7].isEmpty ? true : configList[7] == 'true',
   );
-  return memConfig;
 }
 
 Future<void> setSdConfig(SdConfig config) async {

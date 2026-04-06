@@ -1,119 +1,102 @@
-import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:moetalk/utils.dart';
-import 'package:dio/dio.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'storage.dart';
-import 'package:just_audio/just_audio.dart';
+final FlutterTts _flutterTts = FlutterTts();
+bool _ttsInitialized = false;
 
-Future<void> playAudio(BuildContext context, String audioUrl) async {
-  try {
-    final player = AudioPlayer();
-    await player.setAudioSource(
-      AudioSource.uri(Uri.parse(audioUrl)),
+Future<void> _initTts() async {
+  if (_ttsInitialized) return;
+
+  await _flutterTts.awaitSpeakCompletion(true);
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    await _flutterTts.setSharedInstance(true);
+    await _flutterTts.setIosAudioCategory(
+      IosTextToSpeechAudioCategory.ambient,
+      [
+        IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+      ],
+      IosTextToSpeechAudioMode.voicePrompt,
     );
-    await player.play();
+  }
+
+  _flutterTts.setStartHandler(() {
+    debugPrint('TTS started');
+  });
+  _flutterTts.setCompletionHandler(() {
+    debugPrint('TTS completed');
+  });
+  _flutterTts.setErrorHandler((msg) {
+    debugPrint('TTS error: $msg');
+  });
+
+  _ttsInitialized = true;
+}
+
+Future<void> _applyTtsConfig(VitsConfig config) async {
+  if (config.language != null && config.language!.isNotEmpty) {
+    await _flutterTts.setLanguage(config.language!);
+  }
+  await _flutterTts.setSpeechRate(config.speechRate ?? 0.5);
+  await _flutterTts.setVolume(config.volume ?? 1.0);
+  await _flutterTts.setPitch(config.pitch ?? 1.0);
+
+  if ((config.voiceName ?? '').isNotEmpty ||
+      (config.voiceLocale ?? '').isNotEmpty) {
+    final voice = <String, String>{};
+    if ((config.voiceName ?? '').isNotEmpty) {
+      voice['name'] = config.voiceName!;
+    }
+    if ((config.voiceLocale ?? '').isNotEmpty) {
+      voice['locale'] = config.voiceLocale!;
+    }
+    await _flutterTts.setVoice(voice);
+  }
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    await _flutterTts.setSharedInstance(config.sharedInstance ?? true);
+  }
+}
+
+Future<void> playAudio(BuildContext context, String text) async {
+  if (text.trim().isEmpty) return;
+
+  try {
+    await _initTts();
+    final vitsConfig = await getVitsConfig();
+    await _applyTtsConfig(vitsConfig);
+
+    await _flutterTts.stop();
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await _flutterTts.speak(text, focus: vitsConfig.focus ?? true);
+    } else {
+      await _flutterTts.speak(text);
+    }
   } catch (e) {
     snackBarAlert(context, "播放错误: $e");
   }
 }
 
-
 Future<String?> getAudio(BuildContext context, String query) async {
-  VitsConfig? vitsConfig = await getVitsConfig();
-  String? url = await getVitsUrl();
-  String? prompt = await getVitsPrompt();
-  if (url == null || url.isEmpty) {
-    url = 'https://indexteam-indextts-2-demo.hf.space/';
-  }
-  if(!url.endsWith('/')) {
-    url += '/';
-  }
-  debugPrint(query);
-  debugPrint(prompt);
-  final dio = Dio(BaseOptions(baseUrl: url));
-  final response = await dio.post(
-    "/gradio_api/call/gen_single",
-    data: jsonEncode({"data": [
-        "Same as the voice reference",
-        {"path":prompt,"meta":{"_type":"gradio.FileData"}}, // 语音参考
-        query, // 语音内容
-        null, // 表情参考
-        1, // 表情强度
-        vitsConfig.happy, // 情绪参数
-        vitsConfig.angry,
-        vitsConfig.sad,
-        vitsConfig.afraid,
-        vitsConfig.disgusted,
-        vitsConfig.melancholic,
-        vitsConfig.surprised,
-        vitsConfig.calm,
-        "", // Emotion description
-        false, // Randomize emotion sampling
-        120, // Max tokens per generation segment
-        true, // do_sample
-        0.8, // top_p
-        30, // top_k
-        0.8, // temperature 
-        0, // length_penalty
-        3, // num_beams
-        10, // repetition_penalty
-        1500 // max_mel_tokens
-    ]
-    }),
-    options: Options(
-      validateStatus: (status) => status! < 500, // 只处理2xx和3xx状态码
-    ),
-  );
-  if (response.statusCode == 200) {
-    // 取得音频数据
-    final data = response.data.toString();
-    String sessionHash = data.substring(11,data.length-1);
-    debugPrint("/call/gen_single/$sessionHash");
-    final Response audioResponse = await dio.get(
-      "/gradio_api/call/gen_single/$sessionHash",
-    );
-    debugPrint("Session Hash: $sessionHash");
-    
-    // 匹配Linux音频链接
-    final regex = RegExp('/tmp/gradio/\\S+?\\.wav');
-    final match = regex.firstMatch(audioResponse.data.toString());
-    if (match != null) {
-      final audioPath = "${url}gradio_api/file=${match.group(0)}";
-      debugPrint("Audio path: $audioPath");
-
-      return audioPath;
-    } 
-
-    // 匹配Windows音频链接
-    final regexWin = RegExp('spk_\\S+?\\.wav');
-    final matchWin = regexWin.firstMatch(audioResponse.data.toString());
-    if (matchWin != null) {
-      final audioPath = "${url}gradio_api/file=outputs/${matchWin.group(0)}";
-      debugPrint("Audio path: $audioPath");
-
-      return audioPath;
-    } else {
-      snackBarAlert(context, "未找到音频路径：${audioResponse.data.toString()}");
-      return null;
-    }
-    
-  } else {
-    snackBarAlert(context, "请求失败: ${response.statusCode} ${response.toString()}");
-    return null;
-  }
+  if (query.trim().isEmpty) return null;
+  return query;
 }
 
 Future<String> queryAndPlayAudio(BuildContext context, String query) async {
   try {
-    final audio = await getAudio(context, query);
-    if (audio != null && audio.isNotEmpty) {
-      await playAudio(context, audio);
-      return audio;
-    } else {
-      return "";
+    final text = await getAudio(context, query);
+    if (text != null && text.isNotEmpty) {
+      await playAudio(context, text);
+      return text;
     }
+    return "";
   } catch (e) {
-    snackBarAlert(context, "查询或播放音频时出错: $e");
+    snackBarAlert(context, "语音播放出错: $e");
     return "";
   }
 }

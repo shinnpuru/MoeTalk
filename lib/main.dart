@@ -83,7 +83,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   List<String>? currentStory;
   List<List<String>> students = [];
   final Map<String, ImageProvider> _avatarImageCache = {};
-  final Map<String, String> _voiceCache = {};
 
   @override
   void initState() {
@@ -445,7 +444,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void clearMsg(bool clear) {
     setState(() {
       if (clear) messages.clear();
-      _voiceCache.clear();
       getUserName().then((name) {
         userName = name;
       });
@@ -564,52 +562,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       return;
     }
 
-    if (_voiceCache.containsKey(text)) {
-      try {
-        await playAudio(context, _voiceCache[text]!);
-        return;
-      } catch (e) {
-        _voiceCache.remove(text);
-      }
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(I18n.t('playing_voice')),
-              const SizedBox(height: 16),
-              // Display text here if needed
-              TextField(
-                controller: TextEditingController(text: text),
-                maxLines: 5,
-                minLines: 3,
-                readOnly: true,
-                decoration: const InputDecoration(border: OutlineInputBorder(),),
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
     try {
-      String? path = await queryAndPlayAudio(context, text);
-      if (path != "") {
-        _voiceCache[text] = path;
-      }
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
+      await queryAndPlayAudio(context, text);
     } catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
       snackBarAlert(context, "${I18n.t('voice_gen_failed')}: $e");
     }
   }
