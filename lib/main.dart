@@ -573,43 +573,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       }
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(I18n.t('playing_voice')),
-              const SizedBox(height: 16),
-              // Display text here if needed
-              TextField(
-                controller: TextEditingController(text: text),
-                maxLines: 5,
-                minLines: 3,
-                readOnly: true,
-                decoration: const InputDecoration(border: OutlineInputBorder(),),
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
     try {
       String? path = await queryAndPlayAudio(context, text);
       if (path != "") {
         _voiceCache[text] = path;
       }
       if (!context.mounted) return;
-      Navigator.of(context).pop();
     } catch (e) {
       if (!context.mounted) return;
-      Navigator.of(context).pop();
       snackBarAlert(context, "${I18n.t('voice_gen_failed')}: $e");
     }
   }

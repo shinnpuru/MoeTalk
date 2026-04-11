@@ -57,24 +57,16 @@ class Config {
 }
 
 class VitsConfig {
-  double? happy;
-  double? angry;
-  double? sad;
-  double? afraid;
-  double? disgusted;
-  double? melancholic;
-  double? surprised;
-  double? calm;
+  String? apiKey;
+  String? voiceId;
+  String? language;
+  String? audioFormat;
 
   VitsConfig({
-    this.happy,
-    this.angry,
-    this.sad,
-    this.afraid,
-    this.disgusted,
-    this.melancholic,
-    this.surprised,
-    this.calm,
+    this.apiKey,
+    this.voiceId,
+    this.language,
+    this.audioFormat,
   });
 }
 
