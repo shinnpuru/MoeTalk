@@ -555,6 +555,26 @@ Future<void> setLanguage(String language) async {
   await prefs.setString("language", language);
 }
 
+Future<void> setAutoDraw(bool enabled) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setBool("auto_draw", enabled);
+}
+
+Future<bool> getAutoDraw() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getBool("auto_draw") ?? false;
+}
+
+Future<void> setAutoVoice(bool enabled) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setBool("auto_voice", enabled);
+}
+
+Future<bool> getAutoVoice() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getBool("auto_voice") ?? false;
+}
+
 Future<String> getLanguage() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? language = prefs.getString("language");

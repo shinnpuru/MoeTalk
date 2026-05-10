@@ -123,6 +123,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             students.sort((a, b) => a[0].compareTo(b[0]));
           });
         });
+        // 加载自动绘图和自动语音设置
+        getAutoDraw().then((value) {
+          setState(() {
+            _isAutoDraw = value;
+          });
+        });
+        getAutoVoice().then((value) {
+          setState(() {
+            _isAutoVoice = value;
+          });
+        });
       }
     });
   }
@@ -1321,6 +1332,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             _isAutoDraw = !_isAutoDraw;
                             _isToolsExpanded = false;
                           });
+                          setAutoDraw(_isAutoDraw);
                         },
                       ),
                       _buildToolButton(
@@ -1331,6 +1343,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             _isAutoVoice = !_isAutoVoice;
                             _isToolsExpanded = false;
                           });
+                          setAutoVoice(_isAutoVoice);
                         },
                       ),
                       _buildToolButton(
