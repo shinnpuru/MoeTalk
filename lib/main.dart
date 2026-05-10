@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'chatview.dart';
@@ -356,7 +357,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         setState(() {
           messages[index].message = edited;
         });
-        if (isResend) {
+        if (mounted) {
           textController.clear();
           messages.removeRange(index + 1, messages.length);
           sendMsg(true);
@@ -538,7 +539,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           debugPrint("inputUnlocked");
           setTempHistory(msgListToJson(messages));
           if (_isAutoDraw) {
-            getDraw();
+            await getDraw();
           }
         }, (err) {
           setState(() {
@@ -697,6 +698,107 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     List<List<String>> msg = await parseMsg(
       drawMessages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
     );
+    // If auto-draw mode enabled, do not show dialog — generate prompt and image directly with retries.
+    if (_isAutoDraw) {
+      final SdConfig sdConfig = await getSdConfig();
+      const int maxRetries = 2;
+      final String responseRegex = await getResponseRegex();
+
+      // Generate prompt using the aidraw LLM (same as AiDraw.buildPrompt)
+      String promptText = '';
+      bool promptOk = false;
+      for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          final Completer<String> promptCompleter = Completer<String>();
+          String result = '';
+          final Config? aidrawCfg = await getAidrawApiConfig();
+          final Config configToUse = aidrawCfg ?? config;
+          completion(
+            configToUse,
+            msg,
+            (String data) {
+              result += data.replaceAll("\n", " ");
+            },
+            () {
+                final cand = result.split('||').last.replaceAll(RegExp(responseRegex), '').trim();
+              if (!promptCompleter.isCompleted) {
+                promptCompleter.complete(cand);
+              }
+            },
+            (String error) {
+              if (!promptCompleter.isCompleted) {
+                promptCompleter.completeError(error);
+              }
+            }
+          );
+          final String cand = await promptCompleter.future.timeout(
+            const Duration(minutes: 2),
+            onTimeout: () => '',
+          );
+          if (cand.isNotEmpty) {
+            promptText = cand;
+            promptOk = true;
+            break;
+          }
+        } catch (e) {
+          debugPrint('prompt generation attempt $attempt failed: $e');
+        }
+      }
+
+      if (!promptOk) {
+        if (mounted) snackBarAlert(context, I18n.t('draw_prompt_failed'));
+        return;
+      }
+
+      // Try generating image with retries
+      String? finalUrl;
+      bool genOk = false;
+      for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          snackBarAlert(context, I18n.t('generating'));
+          finalUrl = await generateImageTask(
+            promptText: promptText,
+            sdConfig: sdConfig,
+          );
+          if (finalUrl != null) {
+            genOk = true;
+            break;
+          }
+        } catch (e) {
+          debugPrint('image generation attempt $attempt failed: $e');
+        }
+      }
+
+      if (!genOk || finalUrl == null) {
+        if (mounted) snackBarAlert(context, I18n.t('draw_failed_try_again'));
+        return;
+      }
+
+      if (mounted) {
+        if (!isForeground) {
+          notification.showNotification(
+            title: '绘画',
+            body: '绘画完成！',
+            showAvator: false,
+          );
+        }
+        final String finalUrlNonNull = finalUrl;
+        setState(() {
+          backgroundImage = DecorationImage(
+            image: NetworkImage(finalUrlNonNull),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.8),
+              BlendMode.dstATop,
+            ),
+          );
+          messages.add(Message(message: finalUrlNonNull, type: Message.image));
+        });
+        setTempHistory(msgListToJson(messages));
+      }
+      return;
+    }
+
     var result = await showDialog(
       context: context,
       barrierDismissible: false,
