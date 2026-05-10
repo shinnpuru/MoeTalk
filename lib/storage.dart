@@ -575,6 +575,16 @@ Future<bool> getAutoVoice() async {
   return prefs.getBool("auto_voice") ?? false;
 }
 
+Future<void> setAutoInspire(bool enabled) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setBool("auto_inspire", enabled);
+}
+
+Future<bool> getAutoInspire() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getBool("auto_inspire") ?? false;
+}
+
 Future<String> getLanguage() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? language = prefs.getString("language");

@@ -61,6 +61,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isFullScreen = false; // Add a state variable to control fullscreen mode
   bool _isAutoVoice = false;
   bool _isAutoDraw = false;
+  bool _isAutoInspire = false;
 
   // Chat page variables
   final fn = FocusNode();
@@ -132,6 +133,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         getAutoVoice().then((value) {
           setState(() {
             _isAutoVoice = value;
+          });
+        });
+        getAutoInspire().then((value) {
+          setState(() {
+            _isAutoInspire = value;
           });
         });
       }
@@ -1227,6 +1233,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   if (_isAutoVoice && messages[_singleViewIndex].type == Message.assistant) {
                                     getVoice(messages[_singleViewIndex].message);
                                   }
+                                  // 自动灵感：当到达最后一个非图片消息时触发
+                                  if (_isAutoInspire) {
+                                    bool hasMoreNonImage = false;
+                                    for (int i = _singleViewIndex + 1; i < messages.length; i++) {
+                                      if (messages[i].type != Message.image) {
+                                        hasMoreNonImage = true;
+                                        break;
+                                      }
+                                    }
+                                    if (!hasMoreNonImage) {
+                                      getMsg();
+                                    }
+                                  }
                                 }
                               });
                             },
@@ -1347,13 +1366,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         },
                       ),
                       _buildToolButton(
-                        icon: Icons.auto_awesome,
-                        label: I18n.t('get_inspired'),
+                        icon: _isAutoInspire ? Icons.auto_awesome : Icons.lightbulb_outline,
+                        label: _isAutoInspire ? I18n.t('auto_inspire') : I18n.t('manual_inspire'),
                         onTap: () {
-                          getMsg();
                           setState(() {
+                            _isAutoInspire = !_isAutoInspire;
                             _isToolsExpanded = false;
                           });
+                          setAutoInspire(_isAutoInspire);
                         },
                       ),
                       // Fullscreen button
