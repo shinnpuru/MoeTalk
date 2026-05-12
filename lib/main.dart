@@ -673,6 +673,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         onTap: () {
                           textController.text = candidates[index];
                           Navigator.of(context).pop();
+                          sendMsg(true);
                         },
                       ),
                     );
@@ -718,7 +719,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     // If auto-draw mode enabled, do not show dialog — generate prompt and image directly with retries.
     if (_isAutoDraw) {
       final SdConfig sdConfig = await getSdConfig();
-      const int maxRetries = 2;
+      const int maxRetries = 4;
       final String responseRegex = await getResponseRegex();
 
       // Generate prompt using the aidraw LLM (same as AiDraw.buildPrompt)
