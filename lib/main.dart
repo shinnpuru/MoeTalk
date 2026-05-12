@@ -62,6 +62,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isAutoVoice = false;
   bool _isAutoDraw = false;
   bool _isAutoInspire = false;
+  bool _isAutoStatus = false;
 
   // Chat page variables
   final fn = FocusNode();
@@ -138,6 +139,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         getAutoInspire().then((value) {
           setState(() {
             _isAutoInspire = value;
+          });
+        });
+        getAutoStatus().then((value) {
+          setState(() {
+            _isAutoStatus = value;
           });
         });
       }
@@ -557,6 +563,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           setTempHistory(msgListToJson(messages));
           if (_isAutoDraw) {
             await getDraw();
+          }
+          if (_isAutoStatus) {
+            await getStatus(forceGet: true, silent: true);
           }
         }, (err) {
           setState(() {
@@ -1010,7 +1019,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> getStatus({bool forceGet = false}) async {
+  Future<void> getStatus({bool forceGet = false, bool silent = false}) async {
     if (forceGet || _characterStatus == null || _characterStatus == I18n.t("no_status")) {
       List<List<String>> msg = await parseMsg(
         messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getStatusPrompt(), type: Message.system)]
@@ -1022,45 +1031,59 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       }
       debugPrint("model: ${config.model}");
 
-      // 显示加载对话框
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text(I18n.t('analyzing_status')),
-              ],
-            ),
-          );
-        },
-      );
+      // 只在非静默模式下显示加载对话框
+      if (!silent) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(I18n.t('analyzing_status')),
+                ],
+              ),
+            );
+          },
+        );
+      }
 
       try {
         await completion(config, msg, (chunk) async {
           result += chunk;
         }, () async {
           debugPrint("done.");
-          Navigator.of(context).pop(); // 关闭加载对话框
+          if (!silent) {
+            Navigator.of(context).pop(); // 关闭加载对话框
+          }
           if (result.isNotEmpty) {
             String cleanResult = result.replaceAll(RegExp(await getResponseRegex()), '');
             _characterStatus = cleanResult;
           }
-          _showStatusDialog();
+          // 只在非静默模式下显示对话框
+          if (!silent) {
+            _showStatusDialog();
+          }
         }, (e) {
-          Navigator.of(context).pop(); // 关闭加载对话框
+          if (!silent) {
+            Navigator.of(context).pop(); // 关闭加载对话框
+          }
           snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
         });
       } catch (e) {
-        Navigator.of(context).pop(); // 关闭加载对话框
+        if (!silent) {
+          Navigator.of(context).pop(); // 关闭加载对话框
+        }
         snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
       }
     } else {
-      _showStatusDialog();
+      // 只在非静默模式下显示对话框
+      if (!silent) {
+        _showStatusDialog();
+      }
     }
   }
 
@@ -1080,6 +1103,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
               ),
               actions: <Widget>[
+                // Status
+                IconButton(
+                  icon: const Icon(Icons.monitor_heart),
+                  color: Colors.white,
+                  onPressed: () {
+                    getStatus();
+                  },
+                ),
                 // Reset
                 IconButton(
                   icon: const Icon(Icons.refresh),
@@ -1335,13 +1366,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildToolButton(
-                        icon: Icons.monitor_heart,
-                        label: I18n.t('status'),
+                        icon: _isAutoStatus ? Icons.monitor_heart : Icons.monitor_heart_outlined,
+                        label: _isAutoStatus ? I18n.t('auto_status') : I18n.t('manual_status'),
                         onTap: () {
-                          getStatus();
                           setState(() {
+                            _isAutoStatus = !_isAutoStatus;
                             _isToolsExpanded = false;
                           });
+                          setAutoStatus(_isAutoStatus);
                         },
                       ),
                       _buildToolButton(
