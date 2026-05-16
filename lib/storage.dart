@@ -408,6 +408,20 @@ Future<String> getInspirePrompt() async {
   return format;
 }
 
+Future<void> setWelcomePrompt(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("welcome_prompt", format);
+}
+
+Future<String> getWelcomePrompt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("welcome_prompt");
+  if (format == null || format.isEmpty) {
+    return I18n.t('default_welcome_prompt');
+  }
+  return format;
+}
+
 Future<void> setStatusPrompt(String format) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("status_prompt", format);

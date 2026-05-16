@@ -15,6 +15,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
   final TextEditingController userName = TextEditingController();
   final TextEditingController statusPrompt = TextEditingController();
   final TextEditingController inspirePrompt = TextEditingController();
+  final TextEditingController welcomePrompt = TextEditingController();
   final TextEditingController drawPrompt = TextEditingController();
   final TextEditingController endPrompt = TextEditingController();
   final TextEditingController summaryPrompt = TextEditingController();
@@ -34,6 +35,9 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
     getInspirePrompt().then((value) {
       if (mounted) setState(() => inspirePrompt.text = value);
     });
+    getWelcomePrompt().then((value) {
+      if (mounted) setState(() => welcomePrompt.text = value);
+    });
     getDrawPrompt().then((value) {
       if (mounted) setState(() => drawPrompt.text = value);
     });
@@ -51,6 +55,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
     userName.dispose();
     statusPrompt.dispose();
     inspirePrompt.dispose();
+    welcomePrompt.dispose();
     drawPrompt.dispose();
     endPrompt.dispose();
     summaryPrompt.dispose();
@@ -110,6 +115,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
               setUserName(userName.text);
               setStatusPrompt(statusPrompt.text);
               setInspirePrompt(inspirePrompt.text);
+              setWelcomePrompt(welcomePrompt.text);
               setDrawPrompt(drawPrompt.text);
               setEndPrompt(endPrompt.text);
               setSummaryPrompt(summaryPrompt.text);
@@ -211,6 +217,15 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               onTap: () => _showEditDialog(context, I18n.t('summary_prompt'), summaryPrompt, multiLine: true),
+            ),
+            ListTile(
+              title: Text(I18n.t('welcome_prompt')),
+              subtitle: Text(
+                welcomePrompt.text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => _showEditDialog(context, I18n.t('welcome_prompt'), welcomePrompt, multiLine: true),
             ),
           ],
         ),

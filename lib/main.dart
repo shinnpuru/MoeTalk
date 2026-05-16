@@ -718,6 +718,155 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> getWelcomeMsg() async {
+    // 获取当前日期和时间
+    final now = DateTime.now();
+    final dateStr = '${now.year}年${now.month}月${now.day}日';
+    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // 获取欢迎语提示词并替换变量
+    String welcomePrompt = await getWelcomePrompt();
+    welcomePrompt = welcomePrompt.replaceAll('{{date}}', dateStr).replaceAll('{{time}}', timeStr);
+
+    List<List<String>> msg = await parseMsg(
+      [], currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: welcomePrompt, type: Message.system)]
+    );
+
+    String result = "";
+    for (var m in msg) {
+      debugPrint("${m[0]}: ${m[1]}");
+    }
+    debugPrint("model: ${config.model}");
+
+    // 显示加载对话框
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(I18n.t('gen_candidate_resp')),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await completion(config, msg, (chunk) async {
+        result += chunk;
+      }, () async {
+        debugPrint("done.");
+        Navigator.of(context).pop(); // 关闭加载对话框
+
+        // 解析生成的候选项
+        List<String> candidates = result
+            .replaceAll(RegExp(await getResponseRegex()), '')
+            .split('||')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        if (candidates.isEmpty) {
+          candidates = [result.replaceAll(RegExp(await getResponseRegex()), '').trim()];
+        }
+
+        // 显示候选项选择对话框
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(I18n.t('welcome')),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: candidates.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: ListTile(
+                        title: Text(
+                          '${I18n.t('option')} ${index + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(candidates[index]),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          // 替换messages内容，参考clearMsg
+                          setState(() {
+                            messages.clear();
+                            _voiceCache.clear();
+                            getUserName().then((name) {
+                              userName = name;
+                            });
+                            getStudentName().then((name) {
+                              studentName = name;
+                            });
+                            getAvatar().then((avt) {
+                              avatar = avt;
+                              setState(() {
+                                backgroundImage = DecorationImage(
+                                  image: (avatar.isNotEmpty && avatar.startsWith('http'))
+                                      ? NetworkImage(avatar)
+                                      : avatar.startsWith('data:image/')
+                                        ? MemoryImage(base64Decode(avatar.split(',')[1]))
+                                        : const AssetImage("assets/avatar.png") as ImageProvider,
+                                  fit: BoxFit.cover,
+                                  colorFilter: ColorFilter.mode(
+                                    Colors.white.withOpacity(0.8),
+                                    BlendMode.dstATop,
+                                  ),
+                                );
+                              });
+                            });
+                            // 添加欢迎语作为消息，如果有反斜杠则分段
+                            for (var m in candidates[index].split("\\")) {
+                              messages.add(Message(message: m, type: Message.assistant));
+                            }
+                            setState(() {
+                              _singleViewIndex = 0;
+                            });
+                            setTempHistory(msgListToJson(messages));
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(I18n.t('cancel')),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // 重新生成
+                    Navigator.of(context).pop();
+                    getWelcomeMsg();
+                  },
+                  child: Text(I18n.t('regenerate')),
+                ),
+              ],
+            );
+          },
+        );
+      }, (e) {
+        Navigator.of(context).pop(); // 关闭加载对话框
+        snackBarAlert(context, e.toString());
+      });
+    } catch (e) {
+      Navigator.of(context).pop(); // 关闭加载对话框
+      snackBarAlert(context, e.toString());
+    }
+  }
+
   Future<void> getDraw({int? beforeIndex}) async {
     final List<Message> drawMessages = beforeIndex == null
         ? List<Message>.from(messages)
@@ -1118,6 +1267,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   onPressed: () {
                     clearMsg(true);
                     snackBarAlert(context, I18n.t('reset'));
+                  },
+                  onLongPress: () {
+                    getWelcomeMsg();
                   },
                 ),
                 // Edit
