@@ -321,6 +321,23 @@ Future<void> setVitsPrompt(String url) async {
 
 Future<String> getVitsPrompt({bool isDefault=false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  // 1. 先尝试获取当前角色的 vits_prompt
+  if (!isDefault) {
+    final currentName = await getStudentName();
+    final students = await getStudents();
+    for (final student in students) {
+      if (student.isNotEmpty && student[0] == currentName) {
+        // 索引 6 是 vits_prompt
+        if (student.length > 6 && student[6].isNotEmpty) {
+          return student[6];
+        }
+        break;
+      }
+    }
+  }
+
+  // 2. Fallback 到全局默认 vits_prompt
   String? prompt = prefs.getString("vits_prompt");
   if (prompt == null || prompt.isEmpty || isDefault) {
     return r"https://raw.githubusercontent.com/shinnpuru/MoeTalk/refs/heads/main/assets/tyc-samplevoice-1-titlecall.wav";
