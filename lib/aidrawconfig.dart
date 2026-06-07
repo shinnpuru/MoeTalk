@@ -213,9 +213,11 @@ class _SdConfigPageState extends State<SdConfigPage> {
                     ),
                   TextField(
                     controller: sdModel,
-                    decoration: const InputDecoration(
-                      labelText: 'Model URN',
-                      helperText: 'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078',
+                    decoration: InputDecoration(
+                      labelText: selectedBackend == BackendType.civitai ? 'Model URN' : 'Model Name',
+                      helperText: selectedBackend == BackendType.civitai
+                          ? 'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078'
+                          : 'e.g., sd_xl_base_1.0.safetensors',
                     ),
                   ),
                 ]),
