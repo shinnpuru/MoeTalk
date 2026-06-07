@@ -309,7 +309,7 @@ Future<String?> getVitsUrl() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? url = prefs.getString("vits_url");
   if (url == null || url.isEmpty) {
-    return "https://api.x.ai/v1/tts";
+    return "https://indexteam-indextts-2-demo.hf.space/";
   }
   return url;
 }
@@ -504,42 +504,30 @@ Future<String> getResponseRegex() async {
 Future<void> setVitsConfig(VitsConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = [
-    config.apiKey ?? '',
-    config.voiceId ?? '',
-    config.language ?? '',
-    config.audioFormat ?? '',
+    config.happy?.toString()??'',
+    config.angry?.toString()??'',
+    config.sad?.toString()??'',
+    config.afraid?.toString()??'',
+    config.disgusted?.toString()??'',
+    config.melancholic?.toString()??'',
+    config.surprised?.toString()??'',
+    config.calm?.toString()??''
   ];
   await prefs.setStringList("vits_config", configList);
 }
 
 Future<VitsConfig> getVitsConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("vits_config") ?? ['', 'eve', 'zh', 'mp3'];
-
-  final bool legacyEmotionSchema = configList.length >= 8 &&
-      configList.take(8).every((item) => double.tryParse(item) != null);
-  if (legacyEmotionSchema) {
-    configList = ['', 'eve', 'zh', 'mp3'];
-  }
-
-  // 兼容旧的 5 字段结构: [apiKey, voiceId, language, model, audioFormat]
-  if (configList.length >= 5) {
-    configList = [
-      configList[0],
-      configList[1],
-      configList[2],
-      configList[4],
-    ];
-  }
-
-  while (configList.length < 4) {
-    configList.add('');
-  }
+  List<String> configList = prefs.getStringList("vits_config") ?? ['0','0','0','0','0','0','0','0'];
   final memConfig = VitsConfig(
-    apiKey: configList[0],
-    voiceId: configList[1].isEmpty ? 'eve' : configList[1],
-    language: configList[2].isEmpty ? 'zh' : configList[2],
-    audioFormat: configList[3].isEmpty ? 'mp3' : configList[3],
+    happy: double.tryParse(configList[0]) ,
+    angry: double.tryParse(configList[1]) ,
+    sad: double.tryParse(configList[2]) ,
+    afraid: double.tryParse(configList[3]) ,
+    disgusted: double.tryParse(configList[4]) ,
+    melancholic: double.tryParse(configList[5]) ,
+    surprised: double.tryParse(configList[6]) ,
+    calm: double.tryParse(configList[7]) ,
   );
   return memConfig;
 }
