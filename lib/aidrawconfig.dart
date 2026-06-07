@@ -25,10 +25,12 @@ class _SdConfigPageState extends State<SdConfigPage> {
   late final TextEditingController sdCFG;
   late final TextEditingController sdSeed;
   late final TextEditingController sdClipSkip;
+  late final TextEditingController gradioUrlController;
 
   // Aidraw LLM selection
   List<Config> apiConfigs = [];
   String? aidrawSelectedConfig;
+  BackendType selectedBackend = BackendType.civitai;
 
   @override
   void initState() {
@@ -45,6 +47,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdSeed = TextEditingController(text: s.seed?.toString() ?? '');
     sdClipSkip = TextEditingController(text: s.clipSkip?.toString() ?? '');
     civitaiApiTokenController.text = s.civitaiApiToken ?? '';
+    gradioUrlController = TextEditingController(text: s.gradioUrl ?? '');
+    selectedBackend = s.backendType;
 
     getApiConfigs().then((cfgs) async {
       final name = await getAidrawApiName();
@@ -69,6 +73,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdCFG.dispose();
     sdSeed.dispose();
     sdClipSkip.dispose();
+    gradioUrlController.dispose();
     super.dispose();
   }
 
@@ -99,6 +104,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 civitaiApiToken: civitaiApiTokenController.text.isNotEmpty ? civitaiApiTokenController.text : null,
                 seed: int.tryParse(sdSeed.text),
                 clipSkip: int.tryParse(sdClipSkip.text),
+                backendType: selectedBackend,
+                gradioUrl: gradioUrlController.text.isNotEmpty ? gradioUrlController.text : null,
               );
               setSdConfig(updatedConfig);
               Navigator.of(context).pop();
@@ -143,6 +150,41 @@ class _SdConfigPageState extends State<SdConfigPage> {
               ),
               const SizedBox(height: 20),
               ListTile(
+                title: Text(I18n.t('backend_type'),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SegmentedButton<BackendType>(
+                        segments: const [
+                          ButtonSegment(
+                            value: BackendType.civitai,
+                            label: Text('Civitai'),
+                          ),
+                          ButtonSegment(
+                            value: BackendType.gradio,
+                            label: Text('Gradio'),
+                          ),
+                        ],
+                        selected: {selectedBackend},
+                        onSelectionChanged: (Set<BackendType> newSelection) {
+                          setState(() {
+                            selectedBackend = newSelection.first;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
                 title: Text(I18n.t('base_config'),
                     style: const TextStyle(
                         fontSize: 16,
@@ -152,14 +194,23 @@ class _SdConfigPageState extends State<SdConfigPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(children: [
-                  TextField(
-                    controller: civitaiApiTokenController,
-                    decoration: const InputDecoration(
-                      labelText: 'Civitai API Token',
-                      helperText: 'Get your token from civitai.com',
+                  if (selectedBackend == BackendType.civitai)
+                    TextField(
+                      controller: civitaiApiTokenController,
+                      decoration: const InputDecoration(
+                        labelText: 'Civitai API Token',
+                        helperText: 'Get your token from civitai.com',
+                      ),
+                      obscureText: true,
+                    )
+                  else
+                    TextField(
+                      controller: gradioUrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Gradio URL',
+                        helperText: 'e.g., http://localhost:7860',
+                      ),
                     ),
-                    obscureText: true,
-                  ),
                   TextField(
                     controller: sdModel,
                     decoration: const InputDecoration(

@@ -70,6 +70,8 @@ class VitsConfig {
   });
 }
 
+enum BackendType { civitai, gradio }
+
 class SdConfig {
   String prompt;
   String negativePrompt;
@@ -82,19 +84,23 @@ class SdConfig {
   String? civitaiApiToken;
   int? seed;
   int? clipSkip;
+  BackendType backendType;
+  String? gradioUrl;
 
   SdConfig({
-    required this.prompt, 
-    required this.negativePrompt, 
-    required this.model, 
-    required this.sampler, 
-    this.width, 
-    this.height, 
-    this.steps, 
+    required this.prompt,
+    required this.negativePrompt,
+    required this.model,
+    required this.sampler,
+    this.width,
+    this.height,
+    this.steps,
     this.cfg,
     this.civitaiApiToken,
     this.seed,
     this.clipSkip,
+    this.backendType = BackendType.civitai,
+    this.gradioUrl,
   });
 }
 

@@ -547,16 +547,18 @@ Future<VitsConfig> getVitsConfig() async {
 Future<void> setSdConfig(SdConfig config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = [
-    config.prompt, 
-    config.negativePrompt, 
-    config.model, 
-    config.sampler, 
-    config.width?.toString()??'', 
+    config.prompt,
+    config.negativePrompt,
+    config.model,
+    config.sampler,
+    config.width?.toString()??'',
     config.height?.toString()??'',
-    config.steps?.toString()??'', 
+    config.steps?.toString()??'',
     config.cfg?.toString()??'',
     config.seed?.toString()??'',
     config.clipSkip?.toString()??'',
+    config.backendType.name,
+    config.gradioUrl ?? '',
   ];
   await prefs.setStringList("sd_config", configList);
   if (config.civitaiApiToken != null) {
@@ -620,23 +622,25 @@ Future<String> getLanguage() async {
 
 Future<SdConfig> getSdConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','','','',''];
-  while (configList.length < 10) {
+  List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','','','','','civitai',''];
+  while (configList.length < 12) {
     configList.add('');
   }
   final civitaiToken = await getCivitaiApiToken();
   final memConfig = SdConfig(
-    prompt: configList[0], 
-    negativePrompt: configList[1], 
+    prompt: configList[0],
+    negativePrompt: configList[1],
     model: configList[2],
-    sampler: configList[3], 
-    width: int.tryParse(configList[4]), 
+    sampler: configList[3],
+    width: int.tryParse(configList[4]),
     height: int.tryParse(configList[5]),
-    steps: int.tryParse(configList[6]), 
+    steps: int.tryParse(configList[6]),
     cfg: int.tryParse(configList[7]),
     seed: int.tryParse(configList[8]),
     clipSkip: int.tryParse(configList[9]),
     civitaiApiToken: civitaiToken,
+    backendType: configList[10] == 'gradio' ? BackendType.gradio : BackendType.civitai,
+    gradioUrl: configList[11].isNotEmpty ? configList[11] : null,
   );
   if(memConfig.prompt.isEmpty) {
     memConfig.prompt = '1girl, CHAR, VERB, masterpiece,best quality,amazing quality';
