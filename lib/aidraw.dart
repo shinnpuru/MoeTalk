@@ -196,6 +196,12 @@ Future<String?> _generateImageWithGradio({
           loraWeights[2], // Third LoRA weight
           loraParams[3], // Fourth LoRA name
           loraWeights[3], // Fourth LoRA weight
+          null,
+          0.33,
+          null,
+          0.33,
+          null,
+          0.33,
           sdConfig.sampler,
           "Automatic",
           "Automatic",
@@ -608,6 +614,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           loraWeights[2], // Third LoRA weight
           loraParams[3], // Fourth LoRA name
           loraWeights[3], // Fourth LoRA weight
+          null,
+          0.33,
+          null,
+          0.33,
+          null,
+          0.33,
           sdConfig.sampler,
           "Automatic",
           "Automatic",
