@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';  // ignore: depend_on_referenced_packages
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'chatview.dart';
 import 'configpage.dart';
@@ -24,9 +25,27 @@ import 'vitsconfig.dart';
 import 'vits.dart';
 import 'aidrawconfig.dart';
 import 'i18n.dart';
+import 'chatview.dart' show displaySettings;
+
+final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.system);
+final ValueNotifier<int> displaySettingsVersion = ValueNotifier(0);
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  // 读取保存的主题设置
+  final saved = prefs.getString('theme_mode');
+  if (saved == 'light') {
+    themeModeNotifier.value = ThemeMode.light;
+  } else if (saved == 'dark') {
+    themeModeNotifier.value = ThemeMode.dark;
+  } else {
+    themeModeNotifier.value = ThemeMode.system;
+  }
+  // 读取显示设置
+  displaySettings.fontSize = prefs.getDouble('display_font_size') ?? 20.0;
+  displaySettings.textColorHex = prefs.getString('display_text_color') ?? '';
+  displaySettings.textOutline = prefs.getBool('display_text_outline') ?? true;
   // NotificationHelper notificationHelper = NotificationHelper();
   // await notificationHelper.initialize();
   runApp(const MoetalkApp());
@@ -37,12 +56,17 @@ class MoetalkApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MoeTalk',
-      home: const MainPage(),
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: ThemeMode.system,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, child) {
+        return MaterialApp(
+          title: 'MoeTalk',
+          home: const MainPage(),
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: mode,
+        );
+      },
     );
   }
 }
@@ -63,6 +87,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isAutoDraw = false;
   bool _isAutoInspire = false;
   bool _isAutoStatus = false;
+  bool _showInputBar = false; // 输入框展开/收起
+  int _displaySettingsKey = 0; // 递增以强制重建 chat 页面
 
   // Chat page variables
   final fn = FocusNode();
@@ -684,6 +710,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           Navigator.of(context).pop();
                           sendMsg(true);
                         },
+                        onLongPress: () {
+                          textController.text = candidates[index];
+                          Navigator.of(context).pop();
+                          FocusScope.of(context).requestFocus(fn);
+                        },
                       ),
                     );
                   },
@@ -1089,6 +1120,170 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
+  void _showDisplaySettings() {
+    double fontSize = displaySettings.fontSize;
+    String textColorHex = displaySettings.textColorHex;
+    bool textOutline = displaySettings.textOutline;
+
+    final TextEditingController colorController = TextEditingController(text: textColorHex);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text(I18n.t('display_settings')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 字体大小
+                    Text(I18n.t('font_size'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: () {
+                            if (fontSize > 10) {
+                              setDialogState(() {
+                                fontSize -= 1;
+                              });
+                            }
+                          },
+                        ),
+                        Expanded(
+                          child: Slider(
+                            value: fontSize,
+                            min: 10,
+                            max: 48,
+                            divisions: 38,
+                            label: '${fontSize.round()}',
+                            onChanged: (v) {
+                              setDialogState(() {
+                                fontSize = v.roundToDouble();
+                              });
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: () {
+                            if (fontSize < 48) {
+                              setDialogState(() {
+                                fontSize += 1;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    Center(child: Text('${fontSize.round()}px', style: TextStyle(fontSize: fontSize.clamp(12.0, 48.0)))),
+                    const SizedBox(height: 16),
+                    // 文字颜色
+                    Text(I18n.t('text_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _colorChip(ctx, setDialogState, colorController, '', I18n.t('auto')),
+                        _colorChip(ctx, setDialogState, colorController, 'FFFFFF', I18n.t('white')),
+                        _colorChip(ctx, setDialogState, colorController, '000000', I18n.t('black')),
+                        _colorChip(ctx, setDialogState, colorController, 'FF4444', I18n.t('red')),
+                        _colorChip(ctx, setDialogState, colorController, '44AAFF', I18n.t('blue')),
+                        _colorChip(ctx, setDialogState, colorController, 'FFFFFF', I18n.t('white')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: colorController,
+                      decoration: InputDecoration(
+                        labelText: 'Hex (RRGGBB)',
+                        hintText: 'FFFFFF',
+                        border: const OutlineInputBorder(),
+                        isCollapsed: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // 描边开关
+                    Row(
+                      children: [
+                        Text(I18n.t('text_outline'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        Switch(
+                          value: textOutline,
+                          onChanged: (v) {
+                            setDialogState(() {
+                              textOutline = v;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(I18n.t('cancel')),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // 保存设置
+                    displaySettings.fontSize = fontSize;
+                    displaySettings.textColorHex = colorController.text.trim();
+                    displaySettings.textOutline = textOutline;
+                    SharedPreferences.getInstance().then((prefs) {
+                      prefs.setDouble('display_font_size', fontSize);
+                      prefs.setString('display_text_color', colorController.text.trim());
+                      prefs.setBool('display_text_outline', textOutline);
+                    });
+                    displaySettingsVersion.value++;
+                    setState(() {
+                      _displaySettingsKey++;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: Text(I18n.t('confirm')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _colorChip(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String hex, String label) {
+    return GestureDetector(
+      onTap: () {
+        setDialogState(() {
+          controller.text = hex;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: hex.isEmpty ? Colors.grey.shade300 : Color(int.parse('FF$hex', radix: 16)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: controller.text == hex ? Colors.blue : Colors.grey.shade400, width: controller.text == hex ? 2 : 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: hex.isEmpty || hex == 'FFFFFF' ? Colors.black87 : Colors.white,
+            fontWeight: controller.text == hex ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showStatusDialog() {
     // 编辑器
     final controller = TextEditingController(text: _characterStatus);
@@ -1238,6 +1433,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Widget _buildChatPage() {
     return Scaffold(
+      key: ValueKey(_displaySettingsKey),
       appBar: _isFullScreen
           ? null // Hide the AppBar in fullscreen mode
           : AppBar(
@@ -1383,6 +1579,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   type: message.type,
                                   userName: userName,
                                   stuName: studentName,
+                                  isBacklog: true,
                                 ),
                               );
                             },
@@ -1459,10 +1656,33 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             )
                           )),
               ),
+              // 折叠/展开输入栏按钮（透明背景）
               Container(
-                padding: const EdgeInsets.all(8.0),
-                color: Theme.of(context).colorScheme.surfaceBright,
+                padding: EdgeInsets.zero,
+                color: Colors.transparent,
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(_showInputBar ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
+                      color: const Color(0xffff899e),
+                      onPressed: () {
+                        setState(() {
+                          _showInputBar = !_showInputBar;
+                          if (_showInputBar) {
+                            FocusScope.of(context).requestFocus(fn);
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // 输入栏（折叠时全部隐藏）
+              Container(
+                padding: _showInputBar ? const EdgeInsets.all(8.0) : EdgeInsets.zero,
+                color: _showInputBar ? Theme.of(context).colorScheme.surfaceBright : Colors.transparent,
+                child: _showInputBar ? Row(
                   children: [
                     // text input field
                     Expanded(
@@ -1505,7 +1725,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       color: const Color(0xffff899e),
                     )
                   ],
-                ),
+                ) : const SizedBox.shrink(),
               ),
               // 工具栏展开区域
               if (_isToolsExpanded)
@@ -2005,6 +2225,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               await getPrompt(),
                               await getDrawCharPrompt(),
                               await getVitsPrompt(),
+                              drawLora: await getDrawLora(),
                             );
                           },
                         ),
@@ -2055,6 +2276,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         setPrompt(students[index][3]);
                         setDrawCharPrompt(students[index][5]);
                         setVitsPrompt(students[index][6]);
+                        setDrawLora(students[index][7]);
                         clearMsg(true);
                         setState(() {
                           _currentIndex = 0; // Switch to chat page
@@ -2104,6 +2326,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             color: Color(0xfff2a0ac)
           ),
         ),
+        actions: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeModeNotifier,
+            builder: (context, mode, child) {
+              final isDark = mode == ThemeMode.dark ||
+                  (mode == ThemeMode.system &&
+                      MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+              return IconButton(
+                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                color: Colors.white,
+                tooltip: isDark ? I18n.t('light_mode') : I18n.t('dark_mode'),
+                onPressed: () {
+                  final newMode = isDark ? ThemeMode.light : ThemeMode.dark;
+                  themeModeNotifier.value = newMode;
+                  SharedPreferences.getInstance().then((prefs) {
+                    prefs.setString('theme_mode',
+                        newMode == ThemeMode.light ? 'light' : 'dark');
+                  });
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -2205,6 +2450,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     builder: (context) => const FormatConfigPage(),
                   ),
                 );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
+              leading: const Icon(Icons.display_settings),
+              title: Text(I18n.t('display_settings')),
+              onTap: () {
+                _showDisplaySettings();
               },
             ),
           ),

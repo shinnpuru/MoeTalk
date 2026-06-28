@@ -140,7 +140,7 @@ Future<List<List<String>>> getStudents() async{
   for (String key in keys) {
     if (key.startsWith("student_")) {
       List<String> data = prefs.getStringList(key) ?? ["","","","",""];
-      while(data.length < 7) {
+      while(data.length < 8) {
         data.add("");
       }
       students.add(data);
@@ -149,10 +149,10 @@ Future<List<List<String>>> getStudents() async{
   return students;
 }
 
-Future<void> addStudent(String name, String avatar, String firstMes, String description, String drawCharPrompt, String vitsPrompt) async {
+Future<void> addStudent(String name, String avatar, String firstMes, String description, String drawCharPrompt, String vitsPrompt, {String drawLora = ""}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp,drawCharPrompt,vitsPrompt]);
+  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp,drawCharPrompt,vitsPrompt,drawLora]);
 }
 
 Future<void> deleteStudent(String key) async {
@@ -943,4 +943,35 @@ Future<void> downloadCharacterCard(context) async {
     debugPrint("${I18n.t('download_card_error')}$e");
     snackBarAlert(context, "${I18n.t('download_card_error')}$e");
   }
+}
+
+// 显示设置
+Future<void> setDisplayFontSize(double size) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble("display_font_size", size);
+}
+
+Future<double> getDisplayFontSize() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getDouble("display_font_size") ?? 20.0;
+}
+
+Future<void> setDisplayTextColor(String colorHex) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("display_text_color", colorHex);
+}
+
+Future<String> getDisplayTextColor() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("display_text_color") ?? "";
+}
+
+Future<void> setDisplayTextOutline(bool enable) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setBool("display_text_outline", enable);
+}
+
+Future<bool> getDisplayTextOutline() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getBool("display_text_outline") ?? true;
 }
