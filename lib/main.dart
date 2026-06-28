@@ -1656,10 +1656,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             )
                           )),
               ),
-              // 折叠/展开输入栏按钮（透明背景）
+              // 折叠/展开输入栏按钮（backlog时用暗色背景）
               Container(
                 padding: EdgeInsets.zero,
-                color: Colors.transparent,
+                color: _isListViewMode ? Colors.black.withOpacity(0.3) : Colors.transparent,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1671,6 +1671,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           _showInputBar = !_showInputBar;
                           if (_showInputBar) {
                             FocusScope.of(context).requestFocus(fn);
+                          } else {
+                            _isToolsExpanded = false;
                           }
                         });
                       },
