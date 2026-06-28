@@ -6,51 +6,58 @@ import 'utils.dart' show Message;
 class DisplaySettings {
   double fontSize;
   String textColorHex;
+  String nameColorHex;
   bool textOutline;
+  double outlineWidth;
+  String outlineColorHex;
 
   DisplaySettings({
     this.fontSize = 20.0,
     this.textColorHex = '',
+    this.nameColorHex = '',
     this.textOutline = true,
+    this.outlineWidth = 2.0,
+    this.outlineColorHex = '',
   });
 }
 
 DisplaySettings displaySettings = DisplaySettings();
 
 /// 应用描边到 TextStyle
-TextStyle _applyOutline(TextStyle style, {double strokeWidth = 2.0, Color strokeColor = Colors.black26}) {
+TextStyle _applyOutline(TextStyle style, {double? strokeWidth, Color? strokeColor}) {
   if (!displaySettings.textOutline) return style;
+  final width = strokeWidth ?? displaySettings.outlineWidth;
+  Color color;
+  if (displaySettings.outlineColorHex.isNotEmpty) {
+    try {
+      final hex = displaySettings.outlineColorHex.replaceFirst('#', '');
+      color = Color(int.parse('FF${hex.padLeft(6, '0').substring(0, 6)}', radix: 16));
+    } catch (_) {
+      color = strokeColor ?? Colors.black26;
+    }
+  } else {
+    color = strokeColor ?? Colors.black26;
+  }
   return style.copyWith(
     shadows: [
-      Shadow(
-        offset: Offset(-strokeWidth, -strokeWidth),
-        color: strokeColor,
-      ),
-      Shadow(
-        offset: Offset(strokeWidth, -strokeWidth),
-        color: strokeColor,
-      ),
-      Shadow(
-        offset: Offset(-strokeWidth, strokeWidth),
-        color: strokeColor,
-      ),
-      Shadow(
-        offset: Offset(strokeWidth, strokeWidth),
-        color: strokeColor,
-      ),
+      Shadow(offset: Offset(-width, -width), color: color),
+      Shadow(offset: Offset(width, -width), color: color),
+      Shadow(offset: Offset(-width, width), color: color),
+      Shadow(offset: Offset(width, width), color: color),
     ],
   );
 }
 
 /// 根据 hex 颜色字符串或主题返回颜色
-Color _resolveTextColor(Color defaultColor) {
-  if (displaySettings.textColorHex.isNotEmpty) {
+Color _resolveTextColor(Color defaultColor, {String? hexOverride}) {
+  final hex = hexOverride ?? displaySettings.textColorHex;
+  if (hex.isNotEmpty) {
     try {
-      final hex = displaySettings.textColorHex.replaceFirst('#', '');
-      if (hex.length == 6) {
-        return Color(int.parse('FF$hex', radix: 16));
-      } else if (hex.length == 8) {
-        return Color(int.parse(hex, radix: 16));
+      final c = hex.replaceFirst('#', '');
+      if (c.length == 6) {
+        return Color(int.parse('FF$c', radix: 16));
+      } else if (c.length == 8) {
+        return Color(int.parse(c, radix: 16));
       }
     } catch (_) {}
   }
@@ -90,7 +97,7 @@ class ChatElement extends StatelessWidget {
     } else if (type == Message.system) {
       return centerBubble(message.replaceAll('{{user}}', userName).replaceAll('{{char}}', stuName));
     } else if (type == Message.image) {
-      return ChatLineImage(name: stuName, imageUrl: message);
+      return ChatLineImage(name: stuName, imageUrl: message, isBacklog: isBacklog);
     }
     else {
       return const SizedBox.shrink();
@@ -144,8 +151,10 @@ class ChatLineLayout extends StatelessWidget {
     final baseColor = isDark ? Colors.white : Colors.black87;
     final textColor = _resolveTextColor(baseColor);
     final dividerColor = isDark ? Colors.white38 : Colors.black26;
-    final nameColor = isDark ? Colors.white70 : Colors.black54;
+    final nameDefault = isDark ? Colors.white70 : Colors.black54;
+    final nameColor = _resolveTextColor(nameDefault, hexOverride: displaySettings.nameColorHex);
     final fontSize = displaySettings.fontSize;
+    final outlineWidth = displaySettings.outlineWidth;
 
     final crossAlign = isBacklog ? CrossAxisAlignment.start : CrossAxisAlignment.center;
     final textAlign = isBacklog ? TextAlign.left : TextAlign.center;
@@ -156,7 +165,7 @@ class ChatLineLayout extends StatelessWidget {
       fontSize: fontSize,
       color: textColor,
     );
-    baseTextStyle = _applyOutline(baseTextStyle);
+    baseTextStyle = _applyOutline(baseTextStyle, strokeWidth: outlineWidth);
 
     TextStyle boldTextStyle = baseTextStyle.copyWith(fontWeight: FontWeight.bold);
     TextStyle italicTextStyle = baseTextStyle.copyWith(fontStyle: FontStyle.italic);
@@ -174,7 +183,7 @@ class ChatLineLayout extends StatelessWidget {
               fontWeight: FontWeight.bold,
               fontSize: 16,
               color: nameColor,
-            )),
+            ), strokeWidth: outlineWidth),
           ),
         ),
         // 分割线
@@ -234,7 +243,9 @@ class ChatLineImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dividerColor = isDark ? Colors.white38 : Colors.black26;
-    final nameColor = isDark ? Colors.white70 : Colors.black54;
+    final nameDefault = isDark ? Colors.white70 : Colors.black54;
+    final nameColor = _resolveTextColor(nameDefault, hexOverride: displaySettings.nameColorHex);
+    final outlineWidth = displaySettings.outlineWidth;
 
     final crossAlign = isBacklog ? CrossAxisAlignment.start : CrossAxisAlignment.center;
     final textAlign = isBacklog ? TextAlign.left : TextAlign.center;
@@ -253,7 +264,7 @@ class ChatLineImage extends StatelessWidget {
               fontWeight: FontWeight.bold,
               fontSize: 16,
               color: nameColor,
-            )),
+            ), strokeWidth: outlineWidth),
           ),
         ),
         // 分割线

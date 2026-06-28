@@ -45,7 +45,10 @@ main() async {
   // 读取显示设置
   displaySettings.fontSize = prefs.getDouble('display_font_size') ?? 20.0;
   displaySettings.textColorHex = prefs.getString('display_text_color') ?? '';
+  displaySettings.nameColorHex = prefs.getString('display_name_color') ?? '';
   displaySettings.textOutline = prefs.getBool('display_text_outline') ?? true;
+  displaySettings.outlineWidth = prefs.getDouble('display_outline_width') ?? 2.0;
+  displaySettings.outlineColorHex = prefs.getString('display_outline_color') ?? '';
   // NotificationHelper notificationHelper = NotificationHelper();
   // await notificationHelper.initialize();
   runApp(const MoetalkApp());
@@ -1123,9 +1126,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void _showDisplaySettings() {
     double fontSize = displaySettings.fontSize;
     String textColorHex = displaySettings.textColorHex;
+    String nameColorHex = displaySettings.nameColorHex;
     bool textOutline = displaySettings.textOutline;
+    double outlineWidth = displaySettings.outlineWidth;
+    String outlineColorHex = displaySettings.outlineColorHex;
 
-    final TextEditingController colorController = TextEditingController(text: textColorHex);
+    final TextEditingController textColorCtrl = TextEditingController(text: textColorHex);
+    final TextEditingController nameColorCtrl = TextEditingController(text: nameColorHex);
+    final TextEditingController outlineColorCtrl = TextEditingController(text: outlineColorHex);
 
     showDialog(
       context: context,
@@ -1139,20 +1147,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 字体大小
+                    // ===== 字体大小 =====
                     Text(I18n.t('font_size'), style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: () {
-                            if (fontSize > 10) {
-                              setDialogState(() {
-                                fontSize -= 1;
-                              });
-                            }
-                          },
+                          onPressed: () => fontSize > 10 ? setDialogState(() => fontSize -= 1) : null,
                         ),
                         Expanded(
                           child: Slider(
@@ -1161,69 +1163,109 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             max: 48,
                             divisions: 38,
                             label: '${fontSize.round()}',
-                            onChanged: (v) {
-                              setDialogState(() {
-                                fontSize = v.roundToDouble();
-                              });
-                            },
+                            onChanged: (v) => setDialogState(() => fontSize = v.roundToDouble()),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.add_circle_outline),
-                          onPressed: () {
-                            if (fontSize < 48) {
-                              setDialogState(() {
-                                fontSize += 1;
-                              });
-                            }
-                          },
+                          onPressed: () => fontSize < 48 ? setDialogState(() => fontSize += 1) : null,
                         ),
                       ],
                     ),
                     Center(child: Text('${fontSize.round()}px', style: TextStyle(fontSize: fontSize.clamp(12.0, 48.0)))),
                     const SizedBox(height: 16),
-                    // 文字颜色
+
+                    // ===== 消息文字颜色 =====
                     Text(I18n.t('text_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _colorChip(ctx, setDialogState, colorController, '', I18n.t('auto')),
-                        _colorChip(ctx, setDialogState, colorController, 'FFFFFF', I18n.t('white')),
-                        _colorChip(ctx, setDialogState, colorController, '000000', I18n.t('black')),
-                        _colorChip(ctx, setDialogState, colorController, 'FF4444', I18n.t('red')),
-                        _colorChip(ctx, setDialogState, colorController, '44AAFF', I18n.t('blue')),
-                        _colorChip(ctx, setDialogState, colorController, 'FFFFFF', I18n.t('white')),
-                      ],
-                    ),
+                    _colorRow(ctx, setDialogState, textColorCtrl, textColorHex),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: colorController,
+                      controller: textColorCtrl,
                       decoration: InputDecoration(
-                        labelText: 'Hex (RRGGBB)',
-                        hintText: 'FFFFFF',
+                        labelText: '${I18n.t('text_color')} Hex',
+                        hintText: 'FFDDDD',
                         border: const OutlineInputBorder(),
                         isCollapsed: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // 描边开关
+
+                    // ===== 名字文字颜色 =====
+                    Text(I18n.t('name_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    _colorRow(ctx, setDialogState, nameColorCtrl, nameColorHex),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameColorCtrl,
+                      decoration: InputDecoration(
+                        labelText: '${I18n.t('name_color')} Hex',
+                        hintText: 'FFCCCC',
+                        border: const OutlineInputBorder(),
+                        isCollapsed: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ===== 描边开关 =====
                     Row(
                       children: [
                         Text(I18n.t('text_outline'), style: const TextStyle(fontWeight: FontWeight.bold)),
                         const Spacer(),
                         Switch(
                           value: textOutline,
-                          onChanged: (v) {
-                            setDialogState(() {
-                              textOutline = v;
-                            });
-                          },
+                          onChanged: (v) => setDialogState(() => textOutline = v),
                         ),
                       ],
                     ),
+                    if (textOutline) ...[
+                      const SizedBox(height: 4),
+                      Text(I18n.t('outline_width'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: () => outlineWidth > 0.5 ? setDialogState(() => outlineWidth -= 0.5) : null,
+                          ),
+                          Expanded(
+                            child: Slider(
+                              value: outlineWidth,
+                              min: 0.5,
+                              max: 6.0,
+                              divisions: 11,
+                              label: outlineWidth.toStringAsFixed(1),
+                              onChanged: (v) => setDialogState(() => outlineWidth = double.parse(v.toStringAsFixed(1))),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: () => outlineWidth < 6.0 ? setDialogState(() => outlineWidth += 0.5) : null,
+                          ),
+                        ],
+                      ),
+                      Center(child: Text('${outlineWidth.toStringAsFixed(1)}px')),
+                      const SizedBox(height: 12),
+
+                      // ===== 描边颜色 =====
+                      Text(I18n.t('outline_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      _colorRow(ctx, setDialogState, outlineColorCtrl, outlineColorHex),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: outlineColorCtrl,
+                        decoration: InputDecoration(
+                          labelText: '${I18n.t('outline_color')} Hex',
+                          hintText: '666666',
+                          border: const OutlineInputBorder(),
+                          isCollapsed: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                 ),
               ),
@@ -1234,19 +1276,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
                 TextButton(
                   onPressed: () {
-                    // 保存设置
                     displaySettings.fontSize = fontSize;
-                    displaySettings.textColorHex = colorController.text.trim();
+                    displaySettings.textColorHex = textColorCtrl.text.trim();
+                    displaySettings.nameColorHex = nameColorCtrl.text.trim();
                     displaySettings.textOutline = textOutline;
+                    displaySettings.outlineWidth = outlineWidth;
+                    displaySettings.outlineColorHex = outlineColorCtrl.text.trim();
                     SharedPreferences.getInstance().then((prefs) {
                       prefs.setDouble('display_font_size', fontSize);
-                      prefs.setString('display_text_color', colorController.text.trim());
+                      prefs.setString('display_text_color', textColorCtrl.text.trim());
+                      prefs.setString('display_name_color', nameColorCtrl.text.trim());
                       prefs.setBool('display_text_outline', textOutline);
+                      prefs.setDouble('display_outline_width', outlineWidth);
+                      prefs.setString('display_outline_color', outlineColorCtrl.text.trim());
                     });
                     displaySettingsVersion.value++;
-                    setState(() {
-                      _displaySettingsKey++;
-                    });
+                    setState(() => _displaySettingsKey++);
                     Navigator.pop(ctx);
                   },
                   child: Text(I18n.t('confirm')),
@@ -1259,13 +1304,25 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _colorChip(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String hex, String label) {
+  Widget _colorRow(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String currentHex) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _colorChip2(ctx, setDialogState, controller, '', I18n.t('auto')),
+        _colorChip2(ctx, setDialogState, controller, 'FFFFFF', I18n.t('white')),
+        _colorChip2(ctx, setDialogState, controller, '000000', I18n.t('black')),
+        _colorChip2(ctx, setDialogState, controller, 'FF4444', I18n.t('red')),
+        _colorChip2(ctx, setDialogState, controller, '44AAFF', I18n.t('blue')),
+        _colorChip2(ctx, setDialogState, controller, 'FFD700', I18n.t('gold')),
+        _colorChip2(ctx, setDialogState, controller, 'FF69B4', I18n.t('pink')),
+      ],
+    );
+  }
+
+  Widget _colorChip2(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String hex, String label) {
     return GestureDetector(
-      onTap: () {
-        setDialogState(() {
-          controller.text = hex;
-        });
-      },
+      onTap: () => setDialogState(() => controller.text = hex),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(

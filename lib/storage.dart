@@ -966,6 +966,16 @@ Future<String> getDisplayTextColor() async {
   return prefs.getString("display_text_color") ?? "";
 }
 
+Future<void> setDisplayNameColor(String colorHex) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("display_name_color", colorHex);
+}
+
+Future<String> getDisplayNameColor() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("display_name_color") ?? "";
+}
+
 Future<void> setDisplayTextOutline(bool enable) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setBool("display_text_outline", enable);
@@ -974,4 +984,24 @@ Future<void> setDisplayTextOutline(bool enable) async {
 Future<bool> getDisplayTextOutline() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   return prefs.getBool("display_text_outline") ?? true;
+}
+
+Future<void> setDisplayOutlineWidth(double width) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble("display_outline_width", width);
+}
+
+Future<double> getDisplayOutlineWidth() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getDouble("display_outline_width") ?? 2.0;
+}
+
+Future<void> setDisplayOutlineColor(String colorHex) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("display_outline_color", colorHex);
+}
+
+Future<String> getDisplayOutlineColor() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("display_outline_color") ?? "";
 }
