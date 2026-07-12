@@ -1005,3 +1005,14 @@ Future<String> getDisplayOutlineColor() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   return prefs.getString("display_outline_color") ?? "";
 }
+
+// 显示模式: "visual_novel" (视觉小说) 或 "comic" (漫画)
+Future<void> setDisplayMode(String mode) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("display_mode", mode);
+}
+
+Future<String> getDisplayMode() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString("display_mode") ?? "visual_novel";
+}

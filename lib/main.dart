@@ -91,6 +91,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isAutoInspire = false;
   bool _isAutoStatus = false;
   bool _showInputBar = false; // 输入框展开/收起
+  bool _comicMode = false;
   int _displaySettingsKey = 0; // 递增以强制重建 chat 页面
 
   // Chat page variables
@@ -173,6 +174,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         getAutoStatus().then((value) {
           setState(() {
             _isAutoStatus = value;
+          });
+        });
+        getDisplayMode().then((mode) {
+          setState(() {
+            _comicMode = mode == 'comic';
           });
         });
       }
@@ -1266,6 +1272,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       const SizedBox(height: 12),
                     ],
+                    const SizedBox(height: 16),
+
+                    // ===== 显示模式切换 =====
+                    Text(I18n.t('display_mode'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(I18n.t('visual_novel_mode')),
+                        const Spacer(),
+                        Switch(
+                          value: _comicMode,
+                          onChanged: (v) => setDialogState(() => _comicMode = v),
+                        ),
+                        Text(I18n.t('comic_mode')),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1290,6 +1312,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       prefs.setDouble('display_outline_width', outlineWidth);
                       prefs.setString('display_outline_color', outlineColorCtrl.text.trim());
                     });
+                    setDisplayMode(_comicMode ? 'comic' : 'visual_novel');
                     displaySettingsVersion.value++;
                     setState(() => _displaySettingsKey++);
                     Navigator.pop(ctx);
@@ -1584,8 +1607,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           child: Column(
             children: [
               Expanded(
-                child: _isListViewMode
-                    ? Container(
+                child: _comicMode
+                    ? ComicChatView(
+                        messages: messages.asMap().entries.toList(),
+                        userName: userName,
+                        stuName: studentName,
+                        isBacklog: true,
+                      )
+                    : _isListViewMode
+                        ? Container(
                         color: Colors.black.withOpacity(0.3),
                         child: Builder(builder: (context) {
                           // Scroll to bottom only once when the widget builds

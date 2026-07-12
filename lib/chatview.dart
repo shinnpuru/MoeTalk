@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'utils.dart' show Message;
+import 'comic_overlay.dart';
 
 // 全局显示设置（由 main.dart 或 storage 初始化时填充）
 class DisplaySettings {
@@ -321,4 +322,190 @@ class ChatLineImage extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 漫画模式聊天视图 — 全屏 CG + 浮动气泡
+class ComicChatView extends StatefulWidget {
+  final List<MapEntry<int, Message>> messages;
+  final String userName;
+  final String stuName;
+  final bool isBacklog;
+  final VoidCallback? onNextPage;
+
+  const ComicChatView({
+    super.key,
+    required this.messages,
+    required this.userName,
+    required this.stuName,
+    this.isBacklog = false,
+    this.onNextPage,
+  });
+
+  @override
+  ComicChatViewState createState() => ComicChatViewState();
+}
+
+class ComicChatViewState extends State<ComicChatView> {
+  int _currentIndex = 0;
+  final GlobalKey<ComicBubbleOverlayState> _overlayKey = GlobalKey();
+
+  List<_ComicPage> _buildPages() {
+    List<_ComicPage> pages = [];
+    List<Message> textBuffer = [];
+
+    for (var entry in widget.messages) {
+      final msg = entry.value;
+      if (msg.type == Message.image) {
+        if (textBuffer.isNotEmpty) {
+          pages.add(_ComicPage(
+            cgUrl: null,
+            textMessages: List.from(textBuffer),
+          ));
+          textBuffer.clear();
+        }
+        pages.add(_ComicPage(
+          cgUrl: msg.message,
+          textMessages: [],
+        ));
+      } else if (msg.type == Message.assistant || msg.type == Message.user) {
+        if (pages.isNotEmpty && pages.last.cgUrl != null) {
+          pages.last.textMessages.add(msg);
+        } else {
+          textBuffer.add(msg);
+        }
+      }
+    }
+
+    if (textBuffer.isNotEmpty) {
+      if (pages.isEmpty) {
+        pages.add(_ComicPage(
+          cgUrl: null,
+          textMessages: List.from(textBuffer),
+        ));
+      } else {
+        pages.last.textMessages.addAll(textBuffer);
+      }
+    }
+
+    if (pages.isEmpty) {
+      pages.add(_ComicPage(cgUrl: null, textMessages: []));
+    }
+
+    return pages;
+  }
+
+  void _nextPage() {
+    final pages = _buildPages();
+    if (_currentIndex < pages.length - 1) {
+      setState(() {
+        _currentIndex++;
+      });
+    }
+    widget.onNextPage?.call();
+  }
+
+  void _prevPage() {
+    if (_currentIndex > 0) {
+      setState(() {
+        _currentIndex--;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = _buildPages();
+    if (pages.isEmpty) {
+      return const Center(child: Text('暂无消息'));
+    }
+
+    if (_currentIndex >= pages.length) {
+      _currentIndex = pages.length - 1;
+    }
+
+    final page = pages[_currentIndex];
+
+    String bubbleText = '';
+    String bubbleSpeaker = widget.stuName;
+    if (page.textMessages.isNotEmpty) {
+      final lastMsg = page.textMessages.last;
+      bubbleText = lastMsg.message;
+      bubbleSpeaker = lastMsg.type == Message.user ? widget.userName : widget.stuName;
+    }
+
+    return GestureDetector(
+      onTap: _nextPage,
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! < 0) {
+            _nextPage();
+          } else {
+            _prevPage();
+          }
+        }
+      },
+      child: Stack(
+        children: [
+          ComicBubbleOverlay(
+            key: _overlayKey,
+            text: bubbleText,
+            speaker: bubbleSpeaker,
+            cgUrl: page.cgUrl,
+          ),
+          if (pages.length > 1)
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${pages.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
+          if (_currentIndex < pages.length - 1)
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 40,
+              child: Center(
+                child: Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withValues(alpha: 0.3),
+                  size: 36,
+                ),
+              ),
+            ),
+          if (_currentIndex > 0)
+            Positioned(
+              left: 8,
+              top: 0,
+              bottom: 40,
+              child: Center(
+                child: Icon(
+                  Icons.chevron_left,
+                  color: Colors.white.withValues(alpha: 0.3),
+                  size: 36,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComicPage {
+  final String? cgUrl;
+  final List<Message> textMessages;
+
+  _ComicPage({
+    required this.cgUrl,
+    required this.textMessages,
+  });
 }
