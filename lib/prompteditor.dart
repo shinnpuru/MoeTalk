@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'storage.dart';
 import 'i18n.dart';
+import 'openai.dart';
 
 class PromptEditor extends StatefulWidget {
   const PromptEditor({super.key});
@@ -138,12 +140,314 @@ class PromptEditorState extends State<PromptEditor> {
     );
   }
 
+  /// 抓取网页内容
+  Future<String> _fetchWebContent(String url) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        ),
+      );
+      String body = response.data.toString();
+      // 简单提取文本内容，去除 HTML 标签
+      final RegExp tagRegex = RegExp(r'<[^>]*>', multiLine: true);
+      body = body.replaceAll(tagRegex, ' ');
+      body = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (body.length > 8000) {
+        body = body.substring(0, 8000);
+      }
+      return body;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /// AI 生成角色卡对话框
+  void _showAiGenerateDialog(BuildContext context) {
+    final TextEditingController inputController = TextEditingController();
+    bool isUrlMode = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, size: 24),
+                  const SizedBox(width: 8),
+                  Text(I18n.t('character_editor')),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(isUrlMode ? '📄 网页模式' : '✏️ 文本模式'),
+                        const Spacer(),
+                        TextButton.icon(
+                          icon: Icon(isUrlMode ? Icons.edit : Icons.link),
+                          label: Text(isUrlMode ? '切换文本' : '切换网页'),
+                          onPressed: () {
+                            setDialogState(() {
+                              isUrlMode = !isUrlMode;
+                              inputController.clear();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: inputController,
+                      maxLines: isUrlMode ? 1 : 5,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        hintText: isUrlMode
+                            ? '输入网页 URL（如 https://zh.moegirl.org.cn/...）'
+                            : '输入角色描述（性格、背景、外貌等）',
+                        labelText: isUrlMode ? 'URL' : '描述',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '提示：LoRA 和语音样本不会被覆盖',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: Text(I18n.t('cancel')),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(I18n.t('confirm')),
+                  onPressed: () async {
+                    final input = inputController.text.trim();
+                    if (input.isEmpty) return;
+
+                    Navigator.of(dialogContext).pop();
+                    _aiGenerate(context, input, isUrlMode);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 执行 AI 生成
+  Future<void> _aiGenerate(
+      BuildContext context, String input, bool isUrlMode) async {
+    // 显示 loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('AI 正在生成角色卡...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      String userContent = input;
+
+      // URL 模式：先抓取网页
+      if (isUrlMode) {
+        final webContent = await _fetchWebContent(input);
+        if (webContent.isEmpty) {
+          if (context.mounted) Navigator.of(context).pop(); // 关 loading
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (c) => AlertDialog(
+                title: Text(I18n.t('hint')),
+                content: const Text('无法抓取网页内容，请检查 URL 是否正确'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(c).pop(),
+                    child: Text(I18n.t('confirm')),
+                  ),
+                ],
+              ),
+            );
+          }
+          return;
+        }
+        userContent = webContent;
+      }
+
+      // 获取当前 LLM 配置
+      final configs = await getApiConfigs();
+      if (configs.isEmpty) {
+        if (context.mounted) Navigator.of(context).pop();
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: Text(I18n.t('hint')),
+              content: const Text('请先在设置中配置 API'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(c).pop(),
+                  child: Text(I18n.t('confirm')),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      final config = configs.first;
+
+      const systemPrompt = '''你是一个角色设定卡生成助手。请根据用户提供的内容，生成一个完整的角色设定卡。
+
+请严格按照以下 JSON 格式返回，只返回 JSON，不要包含其他文字：
+{
+  "name": "角色名称",
+  "avatar_description": "角色外貌的详细描述（中文），用于生成角色头像",
+  "first_mes": "角色对用户的初次问候语或开场白，自然生动",
+  "description": "完整的角色设定提示词（System Prompt），包含性格、背景故事、说话方式、兴趣爱好等，详细而完整",
+  "draw_char_prompt": "用于 AI 绘图的英文 prompt，描述角色外貌特征，包含服装、发型、表情等"
+}''';
+
+      final messages = [
+        ['system', systemPrompt],
+        ['user', userContent],
+      ];
+
+      StringBuffer responseBuffer = StringBuffer();
+
+      await completion(config, messages, (chunk) {
+        responseBuffer.write(chunk);
+      }, () async {
+        // onDone
+        if (context.mounted) Navigator.of(context).pop(); // 关 loading
+
+        try {
+          // 解析 JSON
+          String raw = responseBuffer.toString().trim();
+          // 尝试提取 ```json 代码块
+          final jsonMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(raw);
+          if (jsonMatch != null) {
+            raw = jsonMatch.group(1)!.trim();
+          }
+          final Map<String, dynamic> result = jsonDecode(raw);
+
+          if (context.mounted) {
+            setState(() {
+              if (result['name'] != null && result['name'].toString().isNotEmpty) {
+                studentNameController.text = result['name'].toString();
+              }
+              if (result['first_mes'] != null) {
+                originMsgController.text = result['first_mes'].toString();
+              }
+              if (result['description'] != null) {
+                controller.text = result['description'].toString();
+              }
+              if (result['draw_char_prompt'] != null) {
+                drawCharPromptController.text = result['draw_char_prompt'].toString();
+              }
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('角色卡生成成功！')),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (c) => AlertDialog(
+                title: Text(I18n.t('hint')),
+                content: Text('解析返回数据失败：$e\n\n原始返回：\n${responseBuffer.toString().substring(0, responseBuffer.toString().length.clamp(0, 500))}'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(c).pop(),
+                    child: Text(I18n.t('confirm')),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }, (err) {
+        // onErr
+        if (context.mounted) Navigator.of(context).pop(); // 关 loading
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: Text(I18n.t('hint')),
+              content: Text('API 调用失败：$err'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(c).pop(),
+                  child: Text(I18n.t('confirm')),
+                ),
+              ],
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      if (context.mounted) Navigator.of(context).pop(); // 关 loading
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: Text(I18n.t('hint')),
+            content: Text('出错：$e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(c).pop(),
+                child: Text(I18n.t('confirm')),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(I18n.t('character_editor')),
         actions: [
+          // AI 生成
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'AI 生成角色卡',
+            onPressed: () => _showAiGenerateDialog(context),
+          ),
           // 初始化
           IconButton(
             icon: const Icon(Icons.refresh),
