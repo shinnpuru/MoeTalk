@@ -349,7 +349,9 @@ class PromptEditorState extends State<PromptEditor> {
         final webContent = await _fetchWebContent(input);
         if (webContent.isEmpty) {
           completed = true;
-          if (context.mounted) Navigator.of(context).pop(); // 关 loading
+          if (context.mounted) {
+            try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+          }
           if (context.mounted) {
             showDialog(
               context: context,
@@ -377,7 +379,9 @@ class PromptEditorState extends State<PromptEditor> {
       final configs = await getApiConfigs();
       if (configs.isEmpty) {
         completed = true;
-        if (context.mounted) Navigator.of(context).pop();
+        if (context.mounted) {
+          try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+        }
         if (context.mounted) {
           showDialog(
             context: context,
@@ -422,9 +426,16 @@ class PromptEditorState extends State<PromptEditor> {
         responseBuffer.write(chunk);
         debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
       }, () {
-        debugPrint('[AI Generate] onDone 触发');
+        debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
         completed = true;
-        if (context.mounted) Navigator.of(context).pop(); // 关 loading
+        // 强制关 loading（rootNavigator 确保能找到正确的 Navigator）
+        if (context.mounted) {
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (e) {
+            debugPrint('[AI Generate] pop loading failed: $e');
+          }
+        }
 
         try {
           // 解析 JSON
@@ -476,8 +487,15 @@ class PromptEditorState extends State<PromptEditor> {
         genCompleter.complete();
       }, (err) {
         // onErr
+        debugPrint('[AI Generate] onErr 触发: $err');
         completed = true;
-        if (context.mounted) Navigator.of(context).pop(); // 关 loading
+        if (context.mounted) {
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (e) {
+            debugPrint('[AI Generate] pop loading onErr failed: $e');
+          }
+        }
         if (context.mounted) {
           showDialog(
             context: context,
@@ -498,7 +516,10 @@ class PromptEditorState extends State<PromptEditor> {
       await genCompleter.future;
     } catch (e) {
       completed = true;
-      if (context.mounted) Navigator.of(context).pop(); // 关 loading
+      debugPrint('[AI Generate] catch error: $e');
+      if (context.mounted) {
+        try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+      }
       if (context.mounted) {
         showDialog(
           context: context,
