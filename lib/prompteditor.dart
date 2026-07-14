@@ -322,6 +322,9 @@ class PromptEditorState extends State<PromptEditor> {
         userContent = webContent;
       }
 
+      debugPrint('[AI Generate] 即将发送给 LLM 的内容长度: ${userContent.length}');
+      debugPrint('[AI Generate] 内容预览前500字:\n${userContent.length > 500 ? userContent.substring(0, 500) : userContent}');
+
       // 获取当前 LLM 配置
       final configs = await getApiConfigs();
       if (configs.isEmpty) {
