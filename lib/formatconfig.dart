@@ -19,6 +19,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
   final TextEditingController drawPrompt = TextEditingController();
   final TextEditingController endPrompt = TextEditingController();
   final TextEditingController summaryPrompt = TextEditingController();
+  final TextEditingController characterGenPrompt = TextEditingController();
 
   @override
   void initState() {
@@ -47,6 +48,9 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
     getSummaryPrompt().then((value) {
       if (mounted) setState(() => summaryPrompt.text = value);
     });
+    getCharacterGenPrompt().then((value) {
+      if (mounted) setState(() => characterGenPrompt.text = value);
+    });
   }
 
   @override
@@ -59,6 +63,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
     drawPrompt.dispose();
     endPrompt.dispose();
     summaryPrompt.dispose();
+    characterGenPrompt.dispose();
     super.dispose();
   }
 
@@ -119,6 +124,7 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
               setDrawPrompt(drawPrompt.text);
               setEndPrompt(endPrompt.text);
               setSummaryPrompt(summaryPrompt.text);
+              setCharacterGenPrompt(characterGenPrompt.text);
               Navigator.of(context).pop();
             },
           ),
@@ -226,6 +232,15 @@ class _FormatConfigPageState extends State<FormatConfigPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               onTap: () => _showEditDialog(context, I18n.t('welcome_prompt'), welcomePrompt, multiLine: true),
+            ),
+            ListTile(
+              title: const Text('角色卡生成提示词'),
+              subtitle: Text(
+                characterGenPrompt.text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => _showEditDialog(context, '角色卡生成提示词', characterGenPrompt, multiLine: true),
             ),
           ],
         ),

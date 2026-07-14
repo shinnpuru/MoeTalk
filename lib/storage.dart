@@ -467,6 +467,29 @@ Future<String> getSummaryPrompt() async {
   return format;
 }
 
+Future<void> setCharacterGenPrompt(String format) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString("character_gen_prompt", format);
+}
+
+Future<String> getCharacterGenPrompt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? format = prefs.getString("character_gen_prompt");
+  if (format == null || format.isEmpty) {
+    return '''你是一个角色设定卡生成助手。请根据用户提供的内容，生成一个完整的角色设定卡。
+
+请严格按照以下 JSON 格式返回，只返回 JSON，不要包含其他文字：
+{
+  "name": "角色名称",
+  "avatar_description": "角色外貌的详细描述（中文），用于生成角色头像",
+  "first_mes": "角色对用户的初次问候语或开场白，自然生动",
+  "description": "完整的角色设定提示词（System Prompt），包含性格、背景故事、说话方式、兴趣爱好等，详细而完整",
+  "draw_char_prompt": "用于 AI 绘图的英文 prompt，描述角色外貌特征，包含服装、发型、表情等"
+}''';
+  }
+  return format;
+}
+
 Future<void> setEndPrompt(String format) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("system_prompt", format);
