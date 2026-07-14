@@ -312,9 +312,7 @@ class PromptEditorState extends State<PromptEditor> {
         setState(() => _isGenerating = false);
       }
     });
-      }
-    });
-
+    
     try {
       String userContent = input;
 
