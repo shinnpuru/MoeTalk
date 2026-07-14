@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -415,11 +416,13 @@ class PromptEditorState extends State<PromptEditor> {
 
       StringBuffer responseBuffer = StringBuffer();
 
-      await completion(config, messages, (chunk) {
+      debugPrint('[AI Generate] 开始 completion 调用');
+      final Completer<void> genCompleter = Completer<void>();
+      completion(config, messages, (chunk) {
         responseBuffer.write(chunk);
         debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
-      }, () async {
-        // onDone
+      }, () {
+        debugPrint('[AI Generate] onDone 触发');
         completed = true;
         if (context.mounted) Navigator.of(context).pop(); // 关 loading
 
@@ -470,6 +473,7 @@ class PromptEditorState extends State<PromptEditor> {
             );
           }
         }
+        genCompleter.complete();
       }, (err) {
         // onErr
         completed = true;
@@ -489,7 +493,9 @@ class PromptEditorState extends State<PromptEditor> {
             ),
           );
         }
+        genCompleter.complete();
       });
+      await genCompleter.future;
     } catch (e) {
       completed = true;
       if (context.mounted) Navigator.of(context).pop(); // 关 loading
