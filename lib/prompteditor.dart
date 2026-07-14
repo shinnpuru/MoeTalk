@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'storage.dart';
@@ -142,24 +142,47 @@ class PromptEditorState extends State<PromptEditor> {
     );
   }
 
-  /// 抓取网页内容（支持 Web 端通过 CORS Proxy）
+  /// 抓取网页内容（Web 端通过多个 CORS Proxy fallback）
   Future<String> _fetchWebContent(String url) async {
     try {
-      // Web 端用 corsproxy.io 代理绕过 CORS 限制
-      // 原生端（Android/Windows）直接请求
-      final bool isWeb = identical(0, 0.0); // kIsWeb 的 hack 方式
+      final bool isWeb = kIsWeb;
       String body = '';
 
       if (isWeb) {
-        final webUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(url)}');
-        final httpResponse = await http.get(
-          webUrl,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
-        );
-        body = httpResponse.body;
+        // Web 端：多个 CORS Proxy 轮询
+        final proxies = [
+          'https://corsproxy.io/?',
+          'https://api.allorigins.win/raw?url=',
+          'https://corsproxy.org/?',
+        ];
+
+        for (final proxy in proxies) {
+          try {
+            final encodedUrl = Uri.encodeComponent(url);
+            final proxyUri = Uri.parse('$proxy$encodedUrl');
+            final response = await http.get(
+              proxyUri,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              },
+            ).timeout(const Duration(seconds: 5));
+            if (response.body.isNotEmpty && response.body.length > 200) {
+              body = response.body;
+              break;
+            }
+          } catch (e) {
+            debugPrint('Proxy $proxy failed: $e');
+            continue;
+          }
+        }
+
+        // 所有代理都失败
+        if (body.isEmpty) {
+          debugPrint('All CORS proxies failed for URL: $url');
+          return '';
+        }
       } else {
+        // 原生端直接请求
         final dio = Dio();
         final response = await dio.get(
           url,
