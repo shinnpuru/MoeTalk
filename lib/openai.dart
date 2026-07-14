@@ -50,8 +50,16 @@ Future<void> completionIsolated(Config config, List<List<String>> message,
               onDone();
             } else if(e is FormatException) {
               onErr("Unexpected response: \n${data.data}");
+            } else {
+              // 其他未知异常也视为可能结束
+              onDone();
             }
           }
+        }, onDone: () {
+          // 流正常关闭（如某些 API 不发送 [DONE] 直接断连）
+          onDone();
+        }, onError: (e) {
+          onErr('Stream error: $e');
         });
       },
       onError: (oops) => onErr(oops.message));
@@ -96,8 +104,16 @@ Future<void> completion(Config config, List<List<String>> message,
               onDone();
             } else if(e is FormatException) {
               onErr("Unexpected response: \n${data.data}");
+            } else {
+              // 其他未知异常也视为可能结束
+              onDone();
             }
           }
+        }, onDone: () {
+          // 流正常关闭（如某些 API 不发送 [DONE] 直接断连）
+          onDone();
+        }, onError: (e) {
+          onErr('Stream error: $e');
         });
       },
       onError: (oops) => onErr(oops.message));
