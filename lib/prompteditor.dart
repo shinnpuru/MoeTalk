@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
+import 'package:http/http.dart' as http;
 import 'storage.dart';
 import 'i18n.dart';
 import 'openai.dart';
@@ -140,20 +142,37 @@ class PromptEditorState extends State<PromptEditor> {
     );
   }
 
-  /// 抓取网页内容
+  /// 抓取网页内容（支持 Web 端通过 CORS Proxy）
   Future<String> _fetchWebContent(String url) async {
     try {
-      final dio = Dio();
-      final response = await dio.get(
-        url,
-        options: Options(
-          responseType: ResponseType.plain,
+      // Web 端用 corsproxy.io 代理绕过 CORS 限制
+      // 原生端（Android/Windows）直接请求
+      final bool isWeb = identical(0, 0.0); // kIsWeb 的 hack 方式
+      String body = '';
+
+      if (isWeb) {
+        final webUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(url)}');
+        final httpResponse = await http.get(
+          webUrl,
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
-        ),
-      );
-      String body = response.data.toString();
+        );
+        body = httpResponse.body;
+      } else {
+        final dio = Dio();
+        final response = await dio.get(
+          url,
+          options: Options(
+            responseType: ResponseType.plain,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+          ),
+        );
+        body = response.data.toString();
+      }
+
       // 简单提取文本内容，去除 HTML 标签
       final RegExp tagRegex = RegExp(r'<[^>]*>', multiLine: true);
       body = body.replaceAll(tagRegex, ' ');
@@ -163,6 +182,7 @@ class PromptEditorState extends State<PromptEditor> {
       }
       return body;
     } catch (e) {
+      debugPrint('_fetchWebContent error: $e');
       return '';
     }
   }
