@@ -24,6 +24,7 @@ class PromptEditorState extends State<PromptEditor> {
   TextEditingController drawCharPromptController = TextEditingController();
   TextEditingController vitsPromptController = TextEditingController();
   TextEditingController drawLoraController = TextEditingController();
+  bool _isGenerating = false;
 
   @override
   void initState() {
@@ -301,43 +302,16 @@ class PromptEditorState extends State<PromptEditor> {
   /// 执行 AI 生成
   Future<void> _aiGenerate(
       BuildContext context, String input, bool isUrlMode) async {
-    // 显示 loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('AI 正在生成角色卡...'),
-            ],
-          ),
-        );
-      },
-    );
+    // 显示 loading（用 State 变量，不依赖 Navigator pop）
+    setState(() => _isGenerating = true);
 
     // 超时保护：60 秒后自动关 loading 并报错
     bool completed = false;
     Future.delayed(const Duration(seconds: 60), () {
-      if (!completed && context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop(); // 关 loading
-        } catch (_) {}
-        showDialog(
-          context: context,
-          builder: (c) => AlertDialog(
-            title: Text(I18n.t('hint')),
-            content: const Text('AI 生成超时（60秒），请检查 API 连接或稍后重试'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(c).pop(),
-                child: Text(I18n.t('confirm')),
-              ),
-            ],
-          ),
-        );
+      if (!completed && mounted) {
+        setState(() => _isGenerating = false);
+      }
+    });
       }
     });
 
@@ -349,9 +323,7 @@ class PromptEditorState extends State<PromptEditor> {
         final webContent = await _fetchWebContent(input);
         if (webContent.isEmpty) {
           completed = true;
-          if (context.mounted) {
-            try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
-          }
+          if (mounted) setState(() => _isGenerating = false);
           if (context.mounted) {
             showDialog(
               context: context,
@@ -379,9 +351,7 @@ class PromptEditorState extends State<PromptEditor> {
       final configs = await getApiConfigs();
       if (configs.isEmpty) {
         completed = true;
-        if (context.mounted) {
-          try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
-        }
+        if (mounted) setState(() => _isGenerating = false);
         if (context.mounted) {
           showDialog(
             context: context,
@@ -410,7 +380,7 @@ class PromptEditorState extends State<PromptEditor> {
   "avatar_description": "角色外貌的详细描述（中文），用于生成角色头像",
   "first_mes": "角色对用户的初次问候语或开场白，自然生动",
   "description": "完整的角色设定提示词（System Prompt），包含性格、背景故事、说话方式、兴趣爱好等，详细而完整",
-  "draw_char_prompt": "用于 AI 绘图的英文 prompt，描述角色外貌特征，包含服装、发型、表情等"
+  "draw_char_prompt": "用于 AI 绘图的英文 prompt，描述角色外貌特征，包含服装、发型、表情等，不要描述其他内容，需要包括角色名"
 }''';
 
       final messages = [
@@ -421,21 +391,15 @@ class PromptEditorState extends State<PromptEditor> {
       StringBuffer responseBuffer = StringBuffer();
 
       debugPrint('[AI Generate] 开始 completion 调用');
-      final Completer<void> genCompleter = Completer<void>();
       completion(config, messages, (chunk) {
         responseBuffer.write(chunk);
         debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
       }, () {
         debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
         completed = true;
-        // 强制关 loading（rootNavigator 确保能找到正确的 Navigator）
-        if (context.mounted) {
-          try {
-            Navigator.of(context, rootNavigator: true).pop();
-          } catch (e) {
-            debugPrint('[AI Generate] pop loading failed: $e');
-          }
-        }
+                debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
+        completed = true;
+        if (mounted) setState(() => _isGenerating = false);
 
         try {
           // 解析 JSON
@@ -446,27 +410,27 @@ class PromptEditorState extends State<PromptEditor> {
             raw = jsonMatch.group(1)!.trim();
           }
           final Map<String, dynamic> result = jsonDecode(raw);
+          debugPrint('[AI Generate] 解析后的 JSON: $result');
 
-          if (context.mounted) {
-            setState(() {
-              if (result['name'] != null && result['name'].toString().isNotEmpty) {
-                studentNameController.text = result['name'].toString();
-              }
-              if (result['first_mes'] != null) {
-                originMsgController.text = result['first_mes'].toString();
-              }
-              if (result['description'] != null) {
-                controller.text = result['description'].toString();
-              }
-              if (result['draw_char_prompt'] != null) {
-                drawCharPromptController.text = result['draw_char_prompt'].toString();
-              }
-            });
+          setState(() {
+            if (result['name'] != null && result['name'].toString().isNotEmpty) {
+              studentNameController.text = result['name'].toString();
+            }
+            if (result['first_mes'] != null) {
+              originMsgController.text = result['first_mes'].toString();
+            }
+            if (result['description'] != null) {
+              controller.text = result['description'].toString();
+            }
+            if (result['draw_char_prompt'] != null) {
+              drawCharPromptController.text = result['draw_char_prompt'].toString();
+            }
+          });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('角色卡生成成功！')),
-            );
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('角色卡生成成功！')),
+          );
+
         } catch (e) {
           if (context.mounted) {
             showDialog(
@@ -484,18 +448,11 @@ class PromptEditorState extends State<PromptEditor> {
             );
           }
         }
-        genCompleter.complete();
       }, (err) {
         // onErr
-        debugPrint('[AI Generate] onErr 触发: $err');
+                debugPrint('[AI Generate] onErr 触发: $err');
         completed = true;
-        if (context.mounted) {
-          try {
-            Navigator.of(context, rootNavigator: true).pop();
-          } catch (e) {
-            debugPrint('[AI Generate] pop loading onErr failed: $e');
-          }
-        }
+        if (mounted) setState(() => _isGenerating = false);
         if (context.mounted) {
           showDialog(
             context: context,
@@ -511,15 +468,11 @@ class PromptEditorState extends State<PromptEditor> {
             ),
           );
         }
-        genCompleter.complete();
       });
-      await genCompleter.future;
     } catch (e) {
       completed = true;
       debugPrint('[AI Generate] catch error: $e');
-      if (context.mounted) {
-        try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
-      }
+      if (mounted) setState(() => _isGenerating = false);
       if (context.mounted) {
         showDialog(
           context: context,
@@ -540,133 +493,153 @@ class PromptEditorState extends State<PromptEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(I18n.t('character_editor')),
-        actions: [
-          // AI 生成
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            tooltip: 'AI 生成角色卡',
-            onPressed: () => _showAiGenerateDialog(context),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(I18n.t('character_editor')),
+            actions: [
+              // AI 生成
+              IconButton(
+                icon: const Icon(Icons.auto_awesome),
+                tooltip: 'AI 生成角色卡',
+                onPressed: () => _showAiGenerateDialog(context),
+              ),
+              // 初始化
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () async {
+                  controller.text = await getPrompt(isDefault: true);
+                  studentNameController.text = await getStudentName(isDefault: true);
+                  originMsgController.text = await getOriginalMsg(isDefault: true);
+                  studentAvatarController.text = await getAvatar(isDefault: true);
+                  drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
+                  vitsPromptController.text = await getVitsPrompt(isDefault: true);
+                  drawLoraController.text = await getDrawLora(isDefault: true);
+                  setState(() {});
+                },
+              ),
+              // 保存
+              IconButton(
+                icon: const Icon(Icons.save),
+                onPressed: () {
+                  setPrompt(controller.text);
+                  setStudentName(studentNameController.text);
+                  setOriginalMsg(originMsgController.text);
+                  setAvatar(studentAvatarController.text);
+                  setDrawCharPrompt(drawCharPromptController.text);
+                  setVitsPrompt(vitsPromptController.text);
+                  setDrawLora(drawLoraController.text);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
-          // 初始化
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              controller.text = await getPrompt(isDefault: true);
-              studentNameController.text = await getStudentName(isDefault: true);
-              originMsgController.text = await getOriginalMsg(isDefault: true);
-              studentAvatarController.text = await getAvatar(isDefault: true);
-              drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
-              vitsPromptController.text = await getVitsPrompt(isDefault: true);
-              drawLoraController.text = await getDrawLora(isDefault: true);
-              setState(() {});
-            },
+          body: ListView(
+            padding: const EdgeInsets.all(8.0),
+            children: <Widget>[
+              ListTile(
+                title: Text(I18n.t('character_avatar')),
+              ),
+              GestureDetector(
+                onTap: _pickAvatar,
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundImage: studentAvatarController.text.startsWith('http')
+                    ? NetworkImage(studentAvatarController.text)
+                    : studentAvatarController.text.startsWith('data:image/')
+                      ? MemoryImage(base64Decode(studentAvatarController.text.split(',')[1]))
+                      : const AssetImage("assets/avatar.png")
+                  ),
+                ),
+              ),
+              ListTile(
+                title: Text(I18n.t('character_name')),
+                subtitle: Text(
+                  studentNameController.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () =>
+                    _showEditDialog(context, I18n.t('character_name'), studentNameController),
+              ),
+              ListTile(
+                title: Text(I18n.t('initial_dialogue')),
+                subtitle: Text(
+                  originMsgController.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _showEditDialog(context, I18n.t('initial_dialogue'), originMsgController,
+                    multiLine: true),
+              ),
+              ListTile(
+                title: Text(I18n.t('setting_prompt')),
+                subtitle: Text(
+                  controller.text,
+                  maxLines: null,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: "Courier"),
+                ),
+                onTap: () =>
+                    _showEditDialog(context, I18n.t('setting_prompt'), controller, multiLine: true),
+              ),
+              ListTile(
+                title: Text(I18n.t('draw_prompt')),
+                subtitle: Text(
+                  drawCharPromptController.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawCharPromptController,
+                    multiLine: true),
+              ),
+              ListTile(
+                title: const Text('LoRA'),
+                subtitle: Text(
+                  drawLoraController.text.isEmpty 
+                    ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>' 
+                    : drawLoraController.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: drawLoraController.text.isEmpty ? Colors.grey : null,
+                    fontStyle: drawLoraController.text.isEmpty ? FontStyle.italic : null,
+                  ),
+                ),
+                onTap: () => _showEditDialog(context, 'LoRA (Single or <URN:weight>,<URN:weight>)', drawLoraController, multiLine: true),
+              ),
+              ListTile(
+                title: Text(I18n.t('voice_ref')),
+                subtitle: Text(
+                  vitsPromptController.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _showEditDialog(context, I18n.t('voice_ref'), vitsPromptController,
+                    multiLine: true),
+              ),
+            ],
           ),
-          // 保存
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () {
-              setPrompt(controller.text);
-              setStudentName(studentNameController.text);
-              setOriginalMsg(originMsgController.text);
-              setAvatar(studentAvatarController.text);
-              setDrawCharPrompt(drawCharPromptController.text);
-              setVitsPrompt(vitsPromptController.text);
-              setDrawLora(drawLoraController.text);
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(8.0),
-        children: <Widget>[
-          ListTile(
-            title: Text(I18n.t('character_avatar')),
-          ),
-          GestureDetector(
-            onTap: _pickAvatar,
-            child: Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage: studentAvatarController.text.startsWith('http')
-                ? NetworkImage(studentAvatarController.text)
-                : studentAvatarController.text.startsWith('data:image/')
-                  ? MemoryImage(base64Decode(studentAvatarController.text.split(',')[1]))
-                  : const AssetImage("assets/avatar.png")
+        ),
+        // AI 生成中的 loading 遮罩
+        if (_isGenerating)
+          Container(
+            color: Colors.black38,
+            child: const Center(
+              child: AlertDialog(
+                content: Row(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 20),
+                    Text('AI 正在生成角色卡...'),
+                  ],
+                ),
               ),
             ),
           ),
-          ListTile(
-            title: Text(I18n.t('character_name')),
-            subtitle: Text(
-              studentNameController.text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () =>
-                _showEditDialog(context, I18n.t('character_name'), studentNameController),
-          ),
-          ListTile(
-            title: Text(I18n.t('initial_dialogue')),
-            subtitle: Text(
-              originMsgController.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () => _showEditDialog(context, I18n.t('initial_dialogue'), originMsgController,
-                multiLine: true),
-          ),
-          ListTile(
-            title: Text(I18n.t('setting_prompt')),
-            subtitle: Text(
-              controller.text,
-              maxLines: null,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontFamily: "Courier"),
-            ),
-            onTap: () =>
-                _showEditDialog(context, I18n.t('setting_prompt'), controller, multiLine: true),
-          ),
-          ListTile(
-            title: Text(I18n.t('draw_prompt')),
-            subtitle: Text(
-              drawCharPromptController.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawCharPromptController,
-                multiLine: true),
-          ),
-          ListTile(
-            title: const Text('LoRA'),
-            subtitle: Text(
-              drawLoraController.text.isEmpty 
-                ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>' 
-                : drawLoraController.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: drawLoraController.text.isEmpty ? Colors.grey : null,
-                fontStyle: drawLoraController.text.isEmpty ? FontStyle.italic : null,
-              ),
-            ),
-            onTap: () => _showEditDialog(context, 'LoRA (Single or <URN:weight>,<URN:weight>)', drawLoraController, multiLine: true),
-          ),
-          ListTile(
-            title: Text(I18n.t('voice_ref')),
-            subtitle: Text(
-              vitsPromptController.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () => _showEditDialog(context, I18n.t('voice_ref'), vitsPromptController,
-                multiLine: true),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
