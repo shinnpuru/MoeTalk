@@ -415,8 +415,9 @@ class PromptEditorState extends State<PromptEditor> {
 
       StringBuffer responseBuffer = StringBuffer();
 
-      await completionIsolated(config, messages, (chunk) {
+      await completion(config, messages, (chunk) {
         responseBuffer.write(chunk);
+        debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
       }, () async {
         // onDone
         completed = true;
