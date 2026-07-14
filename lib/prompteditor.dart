@@ -294,6 +294,29 @@ class PromptEditorState extends State<PromptEditor> {
       },
     );
 
+    // 超时保护：60 秒后自动关 loading 并报错
+    bool completed = false;
+    Future.delayed(const Duration(seconds: 60), () {
+      if (!completed && context.mounted) {
+        try {
+          Navigator.of(context, rootNavigator: true).pop(); // 关 loading
+        } catch (_) {}
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: Text(I18n.t('hint')),
+            content: const Text('AI 生成超时（60秒），请检查 API 连接或稍后重试'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(c).pop(),
+                child: Text(I18n.t('confirm')),
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
     try {
       String userContent = input;
 
@@ -301,6 +324,7 @@ class PromptEditorState extends State<PromptEditor> {
       if (isUrlMode) {
         final webContent = await _fetchWebContent(input);
         if (webContent.isEmpty) {
+          completed = true;
           if (context.mounted) Navigator.of(context).pop(); // 关 loading
           if (context.mounted) {
             showDialog(
@@ -328,6 +352,7 @@ class PromptEditorState extends State<PromptEditor> {
       // 获取当前 LLM 配置
       final configs = await getApiConfigs();
       if (configs.isEmpty) {
+        completed = true;
         if (context.mounted) Navigator.of(context).pop();
         if (context.mounted) {
           showDialog(
@@ -367,10 +392,11 @@ class PromptEditorState extends State<PromptEditor> {
 
       StringBuffer responseBuffer = StringBuffer();
 
-      await completion(config, messages, (chunk) {
+      await completionIsolated(config, messages, (chunk) {
         responseBuffer.write(chunk);
       }, () async {
         // onDone
+        completed = true;
         if (context.mounted) Navigator.of(context).pop(); // 关 loading
 
         try {
@@ -422,6 +448,7 @@ class PromptEditorState extends State<PromptEditor> {
         }
       }, (err) {
         // onErr
+        completed = true;
         if (context.mounted) Navigator.of(context).pop(); // 关 loading
         if (context.mounted) {
           showDialog(
@@ -440,6 +467,7 @@ class PromptEditorState extends State<PromptEditor> {
         }
       });
     } catch (e) {
+      completed = true;
       if (context.mounted) Navigator.of(context).pop(); // 关 loading
       if (context.mounted) {
         showDialog(
