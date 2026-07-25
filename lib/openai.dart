@@ -8,32 +8,6 @@ String removeTailSlash(String input) {
       : input.trimRight();
 }
 
-/// 流式 SSE 回调包装
-/// 确保 onDone/onError 在各种结束条件下都能触发
-void _listenStream(Stream<EventFluxData>? stream,
-    Function onEvent, Function onDone, Function onErr) {
-  bool finished = false;
-
-  void finish(Function cb) {
-    if (finished) return;
-    finished = true;
-    cb();
-  }
-
-  stream?.listen((data) {
-    try {
-      onEvent(json.decode(data.data)["choices"][0]["delta"]["content"]);
-    } catch (e) {
-      // DONE 标记或任何解析异常都视为流结束
-      finish(onDone);
-    }
-  }, onDone: () {
-    finish(onDone);
-  }, onError: (e) {
-    finish(() => onErr('Stream error: $e'));
-  });
-}
-
 Future<void> completion(Config config, List<List<String>> message,
     Function onEevent, Function onDone, Function onErr) async {
 
@@ -65,7 +39,17 @@ Future<void> completion(Config config, List<List<String>> message,
       },
       body: data,
       onSuccessCallback: (EventFluxResponse? response) {
-        _listenStream(response?.stream, onEevent, onDone, onErr);
+        response?.stream?.listen((data) {
+          try {
+            onEevent(json.decode(data.data)["choices"][0]["delta"]["content"]);
+          } catch (e) {
+            if (data.data.contains("DONE")) {
+              onDone();
+            } else if(e is FormatException) {
+              onErr("Unexpected response: \n${data.data}");
+            }
+          }
+        });
       },
       onError: (oops) => onErr(oops.message));
 }
