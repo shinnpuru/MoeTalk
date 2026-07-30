@@ -99,6 +99,11 @@ Future<String?> _generateImageWithCivitai({
     pollInterval: const Duration(seconds: 2),
   );
 
+  // Check workflow status
+  if (response.status == 'failed') {
+    throw Exception('Civitai workflow failed: ${response.errorMessage ?? "Unknown error"}');
+  }
+
   // v2: Response has steps[].output.images[].url
   final images = response.images;
   if (images.isNotEmpty) {
@@ -107,7 +112,10 @@ Future<String?> _generateImageWithCivitai({
       return url;
     }
   }
-  return null;
+
+  // No images but no exception either — provide details
+  final statusDetail = response.status != null ? 'status=${response.status}' : 'no status';
+  throw Exception('Civitai workflow did not return any image. $statusDetail');
 }
 
 Future<String?> _generateImageWithGradio({
@@ -516,6 +524,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       logController.text = 'Workflow ID: $jobToken\n${logController.text}';
     }
 
+    // Check workflow status first
+    if (response.status == 'failed') {
+      final errMsg = response.errorMessage ?? 'Unknown error';
+      throw Exception('Civitai workflow failed: $errMsg');
+    }
+
     // v2: Get images from steps[].output.images[]
     final images = response.images;
     if (images.isNotEmpty) {
@@ -540,12 +554,12 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       }
     }
 
-    // If we get here, no image was generated
-    logController.text = 'Warning: Workflow completed but no image was returned\n${logController.text}';
-    setState(() {
-      sdBusy = false;
-      showLog = true;
-    });
+    // If we get here, no image was generated — throw with details
+    final statusDetail = response.status != null ? 'status=${response.status}' : 'no status';
+    final stepsDetail = response.steps.isNotEmpty
+        ? response.steps.map((s) => '\${s.name}: \${s.status}').join(', ')
+        : 'no steps';
+    throw Exception('Civitai workflow did not return any image. $statusDetail, steps: $stepsDetail');
   }
 
   Future<void> _makeGradioRequest(String finalPrompt) async {
