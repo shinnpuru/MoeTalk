@@ -42,54 +42,69 @@ Future<String?> _generateImageWithCivitai({
       .replaceAll("VERB", promptText)
       .replaceAll("CHAR", charPrompt);
 
+  // Parse LoRAs (v2: input.loras as { airUrn: strength })
+  Map<String, double>? loras;
   String? lora = await getDrawLora();
-  Map<String, dynamic>? additionalNetworks;
   if (lora != null && lora.isNotEmpty) {
     final loraPattern = RegExp(r'<([^:]+):([0-9.]+)>');
     final matches = loraPattern.allMatches(lora);
     if (matches.isNotEmpty) {
-      additionalNetworks = {};
+      loras = {};
       for (var match in matches) {
         String airUrn = match.group(1)!;
         double weight = double.tryParse(match.group(2)!) ?? 1.0;
-        additionalNetworks[airUrn] = {'strength': weight};
+        loras![airUrn] = weight;
       }
     } else {
-      additionalNetworks = {
-        lora: {'strength': 1.0},
+      loras = {
+        lora: 1.0,
       };
     }
   }
 
+  // v2: SDXL doesn't support clipSkip — omit it if ecosystem is SDXL
+  // v2: Use sampleMethod/schedule for sdcpp (default) instead of scheduler
+  final isSDXL = sdConfig.model.contains('sdxl');
+
+  // Build ImageParams - scheduler is now mapped to sampleMethod
+  final params = ImageParams(
+    prompt: finalPrompt,
+    negativePrompt: sdConfig.negativePrompt,
+    width: sdConfig.width ?? 1024,
+    height: sdConfig.height ?? 1600,
+    steps: sdConfig.steps ?? 25,
+    cfgScale: (sdConfig.cfg ?? 7).toDouble(),
+    // Map the old 'scheduler' field to v2 'sampleMethod' (for sdcpp engine)
+    sampleMethod: sdConfig.sampler != null && sdConfig.sampler!.isNotEmpty
+        ? sdConfig.sampler
+        : 'euler',
+    // Default schedule for sdcpp
+    schedule: 'discrete',
+    seed: sdConfig.seed,
+    // SDXL does NOT support clipSkip — omit it
+  );
+
+  // v2: Use ImageInput without additionalNetworks/controlNets
   final input = ImageInput(
     model: sdConfig.model,
-    params: ImageParams(
-      prompt: finalPrompt,
-      negativePrompt: sdConfig.negativePrompt,
-      width: sdConfig.width ?? 1024,
-      height: sdConfig.height ?? 1600,
-      steps: sdConfig.steps ?? 28,
-      cfgScale: (sdConfig.cfg ?? 7).toDouble(),
-      scheduler: sdConfig.sampler,
-      seed: sdConfig.seed,
-      clipSkip: sdConfig.clipSkip,
-    ),
-    additionalNetworks: additionalNetworks,
+    params: params,
+    loras: loras,
+    quantity: 1,
   );
 
   final response = await civitaiClient.image.create(
     input: input,
-    wait: true,
+    wait: 60, // v2 uses wait=seconds, default 60
     timeout: const Duration(minutes: 10),
     pollInterval: const Duration(seconds: 2),
   );
 
-  if (response.jobs.isNotEmpty) {
-    for (var job in response.jobs) {
-      final url = job.imageUrl;
-      if (url != null && url.isNotEmpty) {
-        return url;
-      }
+  // v2: Response has steps[].output.images[].url
+  final images = response.images;
+  if (images.isNotEmpty) {
+    final url = images.first.url;
+    if (url.isNotEmpty) {
+      return url;
     }
   }
   return null;
@@ -443,86 +458,90 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 
     logController.text = 'Initializing Civitai API...\n${logController.text}';
 
-    // Get LoRA configuration
+    // Parse LoRAs (v2: input.loras as { airUrn: strength })
     String? lora = await getDrawLora();
-    Map<String, dynamic>? additionalNetworks;
+    Map<String, double>? loras;
     if (lora != null && lora.isNotEmpty) {
       final loraPattern = RegExp(r'<([^:]+):([0-9.]+)>');
       final matches = loraPattern.allMatches(lora);
-
       if (matches.isNotEmpty) {
-        additionalNetworks = {};
+        loras = {};
         for (var match in matches) {
           String airUrn = match.group(1)!;
           double weight = double.tryParse(match.group(2)!) ?? 1.0;
-          additionalNetworks[airUrn] = {'strength': weight};
+          loras![airUrn] = weight;
           logController.text = 'Using LoRA: $airUrn (weight: $weight)\n${logController.text}';
         }
       } else {
-        additionalNetworks = {
-          lora: {'strength': 1.0},
-        };
+        loras = {lora: 1.0};
         logController.text = 'Using LoRA: $lora (weight: 1.0)\n${logController.text}';
       }
     }
 
-    // Create image generation request
-    final input = ImageInput(
-      model: sdConfig.model,
-      params: ImageParams(
-        prompt: finalPrompt,
-        negativePrompt: sdConfig.negativePrompt,
-        width: sdConfig.width ?? 1024,
-        height: sdConfig.height ?? 1600,
-        steps: sdConfig.steps ?? 28,
-        cfgScale: (sdConfig.cfg ?? 7).toDouble(),
-        scheduler: sdConfig.sampler,
-        seed: sdConfig.seed,
-        clipSkip: sdConfig.clipSkip,
-      ),
-      additionalNetworks: additionalNetworks,
+    // Create image generation request (v2 workflow API)
+    final params = ImageParams(
+      prompt: finalPrompt,
+      negativePrompt: sdConfig.negativePrompt,
+      width: sdConfig.width ?? 1024,
+      height: sdConfig.height ?? 1600,
+      steps: sdConfig.steps ?? 25,
+      cfgScale: (sdConfig.cfg ?? 7).toDouble(),
+      sampleMethod: sdConfig.sampler != null && sdConfig.sampler!.isNotEmpty
+          ? sdConfig.sampler
+          : 'euler',
+      schedule: 'discrete',
+      seed: sdConfig.seed,
     );
 
-    logController.text = 'Submitting job to Civitai...\n${logController.text}';
+    final input = ImageInput(
+      model: sdConfig.model,
+      params: params,
+      loras: loras,
+      quantity: 1,
+    );
 
-    // Submit the job and wait for completion
+    logController.text = 'Submitting workflow to Civitai v2...\n${logController.text}';
+
+    // Submit the workflow and wait for completion (wait=60 means 60s sync wait)
     final response = await civitaiClient!.image.create(
       input: input,
-      wait: true,
+      wait: 60,
       timeout: const Duration(minutes: 10),
       pollInterval: const Duration(seconds: 2),
     );
 
-    jobToken = response.token;
-    logController.text = 'Job token: $jobToken\n${logController.text}';
+    jobToken = response.token ?? response.id;
+    logController.text = 'Workflow status: ${response.status}\n${logController.text}';
+    if (jobToken != null && jobToken!.isNotEmpty) {
+      logController.text = 'Workflow ID: $jobToken\n${logController.text}';
+    }
 
-    // Check if we have completed jobs with images
-    if (response.jobs.isNotEmpty) {
-      for (var job in response.jobs) {
-        final url = job.imageUrl;
-        if (url != null && url.isNotEmpty) {
-          logController.text = 'Image generated successfully!\n${logController.text}';
-          setState(() {
-            imageUrl = url;
-            imageUrlRaw = url;
-            sdBusy = false;
-            showLog = false;
-          });
+    // v2: Get images from steps[].output.images[]
+    final images = response.images;
+    if (images.isNotEmpty) {
+      final url = images.first.url;
+      if (url.isNotEmpty) {
+        logController.text = 'Image generated successfully!\n${logController.text}';
+        setState(() {
+          imageUrl = url;
+          imageUrlRaw = url;
+          sdBusy = false;
+          showLog = false;
+        });
 
-          if(!isForeground) {
-            notification.showNotification(
-              title: '绘画',
-              body: '绘画完成！',
-              showAvator: false
-            );
-          }
-          return;
+        if(!isForeground) {
+          notification.showNotification(
+            title: '绘画',
+            body: '绘画完成！',
+            showAvator: false
+          );
         }
+        return;
       }
     }
 
     // If we get here, no image was generated
-    logController.text = 'Warning: Job completed but no image was returned\n${logController.text}';
+    logController.text = 'Warning: Workflow completed but no image was returned\n${logController.text}';
     setState(() {
       sdBusy = false;
       showLog = true;
