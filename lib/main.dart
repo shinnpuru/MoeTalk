@@ -917,6 +917,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       // Generate prompt using the aidraw LLM (same as AiDraw.buildPrompt)
       String promptText = '';
       bool promptOk = false;
+      String lastPromptError = '';
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           final Completer<String> promptCompleter = Completer<String>();
@@ -936,6 +937,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               }
             },
             (String error) {
+              lastPromptError = error;
               if (!promptCompleter.isCompleted) {
                 promptCompleter.completeError(error);
               }
@@ -943,20 +945,26 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           );
           final String cand = await promptCompleter.future.timeout(
             const Duration(minutes: 2),
-            onTimeout: () => '',
+            onTimeout: () {
+              lastPromptError = 'timeout';
+              return '';
+            },
           );
           if (cand.isNotEmpty) {
             promptText = cand;
             promptOk = true;
             break;
+          } else if (lastPromptError.isEmpty) {
+            lastPromptError = 'empty response';
           }
         } catch (e) {
+          lastPromptError = e.toString();
           debugPrint('prompt generation attempt $attempt failed: $e');
         }
       }
 
       if (!promptOk) {
-        if (mounted) snackBarAlert(context, I18n.t('draw_prompt_failed'));
+        if (mounted) snackBarAlert(context, "${I18n.t('draw_prompt_failed')}: $lastPromptError");
         return;
       }
 
