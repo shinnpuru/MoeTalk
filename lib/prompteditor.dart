@@ -144,47 +144,43 @@ class PromptEditorState extends State<PromptEditor> {
     );
   }
 
-  /// 抓取网页内容（Web 端通过多个 CORS Proxy fallback）
+  /// 抓取网页内容（Web 端通过多个 CORS Proxy fallback，原生端直连）
+  ///
+  /// 成功时返回提取后的纯文本；失败时返回以 [ERR] 开头的错误描述，
+  /// 调用方据此弹出失败提示。
   Future<String> _fetchWebContent(String url) async {
-    try {
-      final bool isWeb = kIsWeb;
-      String body = '';
+    final errors = <String>[];
 
-      if (isWeb) {
-        // Web 端：多个 CORS Proxy 轮询
-        final proxies = [
-          'https://corsproxy.io/?',
-          'https://api.allorigins.win/raw?url=',
-          'https://corsproxy.org/?',
-        ];
+    if (kIsWeb) {
+      // Web 端：多个 CORS Proxy 轮询（浏览器无法直接跨域请求）
+      // proxy.cors.sh 格式: https://proxy.cors.sh/<url>
+      // allorigins 格式:    https://api.allorigins.win/raw?url=<encoded>
+      // corsproxy 格式:     https://corsproxy.io/?url=<encoded>
+      final proxies = <String>[
+        'https://proxy.cors.sh/',
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?url=',
+      ];
 
-        for (final proxy in proxies) {
-          try {
-            final encodedUrl = Uri.encodeComponent(url);
-            final proxyUri = Uri.parse('$proxy$encodedUrl');
-            final response = await http.get(
-              proxyUri,
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              },
-            ).timeout(const Duration(seconds: 5));
-            if (response.body.isNotEmpty && response.body.length > 200) {
-              body = response.body;
-              break;
-            }
-          } catch (e) {
-            debugPrint('Proxy $proxy failed: $e');
-            continue;
+      for (final proxy in proxies) {
+        try {
+          final proxyUri = Uri.parse('$proxy${Uri.encodeComponent(url)}');
+          final response = await http.get(proxyUri).timeout(
+            const Duration(seconds: 8),
+          );
+          if (response.body.isNotEmpty && response.body.length > 200) {
+            return _extractText(response.body);
           }
+          errors.add('$proxy → HTTP ${response.statusCode} (body ${response.body.length}B)');
+        } catch (e) {
+          errors.add('$proxy → $e');
+          continue;
         }
-
-        // 所有代理都失败
-        if (body.isEmpty) {
-          debugPrint('All CORS proxies failed for URL: $url');
-          return '';
-        }
-      } else {
-        // 原生端直接请求
+      }
+      return 'ERR: 所有 CORS 代理均失败：\n${errors.join("\n")}';
+    } else {
+      // 原生端直连
+      try {
         final dio = Dio();
         final response = await dio.get(
           url,
@@ -195,33 +191,38 @@ class PromptEditorState extends State<PromptEditor> {
             },
           ),
         );
-        body = response.data.toString();
+        final body = response.data.toString();
+        if (body.isEmpty) {
+          return 'ERR: 请求返回空内容';
+        }
+        return _extractText(body);
+      } catch (e) {
+        return 'ERR: $e';
       }
-
-      // 简单提取文本内容，去除 HTML 标签
-      final RegExp tagRegex = RegExp(r'<[^>]*>', multiLine: true);
-      body = body.replaceAll(tagRegex, ' ');
-      body = body.replaceAll(RegExp(r'\s+'), ' ').trim();
-      if (body.length > 8000) {
-        body = body.substring(0, 8000);
-      }
-      return body;
-    } catch (e) {
-      debugPrint('_fetchWebContent error: $e');
-      return '';
     }
   }
 
+  /// 从 HTML 中提取纯文本，去除标签并截断
+  String _extractText(String html) {
+    final RegExp tagRegex = RegExp(r'<[^>]*>', multiLine: true);
+    String text = html.replaceAll(tagRegex, ' ');
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (text.length > 8000) {
+      text = text.substring(0, 8000);
+    }
+    return text;
+  }
+
   /// AI 生成角色卡对话框
-  void _showAiGenerateDialog(BuildContext context) {
+  void _showAiGenerateDialog(BuildContext parentContext) {
     final TextEditingController inputController = TextEditingController();
     bool isUrlMode = false;
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (sbContext, setDialogState) {
             return AlertDialog(
               title: Row(
                 children: [
@@ -288,7 +289,7 @@ class PromptEditorState extends State<PromptEditor> {
                     if (input.isEmpty) return;
 
                     Navigator.of(dialogContext).pop();
-                    _aiGenerate(context, input, isUrlMode);
+                    _aiGenerate(parentContext, input, isUrlMode);
                   },
                 ),
               ],
@@ -345,8 +346,10 @@ class PromptEditorState extends State<PromptEditor> {
       // URL 模式：先抓取网页
       if (isUrlMode) {
         final webContent = await _fetchWebContent(input);
-        if (webContent.isEmpty) {
-          showError('无法抓取网页内容，请检查 URL 是否正确');
+        if (webContent.isEmpty || webContent.startsWith('ERR:')) {
+          showError(webContent.isEmpty
+              ? '无法抓取网页内容，请检查 URL 是否正确'
+              : '无法抓取网页内容：\n${webContent.substring(4)}');
           return;
         }
         userContent = webContent;
