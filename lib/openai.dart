@@ -30,7 +30,21 @@ Future<void> completion(Config config, List<List<String>> message,
     if (config.maxTokens != null && int.tryParse(config.maxTokens!) != null)
       'max_tokens': int.parse(config.maxTokens!),
   };
-  // print(data);
+  bool finished = false;
+  void safeDone() {
+    if (!finished) {
+      finished = true;
+      onDone();
+    }
+  }
+
+  void safeErr(dynamic err) {
+    if (!finished) {
+      finished = true;
+      onErr(err);
+    }
+  }
+
   EventFlux.instance.connect(EventFluxConnectionType.post,
       "${removeTailSlash(config.baseUrl)}/chat/completions",
       header: {
@@ -41,15 +55,22 @@ Future<void> completion(Config config, List<List<String>> message,
       onSuccessCallback: (EventFluxResponse? response) {
         response?.stream?.listen((data) {
           try {
-            onEevent(json.decode(data.data)["choices"][0]["delta"]["content"]);
+            final content = json.decode(data.data)["choices"][0]["delta"]["content"];
+            if (content != null) {
+              onEevent(content);
+            }
           } catch (e) {
             if (data.data.contains("DONE")) {
-              onDone();
-            } else if(e is FormatException) {
-              onErr("Unexpected response: \n${data.data}");
+              safeDone();
+            } else if (e is FormatException) {
+              safeErr("Unexpected response: \n${data.data}");
             }
           }
+        }, onDone: () {
+          safeDone();
+        }, onError: (e) {
+          safeErr(e.toString());
         });
       },
-      onError: (oops) => onErr(oops.message));
+      onError: (oops) => safeErr(oops.message));
 }

@@ -305,14 +305,40 @@ class PromptEditorState extends State<PromptEditor> {
     // 显示 loading（用 State 变量，不依赖 Navigator pop）
     setState(() => _isGenerating = true);
 
+    bool finished = false;
+
+    void showDialogMsg(String message) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: Text(I18n.t('hint')),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(c).pop(),
+                child: Text(I18n.t('confirm')),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    void showError(String message) {
+      if (finished) return;
+      finished = true;
+      if (mounted) setState(() => _isGenerating = false);
+      showDialogMsg(message);
+    }
+
     // 超时保护：60 秒后自动关 loading 并报错
-    bool completed = false;
     Future.delayed(const Duration(seconds: 60), () {
-      if (!completed && mounted) {
-        setState(() => _isGenerating = false);
+      if (!finished && mounted) {
+        showError('生成超时，请检查网络或 API 配置后重试');
       }
     });
-    
+
     try {
       String userContent = input;
 
@@ -320,23 +346,7 @@ class PromptEditorState extends State<PromptEditor> {
       if (isUrlMode) {
         final webContent = await _fetchWebContent(input);
         if (webContent.isEmpty) {
-          completed = true;
-          if (mounted) setState(() => _isGenerating = false);
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (c) => AlertDialog(
-                title: Text(I18n.t('hint')),
-                content: const Text('无法抓取网页内容，请检查 URL 是否正确'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(c).pop(),
-                    child: Text(I18n.t('confirm')),
-                  ),
-                ],
-              ),
-            );
-          }
+          showError('无法抓取网页内容，请检查 URL 是否正确');
           return;
         }
         userContent = webContent;
@@ -348,23 +358,7 @@ class PromptEditorState extends State<PromptEditor> {
       // 获取当前 LLM 配置
       final configs = await getApiConfigs();
       if (configs.isEmpty) {
-        completed = true;
-        if (mounted) setState(() => _isGenerating = false);
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            builder: (c) => AlertDialog(
-              title: Text(I18n.t('hint')),
-              content: const Text('请先在设置中配置 API'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(c).pop(),
-                  child: Text(I18n.t('confirm')),
-                ),
-              ],
-            ),
-          );
-        }
+        showError('请先在设置中配置 API');
         return;
       }
 
@@ -385,14 +379,17 @@ class PromptEditorState extends State<PromptEditor> {
         debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
       }, () {
         debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
-        completed = true;
-                debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
-        completed = true;
+        if (finished) return;
+        finished = true;
         if (mounted) setState(() => _isGenerating = false);
 
         try {
           // 解析 JSON
           String raw = responseBuffer.toString().trim();
+          if (raw.isEmpty) {
+            showDialogMsg('生成结果为空，请检查 API 配置或重试');
+            return;
+          }
           // 尝试提取 ```json 代码块
           final jsonMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(raw);
           if (jsonMatch != null) {
@@ -416,67 +413,23 @@ class PromptEditorState extends State<PromptEditor> {
             }
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('角色卡生成成功！')),
-          );
-
-        } catch (e) {
           if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (c) => AlertDialog(
-                title: Text(I18n.t('hint')),
-                content: Text('解析返回数据失败：$e\n\n原始返回：\n${responseBuffer.toString().substring(0, responseBuffer.toString().length.clamp(0, 500))}'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(c).pop(),
-                    child: Text(I18n.t('confirm')),
-                  ),
-                ],
-              ),
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('角色卡生成成功！')),
             );
           }
+        } catch (e) {
+          final rawStr = responseBuffer.toString();
+          final preview = rawStr.length > 500 ? rawStr.substring(0, 500) : rawStr;
+          showDialogMsg('解析返回数据失败：$e\n\n原始返回：\n$preview');
         }
       }, (err) {
-        // onErr
-                debugPrint('[AI Generate] onErr 触发: $err');
-        completed = true;
-        if (mounted) setState(() => _isGenerating = false);
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            builder: (c) => AlertDialog(
-              title: Text(I18n.t('hint')),
-              content: Text('API 调用失败：$err'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(c).pop(),
-                  child: Text(I18n.t('confirm')),
-                ),
-              ],
-            ),
-          );
-        }
+        debugPrint('[AI Generate] onErr 触发: $err');
+        showError('API 调用失败：$err');
       });
     } catch (e) {
-      completed = true;
       debugPrint('[AI Generate] catch error: $e');
-      if (mounted) setState(() => _isGenerating = false);
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (c) => AlertDialog(
-            title: Text(I18n.t('hint')),
-            content: Text('出错：$e'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(c).pop(),
-                child: Text(I18n.t('confirm')),
-              ),
-            ],
-          ),
-        );
-      }
+      showError('出错：$e');
     }
   }
 
