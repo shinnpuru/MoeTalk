@@ -151,29 +151,55 @@ class PromptEditorState extends State<PromptEditor> {
   Future<String> _fetchWebContent(String url) async {
     final errors = <String>[];
 
+    final targetUri = Uri.tryParse(url);
+    if (targetUri == null ||
+        !targetUri.hasScheme ||
+        (targetUri.scheme != 'http' && targetUri.scheme != 'https') ||
+        targetUri.host.isEmpty) {
+      return 'ERR: 请输入有效的 HTTP(S) URL';
+    }
+
     if (kIsWeb) {
       // Web 端：多个 CORS Proxy 轮询（浏览器无法直接跨域请求）
       // proxy.cors.sh 格式: https://proxy.cors.sh/<url>
       // allorigins 格式:    https://api.allorigins.win/raw?url=<encoded>
       // corsproxy 格式:     https://corsproxy.io/?url=<encoded>
-      final proxies = <String>[
-        'https://proxy.cors.sh/',
-        'https://api.allorigins.win/raw?url=',
-        'https://corsproxy.io/?url=',
+      final proxies = <({String name, Uri uri})>[
+        // proxy.cors.sh 要求目标 URL 保持为路径的一部分，不能整体 encode。
+        (
+          name: 'proxy.cors.sh',
+          uri: Uri.parse('https://proxy.cors.sh/$targetUri'),
+        ),
+        (
+          name: 'allorigins.win',
+          uri: Uri.parse(
+            'https://api.allorigins.win/raw?url=${Uri.encodeComponent(targetUri.toString())}',
+          ),
+        ),
+        (
+          name: 'corsproxy.io',
+          uri: Uri.parse(
+            'https://corsproxy.io/?url=${Uri.encodeComponent(targetUri.toString())}',
+          ),
+        ),
       ];
 
       for (final proxy in proxies) {
         try {
-          final proxyUri = Uri.parse('$proxy${Uri.encodeComponent(url)}');
-          final response = await http.get(proxyUri).timeout(
+          final response = await http.get(proxy.uri).timeout(
             const Duration(seconds: 8),
           );
-          if (response.body.isNotEmpty && response.body.length > 200) {
+          if (response.statusCode >= 200 &&
+              response.statusCode < 300 &&
+              response.body.isNotEmpty) {
             return _extractText(response.body);
           }
-          errors.add('$proxy → HTTP ${response.statusCode} (body ${response.body.length}B)');
+          errors.add(
+            '${proxy.name} → HTTP ${response.statusCode} '
+            '(body ${response.body.length}B)',
+          );
         } catch (e) {
-          errors.add('$proxy → $e');
+          errors.add('${proxy.name} → $e');
           continue;
         }
       }
@@ -183,7 +209,7 @@ class PromptEditorState extends State<PromptEditor> {
       try {
         final dio = Dio();
         final response = await dio.get(
-          url,
+          targetUri.toString(),
           options: Options(
             responseType: ResponseType.plain,
             headers: {
