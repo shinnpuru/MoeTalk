@@ -130,4 +130,47 @@ void main() {
       await serverTask;
     }
   });
+
+  test('surfaces Civitai validation details', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+
+    final serverTask = () async {
+      await for (final request in server) {
+        await utf8.decoder.bind(request).join();
+        request.response.statusCode = HttpStatus.badRequest;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(jsonEncode({
+          'title': 'One or more validation errors occurred.',
+          'errors': {
+            'messages': ['Failed to download media from URL (HTTP 403).'],
+          },
+        }));
+        await request.response.close();
+      }
+    }();
+
+    try {
+      final client = CivitaiClient(
+        apiToken: 'test-token',
+        baseUrl: 'http://${server.address.address}:${server.port}',
+      );
+
+      await expectLater(
+        client.textToSpeech.createVoiceClone(
+          text: 'Hello.',
+          refAudioUrl: 'https://example.com/reference.wav',
+        ),
+        throwsA(
+          isA<CivitaiException>().having(
+            (error) => error.message,
+            'message',
+            contains('Failed to download media from URL (HTTP 403).'),
+          ),
+        ),
+      );
+    } finally {
+      await server.close(force: true);
+      await serverTask;
+    }
+  });
 }

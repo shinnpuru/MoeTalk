@@ -221,9 +221,21 @@ class TextToSpeechService {
   static String _problemMessage(String body, String fallback) {
     try {
       final problem = _decodeObject(body);
-      return problem['detail']?.toString() ??
-          problem['title']?.toString() ??
-          fallback;
+      final messages = <String>[];
+      final errors = problem['errors'];
+      if (errors is Map) {
+        for (final value in errors.values) {
+          if (value is List) {
+            messages.addAll(value.map((item) => item.toString()));
+          } else if (value != null) {
+            messages.add(value.toString());
+          }
+        }
+      }
+      final detail = problem['detail']?.toString();
+      if (detail != null && detail.isNotEmpty) messages.add(detail);
+      if (messages.isNotEmpty) return messages.join('; ');
+      return problem['title']?.toString() ?? fallback;
     } catch (_) {
       return fallback;
     }
