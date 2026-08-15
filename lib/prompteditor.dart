@@ -23,6 +23,7 @@ class PromptEditorState extends State<PromptEditor> {
   TextEditingController studentAvatarController = TextEditingController();
   TextEditingController drawCharPromptController = TextEditingController();
   TextEditingController vitsPromptController = TextEditingController();
+  TextEditingController vitsPromptTextController = TextEditingController();
   TextEditingController drawLoraController = TextEditingController();
   bool _isGenerating = false;
 
@@ -59,11 +60,29 @@ class PromptEditorState extends State<PromptEditor> {
         vitsPromptController.text = value;
       });
     });
+    getVitsPromptText().then((String value) {
+      setState(() {
+        vitsPromptTextController.text = value;
+      });
+    });
     getDrawLora().then((String value) {
       setState(() {
         drawLoraController.text = value;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    studentNameController.dispose();
+    originMsgController.dispose();
+    studentAvatarController.dispose();
+    drawCharPromptController.dispose();
+    vitsPromptController.dispose();
+    vitsPromptTextController.dispose();
+    drawLoraController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickAvatar() async {
@@ -486,6 +505,7 @@ class PromptEditorState extends State<PromptEditor> {
                   studentAvatarController.text = await getAvatar(isDefault: true);
                   drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
                   vitsPromptController.text = await getVitsPrompt(isDefault: true);
+                  vitsPromptTextController.text = await getVitsPromptText(isDefault: true);
                   drawLoraController.text = await getDrawLora(isDefault: true);
                   setState(() {});
                 },
@@ -500,6 +520,7 @@ class PromptEditorState extends State<PromptEditor> {
                   setAvatar(studentAvatarController.text);
                   setDrawCharPrompt(drawCharPromptController.text);
                   setVitsPrompt(vitsPromptController.text);
+                  setVitsPromptText(vitsPromptTextController.text);
                   setDrawLora(drawLoraController.text);
                   Navigator.pop(context);
                 },
@@ -590,6 +611,16 @@ class PromptEditorState extends State<PromptEditor> {
                 ),
                 onTap: () => _showEditDialog(context, I18n.t('voice_ref'), vitsPromptController,
                     multiLine: true),
+              ),
+              ListTile(
+                title: Text(I18n.t('voice_ref_text')),
+                subtitle: Text(
+                  vitsPromptTextController.text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _showEditDialog(context, I18n.t('voice_ref_text'),
+                    vitsPromptTextController, multiLine: true),
               ),
             ],
           ),

@@ -57,24 +57,12 @@ class Config {
 }
 
 class VitsConfig {
-  double? happy;
-  double? angry;
-  double? sad;
-  double? afraid;
-  double? disgusted;
-  double? melancholic;
-  double? surprised;
-  double? calm;
+  String? apiToken;
+  String language;
 
   VitsConfig({
-    this.happy,
-    this.angry,
-    this.sad,
-    this.afraid,
-    this.disgusted,
-    this.melancholic,
-    this.surprised,
-    this.calm,
+    this.apiToken,
+    this.language = 'Auto',
   });
 }
 

@@ -37,6 +37,215 @@ class CivitaiClient {
 
   /// Jobs service instance
   JobsService get jobs => JobsService(this);
+
+  /// Text-to-speech service instance
+  TextToSpeechService get textToSpeech => TextToSpeechService(this);
+}
+
+/// Civitai orchestration text-to-speech recipe service.
+class TextToSpeechService {
+  final CivitaiClient _client;
+
+  TextToSpeechService(this._client);
+
+  Future<String> createVoiceClone({
+    required String text,
+    required String refAudioUrl,
+    String? refText,
+    String language = 'Auto',
+    Duration? timeout,
+  }) async {
+    if (text.trim().isEmpty) {
+      throw ArgumentError('Text cannot be empty');
+    }
+    if (refAudioUrl.trim().isEmpty) {
+      throw ArgumentError('Voice reference audio URL is not configured');
+    }
+
+    final transcript = refText?.trim() ?? '';
+    final input = {
+      'text': text,
+      'engine': 'custom',
+      'refAudioUrl': refAudioUrl.trim(),
+      if (transcript.isNotEmpty) 'refText': transcript,
+      'xVectorOnlyMode': transcript.isEmpty,
+      'language': language,
+    };
+    final response = await http
+        .post(
+          Uri.parse(
+            '${_client.baseUrl}/v2/consumer/workflows?wait=0',
+          ),
+          headers: _client._headers,
+          body: json.encode({
+            'steps': [
+              {
+                '\$type': 'textToSpeech',
+                'input': input,
+              },
+            ],
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200 &&
+        response.statusCode != 201 &&
+        response.statusCode != 202) {
+      throw CivitaiException(
+        response.statusCode,
+        _problemMessage(response.body, 'Failed to submit text-to-speech'),
+      );
+    }
+
+    final submitted = _decodeObject(response.body);
+    final inlineAudioUrl = _audioUrl(submitted);
+    if (inlineAudioUrl != null) {
+      return inlineAudioUrl;
+    }
+
+    final workflowId = submitted['id']?.toString();
+    if (workflowId == null || workflowId.isEmpty) {
+      throw CivitaiException(
+        response.statusCode,
+        'Civitai did not return a workflow ID',
+      );
+    }
+
+    return _pollForAudio(
+      workflowId,
+      timeout: timeout ?? _client.defaultTimeout,
+    );
+  }
+
+  Future<String> _pollForAudio(
+    String workflowId, {
+    required Duration timeout,
+  }) async {
+    final startedAt = DateTime.now();
+    var pollCount = 0;
+
+    while (DateTime.now().difference(startedAt) < timeout) {
+      final delay = switch (pollCount) {
+        0 => const Duration(seconds: 2),
+        1 => const Duration(seconds: 5),
+        2 => const Duration(seconds: 10),
+        3 => const Duration(seconds: 15),
+        _ => const Duration(seconds: 30),
+      };
+      pollCount++;
+      await Future.delayed(delay);
+
+      final response = await http
+          .get(
+            Uri.parse('${_client.baseUrl}/v2/consumer/workflows/$workflowId'),
+            headers: _client._headers,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode != 200 && response.statusCode != 202) {
+        throw CivitaiException(
+          response.statusCode,
+          _problemMessage(response.body, 'Failed to query text-to-speech'),
+        );
+      }
+
+      final workflow = _decodeObject(response.body);
+      final audioUrl = _audioUrl(workflow);
+      if (audioUrl != null) {
+        return audioUrl;
+      }
+
+      final status = workflow['status']?.toString().toLowerCase();
+      if (const {'failed', 'expired', 'canceled'}.contains(status)) {
+        throw CivitaiException(
+          response.statusCode,
+          _workflowFailureMessage(workflow, status!),
+        );
+      }
+      if (status == 'succeeded') {
+        throw CivitaiException(
+          response.statusCode,
+          'Text-to-speech succeeded without an audio URL',
+        );
+      }
+    }
+
+    throw TimeoutException(
+      'Text-to-speech timed out after ${timeout.inMinutes} minutes',
+    );
+  }
+
+  static Map<String, dynamic> _decodeObject(String body) {
+    final decoded = json.decode(body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Civitai returned an invalid JSON object');
+    }
+    return decoded;
+  }
+
+  static String? _audioUrl(Map<String, dynamic> data) {
+    final directBlob = data['audioBlob'];
+    final directUrl = _availableBlobUrl(directBlob);
+    if (directUrl != null) return directUrl;
+
+    final steps = data['steps'];
+    if (steps is! List) return null;
+    for (final step in steps) {
+      if (step is! Map) continue;
+      final output = step['output'];
+      if (output is! Map) continue;
+      final audioBlob = output['audioBlob'];
+      final audioUrl = _availableBlobUrl(audioBlob);
+      if (audioUrl != null) return audioUrl;
+      final blobs = output['blobs'];
+      if (blobs is List) {
+        for (final blob in blobs) {
+          final blobUrl = _availableBlobUrl(blob);
+          if (blob is Map && blob['type'] == 'audio' && blobUrl != null) {
+            return blobUrl;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  static String? _availableBlobUrl(dynamic blob) {
+    if (blob is! Map || blob['available'] == false || blob['url'] is! String) {
+      return null;
+    }
+    final url = blob['url'] as String;
+    return url.isEmpty ? null : url;
+  }
+
+  static String _problemMessage(String body, String fallback) {
+    try {
+      final problem = _decodeObject(body);
+      return problem['detail']?.toString() ??
+          problem['title']?.toString() ??
+          fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  static String _workflowFailureMessage(
+    Map<String, dynamic> workflow,
+    String status,
+  ) {
+    final steps = workflow['steps'];
+    if (steps is List) {
+      for (final step in steps.reversed) {
+        if (step is Map) {
+          final reason = step['reason'] ?? step['blockedReason'];
+          if (reason != null && reason.toString().isNotEmpty) {
+            return 'Text-to-speech $status: $reason';
+          }
+        }
+      }
+    }
+    return 'Text-to-speech $status';
+  }
 }
 
 /// Image generation service

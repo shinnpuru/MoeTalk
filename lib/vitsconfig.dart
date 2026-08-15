@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+
+import 'i18n.dart';
 import 'storage.dart';
 import 'utils.dart';
-import 'i18n.dart';
 
 class VitsConfigPage extends StatefulWidget {
   final VitsConfig vitsConfig;
@@ -13,40 +14,25 @@ class VitsConfigPage extends StatefulWidget {
 }
 
 class _VitsConfigPageState extends State<VitsConfigPage> {
-  late TextEditingController _apiController;
-  late double _happy;
-  late double _sad;
-  late double _angry;
-  late double _afraid;
-  late double _disgusted;
-  late double _melancholic;
-  late double _surprised;
-  late double _calm;
+  late final TextEditingController _apiTokenController;
+  late String _language;
+  bool _obscureToken = true;
 
   @override
   void initState() {
     super.initState();
-    _apiController = TextEditingController();
-    getVitsUrl().then((value) {
-      if (mounted) {
-        _apiController.text = value ?? '';
-      }
-    });
-
-    final vitsConfig = widget.vitsConfig;
-    _happy = vitsConfig.happy ?? 0.0;
-    _sad = vitsConfig.sad ?? 0.0;
-    _angry = vitsConfig.angry ?? 0.0;
-    _afraid = vitsConfig.afraid ?? 0.0;
-    _disgusted = vitsConfig.disgusted ?? 0.0;
-    _melancholic = vitsConfig.melancholic ?? 0.0;
-    _surprised = vitsConfig.surprised ?? 0.0;
-    _calm = vitsConfig.calm ?? 0.0;
+    _apiTokenController = TextEditingController(
+      text: widget.vitsConfig.apiToken ?? '',
+    );
+    _language = const ['Auto', 'English', 'Chinese']
+            .contains(widget.vitsConfig.language)
+        ? widget.vitsConfig.language
+        : 'Auto';
   }
 
   @override
   void dispose() {
-    _apiController.dispose();
+    _apiTokenController.dispose();
     super.dispose();
   }
 
@@ -58,95 +44,53 @@ class _VitsConfigPageState extends State<VitsConfigPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: () {
-              VitsConfig updatedConfig = VitsConfig(
-                happy: _happy,
-                sad: _sad,
-                angry: _angry,
-                afraid: _afraid,
-                disgusted: _disgusted,
-                melancholic: _melancholic,
-                surprised: _surprised,
-                calm: _calm,
-              );
-              setVitsConfig(updatedConfig);
-              setVitsUrl(_apiController.text);
-              if (mounted) {
-                Navigator.of(context).pop();
+            onPressed: () async {
+              await setVitsConfig(VitsConfig(
+                apiToken: _apiTokenController.text.trim(),
+                language: _language,
+              ));
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _apiTokenController,
+            obscureText: _obscureToken,
+            decoration: InputDecoration(
+              labelText: I18n.t('civitai_api_token'),
+              helperText: I18n.t('tts_token_hint'),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureToken ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() => _obscureToken = !_obscureToken);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            value: _language,
+            decoration: InputDecoration(labelText: I18n.t('tts_language')),
+            items: const [
+              DropdownMenuItem(value: 'Auto', child: Text('Auto')),
+              DropdownMenuItem(value: 'English', child: Text('English')),
+              DropdownMenuItem(value: 'Chinese', child: Text('Chinese')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _language = value);
               }
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            ListTile(
-              title: Text(I18n.t('base_config'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child:  Column(
-                children: [
-                  TextField(
-                    controller: _apiController,
-                    decoration: InputDecoration(labelText: I18n.t('api_url')),
-                    minLines: 1,
-                    maxLines: 3,
-                  ),
-                ]
-              )
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: Text(I18n.t('emotion_params'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child:  Column(
-                children: [
-                  _buildSlider(I18n.t('happy'), _happy, (val) => setState(() => _happy = val)),
-                  _buildSlider(I18n.t('sad'), _sad, (val) => setState(() => _sad = val)),
-                  _buildSlider(I18n.t('angry'), _angry, (val) => setState(() => _angry = val)),
-                  _buildSlider(I18n.t('afraid'), _afraid, (val) => setState(() => _afraid = val)),
-                  _buildSlider(I18n.t('disgusted'), _disgusted, (val) => setState(() => _disgusted = val)),
-                  _buildSlider(I18n.t('melancholic'), _melancholic, (val) => setState(() => _melancholic = val)),
-                  _buildSlider(I18n.t('surprised'), _surprised, (val) => setState(() => _surprised = val)),
-                  _buildSlider(I18n.t('calm'), _calm, (val) => setState(() => _calm = val)),
-                ]
-              )
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSlider(
-      String label, double value, ValueChanged<double> onChanged) {
-    return Row(
-      children: [
-        SizedBox(width: 50, child: Text(label)),
-        Expanded(
-          child: Slider(
-            value: value,
-            min: 0.0,
-            max: 1.0,
-            divisions: 10,
-            onChanged: onChanged,
-          ),
-        ),
-        SizedBox(width: 40, child: Text(value.toStringAsFixed(1))),
-      ],
     );
   }
 }
