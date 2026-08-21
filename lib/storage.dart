@@ -9,14 +9,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img; // 导入 image 包并重命名，避免冲突
 import 'utils.dart';
 import 'package:http/http.dart' as http;
-import 'non_web_utils.dart'
-    if (dart.library.html) 'web_utils.dart';
+import 'non_web_utils.dart' if (dart.library.html) 'web_utils.dart';
 import 'i18n.dart';
 
 // List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
 Future<void> setApiConfig(Config config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = [config.baseUrl,config.apiKey,config.model];
+  List<String> configList = [config.baseUrl, config.apiKey, config.model];
   if (config.temperature != null) {
     configList.add(config.temperature!);
   } else {
@@ -104,27 +103,46 @@ Future<List<Config>> getApiConfigs() async {
     if (prefs.getStringList(current) == null) {
       await prefs.remove("current_api");
     } else {
-      List<String> currentConfig = prefs.getStringList(current) ?? ['','','',''];
-      if(currentConfig.length==3){
-        configs.add(Config(name: current.replaceFirst("api_", ""), baseUrl: currentConfig[0], 
-          apiKey: currentConfig[1], model: currentConfig[2]));
-      } else if(currentConfig.length==7){
-        configs.add(Config(name: current.replaceFirst("api_", ""), baseUrl: currentConfig[0], 
-          apiKey: currentConfig[1], model: currentConfig[2], temperature: currentConfig[3],
-          frequencyPenalty: currentConfig[4], presencePenalty: currentConfig[5], maxTokens: currentConfig[6]));
+      List<String> currentConfig =
+          prefs.getStringList(current) ?? ['', '', '', ''];
+      if (currentConfig.length == 3) {
+        configs.add(Config(
+            name: current.replaceFirst("api_", ""),
+            baseUrl: currentConfig[0],
+            apiKey: currentConfig[1],
+            model: currentConfig[2]));
+      } else if (currentConfig.length == 7) {
+        configs.add(Config(
+            name: current.replaceFirst("api_", ""),
+            baseUrl: currentConfig[0],
+            apiKey: currentConfig[1],
+            model: currentConfig[2],
+            temperature: currentConfig[3],
+            frequencyPenalty: currentConfig[4],
+            presencePenalty: currentConfig[5],
+            maxTokens: currentConfig[6]));
       }
     }
   }
   for (String key in keys) {
     if (key.startsWith("api_") && key != current) {
-      List<String> currentConfig = prefs.getStringList(key) ?? ['','','',''];
-      if(currentConfig.length==3){
-        configs.add(Config(name: key.replaceFirst("api_", ""), baseUrl: currentConfig[0], 
-          apiKey: currentConfig[1], model: currentConfig[2]));
-      } else if(currentConfig.length==7){
-        configs.add(Config(name: key.replaceFirst("api_", ""), baseUrl: currentConfig[0], 
-          apiKey: currentConfig[1], model: currentConfig[2], temperature: currentConfig[3],
-          frequencyPenalty: currentConfig[4], presencePenalty: currentConfig[5], maxTokens: currentConfig[6]));
+      List<String> currentConfig = prefs.getStringList(key) ?? ['', '', '', ''];
+      if (currentConfig.length == 3) {
+        configs.add(Config(
+            name: key.replaceFirst("api_", ""),
+            baseUrl: currentConfig[0],
+            apiKey: currentConfig[1],
+            model: currentConfig[2]));
+      } else if (currentConfig.length == 7) {
+        configs.add(Config(
+            name: key.replaceFirst("api_", ""),
+            baseUrl: currentConfig[0],
+            apiKey: currentConfig[1],
+            model: currentConfig[2],
+            temperature: currentConfig[3],
+            frequencyPenalty: currentConfig[4],
+            presencePenalty: currentConfig[5],
+            maxTokens: currentConfig[6]));
       }
     }
   }
@@ -134,14 +152,14 @@ Future<List<Config>> getApiConfigs() async {
 
 // 0:name 1:avatar 2:first_mes 3:description 4:timestamp
 // 5:draw_char_prompt 6:vits_prompt 7:draw_lora 8:vits_prompt_text
-Future<List<List<String>>> getStudents() async{
+Future<List<List<String>>> getStudents() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<List<String>> students = [];
   Set<String> keys = prefs.getKeys();
   for (String key in keys) {
     if (key.startsWith("student_")) {
-      List<String> data = prefs.getStringList(key) ?? ["","","","",""];
-      while(data.length < 9) {
+      List<String> data = prefs.getStringList(key) ?? ["", "", "", "", ""];
+      while (data.length < 9) {
         data.add("");
       }
       students.add(data);
@@ -150,10 +168,22 @@ Future<List<List<String>>> getStudents() async{
   return students;
 }
 
-Future<void> addStudent(String name, String avatar, String firstMes, String description, String drawCharPrompt, String vitsPrompt, {String drawLora = "", String vitsPromptText = ""}) async {
+Future<void> addStudent(String name, String avatar, String firstMes,
+    String description, String drawCharPrompt, String vitsPrompt,
+    {String drawLora = "", String vitsPromptText = ""}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-  await prefs.setStringList("student_${timeStamp}_$name", [name,avatar,firstMes,description,timeStamp,drawCharPrompt,vitsPrompt,drawLora,vitsPromptText]);
+  await prefs.setStringList("student_${timeStamp}_$name", [
+    name,
+    avatar,
+    firstMes,
+    description,
+    timeStamp,
+    drawCharPrompt,
+    vitsPrompt,
+    drawLora,
+    vitsPromptText
+  ]);
 }
 
 Future<void> deleteStudent(String key) async {
@@ -166,27 +196,27 @@ Future<void> deleteStudent(String key) async {
 }
 
 // 0:intro 1:timestamp 2:msg
-Future<List<List<String>>> getHistorys() async{
+Future<List<List<String>>> getHistorys() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<List<String>> historys = [];
   Set<String> keys = prefs.getKeys();
   for (String key in keys) {
     if (key.startsWith("history_")) {
       String timeStamp = key.replaceFirst("history_", "");
-      List<String> history = prefs.getStringList(key) ?? ["",""];
-      historys.add([history[0],timeStamp,history[1]]);
+      List<String> history = prefs.getStringList(key) ?? ["", ""];
+      historys.add([history[0], timeStamp, history[1]]);
     }
   }
   return historys;
 }
 
-Future<void> addHistory(String msg,String name) async {
+Future<void> addHistory(String msg, String name) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
-  await prefs.setStringList("history_$timeStamp", [name,msg]);
+  await prefs.setStringList("history_$timeStamp", [name, msg]);
 }
 
-void deleteHistory(String key) async {
+Future<void> deleteHistory(String key) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   if (prefs.containsKey(key)) {
     await prefs.remove(key);
@@ -195,21 +225,21 @@ void deleteHistory(String key) async {
   }
 }
 
-void setAvatar(String imgUri) async {
+Future<void> setAvatar(String imgUri) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("avatar", imgUri);
 }
 
-Future<String> getAvatar({bool isDefault=false}) async {
+Future<String> getAvatar({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? avatar = prefs.getString("avatar");
-  if (avatar == null || isDefault){
-     return "assets/avatar.png";
+  if (avatar == null || isDefault) {
+    return "assets/avatar.png";
   }
   return avatar;
 }
 
-void setTempHistory(String msg) async {
+Future<void> setTempHistory(String msg) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("temp_history", msg);
 }
@@ -222,7 +252,7 @@ Future<String?> getTempHistory() async {
 Future<String> convertToJson() async {
   final prefs = await SharedPreferences.getInstance();
   final keys = prefs.getKeys();
-  
+
   Map<String, dynamic> allPrefs = {};
   for (String key in keys) {
     allPrefs[key] = prefs.get(key);
@@ -244,7 +274,7 @@ Future<String> getUserName() async {
   return name;
 }
 
-Future<String> getStudentName({bool isDefault=false}) async {
+Future<String> getStudentName({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? name = prefs.getString("name");
   if (name == null || isDefault) {
@@ -258,7 +288,7 @@ Future<void> setStudentName(String name) async {
   await prefs.setString("name", name);
 }
 
-Future<String> getOriginalMsg({bool isDefault=false}) async {
+Future<String> getOriginalMsg({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? msg = prefs.getString("first_mes");
   if (msg == null || isDefault) {
@@ -270,9 +300,9 @@ Future<String> getOriginalMsg({bool isDefault=false}) async {
 Future<void> setOriginalMsg(String msg) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString("first_mes", msg);
-} 
+}
 
-Future<String> getPrompt({bool isDefault=false}) async {
+Future<String> getPrompt({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("description");
   if (prompt == null || isDefault) {
@@ -290,15 +320,15 @@ Future<List<String>> getWebdav() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   Set<String> keys = prefs.getKeys();
   if (keys.contains("webdav")) {
-    return prefs.getStringList("webdav") ?? ["","",""];
+    return prefs.getStringList("webdav") ?? ["", "", ""];
   } else {
-    return ["","",""];
+    return ["", "", ""];
   }
 }
 
 Future<void> setWebdav(String url, String username, String password) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList("webdav", [url,username,password]);
+  await prefs.setStringList("webdav", [url, username, password]);
 }
 
 Future<void> setVitsPrompt(String url) async {
@@ -306,7 +336,7 @@ Future<void> setVitsPrompt(String url) async {
   await prefs.setString("vits_prompt", url);
 }
 
-Future<String> getVitsPrompt({bool isDefault=false}) async {
+Future<String> getVitsPrompt({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
 
   // 1. 先尝试获取当前角色的 vits_prompt
@@ -337,7 +367,7 @@ Future<void> setVitsPromptText(String text) async {
   await prefs.setString("vits_prompt_text", text);
 }
 
-Future<String> getVitsPromptText({bool isDefault=false}) async {
+Future<String> getVitsPromptText({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
 
   if (!isDefault) {
@@ -364,7 +394,7 @@ Future<void> setDrawCharPrompt(String url) async {
   await prefs.setString("draw_char_prompt", url);
 }
 
-Future<String> getDrawCharPrompt({bool isDefault=false}) async {
+Future<String> getDrawCharPrompt({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? prompt = prefs.getString("draw_char_prompt");
   if (prompt == null || prompt.isEmpty || isDefault) {
@@ -378,7 +408,7 @@ Future<void> setDrawLora(String lora) async {
   await prefs.setString("draw_lora", lora);
 }
 
-Future<String> getDrawLora({bool isDefault=false}) async {
+Future<String> getDrawLora({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   String? lora = prefs.getString("draw_lora");
   if (lora == null || lora.isEmpty || isDefault) {
@@ -514,7 +544,7 @@ Future<String> getEndPrompt() async {
   String? format = prefs.getString("system_prompt");
   if (format == null || format.isEmpty) {
     return I18n.t('default_end_prompt');
-      }
+  }
   return format;
 }
 
@@ -529,13 +559,21 @@ Future<List<Message>> getContextTemplate() async {
   if (json == null || json.isEmpty) {
     return [
       Message(type: Message.system, message: I18n.t('context_template_system')),
-      Message(type: Message.system, message: I18n.t('context_template_description')),
+      Message(
+          type: Message.system,
+          message: I18n.t('context_template_description')),
       Message(type: Message.system, message: I18n.t('context_template_world')),
-      Message(type: Message.system, message: I18n.t('context_template_world_info')),
-      Message(type: Message.system, message: I18n.t('context_template_history')),
-      Message(type: Message.system, message: I18n.t('context_template_chat_history')),
+      Message(
+          type: Message.system, message: I18n.t('context_template_world_info')),
+      Message(
+          type: Message.system, message: I18n.t('context_template_history')),
+      Message(
+          type: Message.system,
+          message: I18n.t('context_template_chat_history')),
       Message(type: Message.system, message: I18n.t('context_template_task')),
-      Message(type: Message.system, message: I18n.t('context_template_call_function')),
+      Message(
+          type: Message.system,
+          message: I18n.t('context_template_call_function')),
     ];
   }
   return jsonToMsg(json);
@@ -568,12 +606,14 @@ Future<VitsConfig> getVitsConfig() async {
   final configList = prefs.getStringList("civitai_tts_config");
   final sharedCivitaiToken = await getCivitaiApiToken();
   return VitsConfig(
-    apiToken: configList != null && configList.isNotEmpty && configList[0].isNotEmpty
-        ? configList[0]
-        : sharedCivitaiToken,
-    language: configList != null && configList.length > 1 && configList[1].isNotEmpty
-        ? configList[1]
-        : 'Auto',
+    apiToken:
+        configList != null && configList.isNotEmpty && configList[0].isNotEmpty
+            ? configList[0]
+            : sharedCivitaiToken,
+    language:
+        configList != null && configList.length > 1 && configList[1].isNotEmpty
+            ? configList[1]
+            : 'Auto',
   );
 }
 
@@ -584,12 +624,12 @@ Future<void> setSdConfig(SdConfig config) async {
     config.negativePrompt,
     config.model,
     config.sampler,
-    config.width?.toString()??'',
-    config.height?.toString()??'',
-    config.steps?.toString()??'',
-    config.cfg?.toString()??'',
-    config.seed?.toString()??'',
-    config.clipSkip?.toString()??'',
+    config.width?.toString() ?? '',
+    config.height?.toString() ?? '',
+    config.steps?.toString() ?? '',
+    config.cfg?.toString() ?? '',
+    config.seed?.toString() ?? '',
+    config.clipSkip?.toString() ?? '',
     config.backendType.name,
     config.gradioUrl ?? '',
   ];
@@ -655,7 +695,8 @@ Future<String> getLanguage() async {
 
 Future<SdConfig> getSdConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  List<String> configList = prefs.getStringList("sd_config") ?? ['','','','','','','','','','','civitai',''];
+  List<String> configList = prefs.getStringList("sd_config") ??
+      ['', '', '', '', '', '', '', '', '', '', 'civitai', ''];
   while (configList.length < 12) {
     configList.add('');
   }
@@ -672,19 +713,22 @@ Future<SdConfig> getSdConfig() async {
     seed: int.tryParse(configList[8]),
     clipSkip: int.tryParse(configList[9]),
     civitaiApiToken: civitaiToken,
-    backendType: configList[10] == 'gradio' ? BackendType.gradio : BackendType.civitai,
+    backendType:
+        configList[10] == 'gradio' ? BackendType.gradio : BackendType.civitai,
     gradioUrl: configList[11].isNotEmpty ? configList[11] : null,
   );
-  if(memConfig.prompt.isEmpty) {
-    memConfig.prompt = '1girl, CHAR, VERB, masterpiece,best quality,amazing quality';
+  if (memConfig.prompt.isEmpty) {
+    memConfig.prompt =
+        '1girl, CHAR, VERB, masterpiece,best quality,amazing quality';
   }
-  if(memConfig.negativePrompt.isEmpty) {
-    memConfig.negativePrompt = 'nsfw, bad quality,worst quality,worst detail,sketch,censor';
+  if (memConfig.negativePrompt.isEmpty) {
+    memConfig.negativePrompt =
+        'nsfw, bad quality,worst quality,worst detail,sketch,censor';
   }
-  if(memConfig.model.isEmpty) {
+  if (memConfig.model.isEmpty) {
     memConfig.model = 'urn:air:sdxl:checkpoint:civitai:827184@2514310';
   }
-  if(memConfig.sampler.isEmpty) {
+  if (memConfig.sampler.isEmpty) {
     memConfig.sampler = 'EulerA';
   }
   memConfig.width ??= 1024;
@@ -712,7 +756,8 @@ Future<void> restoreFromJson(jsonString) async {
     } else if (value is bool) {
       await prefs.setBool(key, value);
     } else if (value is List) {
-      await prefs.setStringList(key, value.map((item) => item.toString()).toList());
+      await prefs.setStringList(
+          key, value.map((item) => item.toString()).toList());
     }
   }
 }
@@ -761,9 +806,10 @@ Future<bool> downloadHistorytoJson(String name, List<String> msgs) async {
   return writeFile(jsonEncode(characterBook));
 }
 
-Future<String?> pickFile() async{
-  FilePickerResult? result = await FilePicker.platform.pickFiles(type:FileType.custom, allowedExtensions: ['json']);
-  if(result != null) {
+Future<String?> pickFile() async {
+  FilePickerResult? result = await FilePicker.platform
+      .pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+  if (result != null) {
     debugPrint("File selected: ${result.files.single}");
     String content = utf8.decode(result.files.single.bytes!);
     return content;
@@ -777,13 +823,12 @@ Future<void> loadCharacterCard(context) async {
   // 1. 让用户选择一个 PNG 或 JSON 文件
   FilePickerResult? result = await FilePicker.platform.pickFiles(
     type: FileType.custom,
-    allowedExtensions: ['png','json'],
+    allowedExtensions: ['png', 'json'],
   );
 
   if (result != null && result.files.single.bytes != null) {
-
     String jsonString = '';
-    if(result.files.single.extension == 'png'){
+    if (result.files.single.extension == 'png') {
       // 2. 获取文件的原始字节 (Uint8List)
       Uint8List imageBytes = result.files.single.bytes!;
 
@@ -811,20 +856,19 @@ Future<void> loadCharacterCard(context) async {
 
           debugPrint("${I18n.t('decoded_json')}$jsonString");
         } catch (e) {
-          snackBarAlert(context,"${I18n.t('decode_chara_error')}$e");
+          snackBarAlert(context, "${I18n.t('decode_chara_error')}$e");
           return;
         }
       } else {
-        snackBarAlert(context,I18n.t('chara_metadata_not_found'));
+        snackBarAlert(context, I18n.t('chara_metadata_not_found'));
         return;
       }
-    }
-    else{
+    } else {
       jsonString = utf8.decode(result.files.single.bytes!);
     }
 
-    if(jsonString.isEmpty){
-      snackBarAlert(context,I18n.t('json_empty'));
+    if (jsonString.isEmpty) {
+      snackBarAlert(context, I18n.t('json_empty'));
       return;
     }
     // 7. 解析 JSON 并恢复 SharedPreferences
@@ -834,33 +878,36 @@ Future<void> loadCharacterCard(context) async {
     if (allPrefs.containsKey("data")) {
       Map<String, dynamic> data = allPrefs["data"];
       for (String key in data.keys) {
-        if (key == "name" || key == "avatar" || key == "first_mes" || key == "description") {
+        if (key == "name" ||
+            key == "avatar" ||
+            key == "first_mes" ||
+            key == "description") {
           prefs.setString(key, data[key].replaceAll('<user>', '{{user}}'));
         }
         if (key == "character_book") {
-            final characterBook = data['character_book'];
-            if (characterBook != null && characterBook is Map<String, dynamic>) {
+          final characterBook = data['character_book'];
+          if (characterBook != null && characterBook is Map<String, dynamic>) {
             final bool? confirmImport = await showDialog<bool>(
               context: context,
               builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text(I18n.t('import_character_book')),
-                content: Text(I18n.t('import_character_book_msg')),
-                actions: <Widget>[
-                TextButton(
-                  child: Text(I18n.t('cancel')),
-                  onPressed: () {
-                  Navigator.of(context).pop(false);
-                  },
-                ),
-                TextButton(
-                  child: Text(I18n.t('import_character')),
-                  onPressed: () {
-                  Navigator.of(context).pop(true);
-                  },
-                ),
-                ],
-              );
+                return AlertDialog(
+                  title: Text(I18n.t('import_character_book')),
+                  content: Text(I18n.t('import_character_book_msg')),
+                  actions: <Widget>[
+                    TextButton(
+                      child: Text(I18n.t('cancel')),
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                    ),
+                    TextButton(
+                      child: Text(I18n.t('import_character')),
+                      onPressed: () {
+                        Navigator.of(context).pop(true);
+                      },
+                    ),
+                  ],
+                );
               },
             );
 
@@ -877,13 +924,15 @@ Future<void> loadCharacterCard(context) async {
         final extensions = data["extensions"];
         if (extensions is Map<String, dynamic>) {
           if (extensions.containsKey("draw_prompt")) {
-            await prefs.setString("draw_char_prompt", extensions["draw_prompt"]);
+            await prefs.setString(
+                "draw_char_prompt", extensions["draw_prompt"]);
           }
           if (extensions.containsKey("vits_prompt")) {
             await prefs.setString("vits_prompt", extensions["vits_prompt"]);
           }
           if (extensions.containsKey("vits_prompt_text")) {
-            await prefs.setString("vits_prompt_text", extensions["vits_prompt_text"]);
+            await prefs.setString(
+                "vits_prompt_text", extensions["vits_prompt_text"]);
           }
           if (extensions.containsKey("draw_lora")) {
             await prefs.setString("draw_lora", extensions["draw_lora"]);
@@ -893,11 +942,10 @@ Future<void> loadCharacterCard(context) async {
     }
 
     // 8. 如果是 PNG 文件，则转为 Base64 存储头像
-    if(result.files.single.extension == 'png'){
+    if (result.files.single.extension == 'png') {
       String base64Image = base64Encode(result.files.single.bytes!);
       await prefs.setString("avatar", "data:image/png;base64,$base64Image");
     }
-
   } else {
     // 用户取消了选择
     snackBarAlert(context, "未选择文件。");
@@ -941,7 +989,8 @@ Future<void> downloadCharacterCard(context) async {
 
     if (avatarUri.startsWith('data:image')) {
       imageBytes = base64Decode(avatarUri.split(',')[1]);
-    } else if (avatarUri.startsWith('http://') || avatarUri.startsWith('https://')) {
+    } else if (avatarUri.startsWith('http://') ||
+        avatarUri.startsWith('https://')) {
       final uri = Uri.parse(avatarUri);
       if (kIsWeb) {
         // Web 平台使用 http 包

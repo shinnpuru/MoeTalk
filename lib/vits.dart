@@ -5,17 +5,44 @@ import 'civitai_client.dart';
 import 'storage.dart';
 import 'utils.dart';
 
+AudioPlayer? _activePlayer;
+int _playbackOperation = 0;
+
+Future<void> stopAudio() async {
+  _playbackOperation++;
+  final player = _activePlayer;
+  _activePlayer = null;
+  if (player != null) {
+    await player.stop();
+    await player.dispose();
+  }
+}
+
 Future<void> playAudio(BuildContext context, String audioUrl) async {
+  final operation = ++_playbackOperation;
+  final previousPlayer = _activePlayer;
+  _activePlayer = null;
+  if (previousPlayer != null) {
+    await previousPlayer.stop();
+    await previousPlayer.dispose();
+  }
+  if (operation != _playbackOperation) return;
+
   final player = AudioPlayer();
+  _activePlayer = player;
   try {
     await player.setAudioSource(AudioSource.uri(Uri.parse(audioUrl)));
+    if (operation != _playbackOperation) return;
     await player.play();
   } catch (e) {
-    if (context.mounted) {
+    if (operation == _playbackOperation && context.mounted) {
       snackBarAlert(context, "播放错误: $e");
     }
   } finally {
-    await player.dispose();
+    if (identical(_activePlayer, player)) {
+      _activePlayer = null;
+      await player.dispose();
+    }
   }
 }
 

@@ -16,7 +16,8 @@ Future<String?> generateImageTask({
   if (sdConfig.backendType == BackendType.gradio) {
     return _generateImageWithGradio(promptText: promptText, sdConfig: sdConfig);
   } else {
-    return _generateImageWithCivitai(promptText: promptText, sdConfig: sdConfig);
+    return _generateImageWithCivitai(
+        promptText: promptText, sdConfig: sdConfig);
   }
 }
 
@@ -31,16 +32,15 @@ Future<String?> _generateImageWithCivitai({
   final civitaiClient = CivitaiClient(apiToken: sdConfig.civitaiApiToken!);
 
   String prompt = sdConfig.prompt;
-  if(!prompt.contains("CHAR")){
+  if (!prompt.contains("CHAR")) {
     prompt += ", CHAR";
   }
-  if(!prompt.contains("VERB")){
+  if (!prompt.contains("VERB")) {
     prompt += ", VERB";
   }
   String? charPrompt = await getDrawCharPrompt();
-  String finalPrompt = prompt
-      .replaceAll("VERB", promptText)
-      .replaceAll("CHAR", charPrompt);
+  String finalPrompt =
+      prompt.replaceAll("VERB", promptText).replaceAll("CHAR", charPrompt);
 
   String? lora = await getDrawLora();
   Map<String, dynamic>? additionalNetworks;
@@ -104,7 +104,7 @@ Future<String?> _generateImageWithGradio({
     throw Exception('Gradio URL is not configured');
   }
 
-  if(!url.endsWith('/')) {
+  if (!url.endsWith('/')) {
     url += '/';
   }
 
@@ -115,7 +115,7 @@ Future<String?> _generateImageWithGradio({
 
   try {
     // Load model if needed
-    if(lastModel != sdConfig.model) {
+    if (lastModel != sdConfig.model) {
       final Response response = await dio.post(
         "/gradio_api/call/load_new_model",
         data: {
@@ -124,7 +124,7 @@ Future<String?> _generateImageWithGradio({
         cancelToken: cancelToken,
       );
       final data = response.data.toString();
-      sessionHash = data.substring(11,data.length-1);
+      sessionHash = data.substring(11, data.length - 1);
 
       final Response<ResponseBody> loadModelQueue = await dio.get<ResponseBody>(
         "/gradio_api/call/load_new_model/$sessionHash",
@@ -138,14 +138,15 @@ Future<String?> _generateImageWithGradio({
 
     // Prepare prompt
     String prompt = sdConfig.prompt;
-    if(!prompt.contains("CHAR")){
+    if (!prompt.contains("CHAR")) {
       prompt += ", CHAR";
     }
-    if(!prompt.contains("VERB")){
+    if (!prompt.contains("VERB")) {
       prompt += ", VERB";
     }
     String? charPrompt = await getDrawCharPrompt();
-    String finalPrompt = prompt.replaceAll("VERB", promptText).replaceAll("CHAR", charPrompt);
+    String finalPrompt =
+        prompt.replaceAll("VERB", promptText).replaceAll("CHAR", charPrompt);
 
     // Get LoRA configuration
     String? lora = await getDrawLora();
@@ -153,7 +154,8 @@ Future<String?> _generateImageWithGradio({
     // For Gradio backend, we place LoRA names in the null positions of the data array
     // First LoRA name at index 7 (first null), weight is 0.33 at index 8
     // Second LoRA name at index 9 (second null), weight is 0.33 at index 10, etc.
-    List<String?> loraParams = List.filled(8, null); // 4 pairs of (name, weight)
+    List<String?> loraParams =
+        List.filled(8, null); // 4 pairs of (name, weight)
     List<double> loraWeights = [0.33, 0.33, 0.33, 0.33]; // default weights
 
     if (lora != null && lora.isNotEmpty) {
@@ -308,7 +310,7 @@ Future<String?> _generateImageWithGradio({
     );
 
     final data = response.data.toString();
-    sessionHash = data.substring(11,data.length-1);
+    sessionHash = data.substring(11, data.length - 1);
 
     // Inference queue
     final Response<ResponseBody> inferQueue = await dio.get<ResponseBody>(
@@ -328,7 +330,7 @@ Future<String?> _generateImageWithGradio({
         lastUrl = match.last.group(1)!;
       }
       if (data.contains('COMPLETE')) {
-        if(lastUrl.isNotEmpty) {
+        if (lastUrl.isNotEmpty) {
           return "${url}gradio_api/file=images/$lastUrl";
         }
       }
@@ -345,18 +347,23 @@ class AiDraw extends StatefulWidget {
   final Config config;
   final String? initialImageUrl;
   final String? promptForRedraw;
-  const AiDraw({super.key, required this.msg, required this.config, this.initialImageUrl, this.promptForRedraw});
+  const AiDraw(
+      {super.key,
+      required this.msg,
+      required this.config,
+      this.initialImageUrl,
+      this.promptForRedraw});
 
   @override
   AiDrawState createState() => AiDrawState();
 }
 
-class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
+class AiDrawState extends State<AiDraw> with WidgetsBindingObserver {
   TextEditingController descriptionController = TextEditingController();
   TextEditingController logController = TextEditingController();
   TextEditingController promptController = TextEditingController();
   String lastModel = "";
-  String url="";
+  String url = "";
   String? imageUrl;
   String? imageUrlRaw;
   String? jobToken;
@@ -366,35 +373,45 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   CancelToken cancelToken = CancelToken();
   late SdConfig sdConfig;
   CivitaiClient? civitaiClient;
+  int _generationOperation = 0;
+  int _promptOperation = 0;
+
+  bool _isActiveGeneration(int operation) =>
+      mounted && operation == _generationOperation;
 
   Future<void> buildPrompt() async {
+    final operation = ++_promptOperation;
     setState(() {
       gptBusy = true;
     });
-    List<List<String>> messages = widget.msg?? [];
+    List<List<String>> messages = widget.msg ?? [];
     String result = '';
     final Config? aidrawCfg = await getAidrawApiConfig();
     final Config configToUse = aidrawCfg ?? widget.config;
-    await completion(configToUse, messages,
-      (String data) async{
-        result += data.replaceAll("\n", " ");
-        promptController.text = result.split('||').last.replaceAll(RegExp(await getResponseRegex()), '');
-      },
-      () {
-        setState(() {
-          gptBusy = false;
-        });
-      },
-      (String error) {
-        setState(() {
-          gptBusy = false;
-        });
-        logController.text = '$error\n${logController.text}';
-        snackBarAlert(context, "${I18n.t('error')} $error");
+    await completion(configToUse, messages, (String data) async {
+      if (!mounted || operation != _promptOperation) return;
+      result += data.replaceAll("\n", " ");
+      promptController.text = result
+          .split('||')
+          .last
+          .replaceAll(RegExp(await getResponseRegex()), '');
+    }, () {
+      if (!mounted || operation != _promptOperation) return;
+      setState(() {
+        gptBusy = false;
       });
+    }, (String error) {
+      if (!mounted || operation != _promptOperation) return;
+      setState(() {
+        gptBusy = false;
+      });
+      logController.text = '$error\n${logController.text}';
+      snackBarAlert(context, "${I18n.t('error')} $error");
+    });
   }
 
   Future<void> makeRequest() async {
+    final operation = ++_generationOperation;
     setState(() {
       sdBusy = true;
       showLog = true;
@@ -402,10 +419,10 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
 
     try {
       // Prepare prompt
-      if(!sdConfig.prompt.contains("CHAR")){
+      if (!sdConfig.prompt.contains("CHAR")) {
         sdConfig.prompt += ", CHAR";
       }
-      if(!sdConfig.prompt.contains("VERB")){
+      if (!sdConfig.prompt.contains("VERB")) {
         sdConfig.prompt += ", VERB";
       }
       String? charPrompt = await getDrawCharPrompt();
@@ -413,14 +430,16 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           .replaceAll("VERB", promptController.text)
           .replaceAll("CHAR", charPrompt);
 
-      logController.text = 'Generating image with prompt:\n$finalPrompt\n${logController.text}';
+      logController.text =
+          'Generating image with prompt:\n$finalPrompt\n${logController.text}';
 
       if (sdConfig.backendType == BackendType.gradio) {
-        await _makeGradioRequest(finalPrompt);
+        await _makeGradioRequest(finalPrompt, operation);
       } else {
-        await _makeCivitaiRequest(finalPrompt);
+        await _makeCivitaiRequest(finalPrompt, operation);
       }
     } catch (e) {
+      if (!_isActiveGeneration(operation)) return;
       debugPrint('Error during image generation: $e');
       logController.text = 'Error: $e\n${logController.text}';
       setState(() {
@@ -433,7 +452,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     }
   }
 
-  Future<void> _makeCivitaiRequest(String finalPrompt) async {
+  Future<void> _makeCivitaiRequest(String finalPrompt, int operation) async {
     // Initialize Civitai client if API token is available
     if (sdConfig.civitaiApiToken == null || sdConfig.civitaiApiToken!.isEmpty) {
       throw Exception('Civitai API token is not configured');
@@ -456,13 +475,15 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           String airUrn = match.group(1)!;
           double weight = double.tryParse(match.group(2)!) ?? 1.0;
           additionalNetworks[airUrn] = {'strength': weight};
-          logController.text = 'Using LoRA: $airUrn (weight: $weight)\n${logController.text}';
+          logController.text =
+              'Using LoRA: $airUrn (weight: $weight)\n${logController.text}';
         }
       } else {
         additionalNetworks = {
           lora: {'strength': 1.0},
         };
-        logController.text = 'Using LoRA: $lora (weight: 1.0)\n${logController.text}';
+        logController.text =
+            'Using LoRA: $lora (weight: 1.0)\n${logController.text}';
       }
     }
 
@@ -492,6 +513,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       timeout: const Duration(minutes: 10),
       pollInterval: const Duration(seconds: 2),
     );
+    if (!_isActiveGeneration(operation)) return;
 
     jobToken = response.token;
     logController.text = 'Job token: $jobToken\n${logController.text}';
@@ -501,7 +523,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       for (var job in response.jobs) {
         final url = job.imageUrl;
         if (url != null && url.isNotEmpty) {
-          logController.text = 'Image generated successfully!\n${logController.text}';
+          logController.text =
+              'Image generated successfully!\n${logController.text}';
           setState(() {
             imageUrl = url;
             imageUrlRaw = url;
@@ -509,12 +532,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
             showLog = false;
           });
 
-          if(!isForeground) {
+          if (!isForeground) {
             notification.showNotification(
-              title: '绘画',
-              body: '绘画完成！',
-              showAvator: false
-            );
+                title: '绘画', body: '绘画完成！', showAvator: false);
           }
           return;
         }
@@ -522,27 +542,28 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     }
 
     // If we get here, no image was generated
-    logController.text = 'Warning: Job completed but no image was returned\n${logController.text}';
+    logController.text =
+        'Warning: Job completed but no image was returned\n${logController.text}';
     setState(() {
       sdBusy = false;
       showLog = true;
     });
   }
 
-  Future<void> _makeGradioRequest(String finalPrompt) async {
+  Future<void> _makeGradioRequest(String finalPrompt, int operation) async {
     url = sdConfig.gradioUrl ?? '';
     if (url.isEmpty) {
       throw Exception('Gradio URL is not configured');
     }
 
-    if(!url.endsWith('/')) {
+    if (!url.endsWith('/')) {
       url += '/';
     }
 
     final dio = Dio(BaseOptions(baseUrl: url));
 
     // Load model if changed
-    if(lastModel != sdConfig.model) {
+    if (lastModel != sdConfig.model) {
       logController.text = '正在加载 ${sdConfig.model} ...\n${logController.text}';
       final Response response = await dio.post(
         "/gradio_api/call/load_new_model",
@@ -551,8 +572,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         },
         cancelToken: cancelToken,
       );
+      if (!_isActiveGeneration(operation)) return;
       final data = response.data.toString();
-      jobToken = data.substring(11,data.length-1);
+      jobToken = data.substring(11, data.length - 1);
 
       cancelToken = CancelToken();
       final Response<ResponseBody> loadModelQueue = await dio.get<ResponseBody>(
@@ -561,6 +583,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         cancelToken: cancelToken,
       );
       await for (var chunk in loadModelQueue.data!.stream) {
+        if (!_isActiveGeneration(operation)) return;
         logController.text = utf8.decode(chunk) + logController.text;
       }
       cancelToken = CancelToken();
@@ -585,12 +608,14 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           if (idx >= 4) break;
           loraParams[idx] = match.group(1);
           loraWeights[idx] = double.tryParse(match.group(2)!) ?? 0.33;
-          logController.text = 'Using LoRA: ${loraParams[idx]} (weight: ${loraWeights[idx]})\n${logController.text}';
+          logController.text =
+              'Using LoRA: ${loraParams[idx]} (weight: ${loraWeights[idx]})\n${logController.text}';
           idx++;
         }
       } else {
         loraParams[0] = lora;
-        logController.text = 'Using LoRA: $lora (weight: 0.33)\n${logController.text}';
+        logController.text =
+            'Using LoRA: $lora (weight: 0.33)\n${logController.text}';
       }
     }
 
@@ -724,10 +749,11 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
       },
       cancelToken: cancelToken,
     );
+    if (!_isActiveGeneration(operation)) return;
 
     cancelToken = CancelToken();
     final data = response.data.toString();
-    jobToken = data.substring(11,data.length-1);
+    jobToken = data.substring(11, data.length - 1);
 
     // Inference queue
     final Response<ResponseBody> inferQueue = await dio.get<ResponseBody>(
@@ -741,6 +767,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
     final regexPng = RegExp(r'href=\\"(.+?)\\"');
 
     await for (var chunk in inferQueue.data!.stream) {
+      if (!_isActiveGeneration(operation)) return;
       String data = utf8.decode(chunk);
       logController.text = data + logController.text;
       final match = regexWebp.allMatches(data);
@@ -748,13 +775,13 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
         lastUrl = match.last.group(1)!;
       }
       if (data.contains('COMPLETE')) {
-        if(lastUrl.isEmpty) return;
-        if(!mounted) return;
+        if (lastUrl.isEmpty) return;
+        if (!mounted) return;
 
         // Try to get PNG URL too
         String? pngUrl;
         Match? pngMatch = regexPng.firstMatch(data);
-        if(pngMatch != null) {
+        if (pngMatch != null) {
           pngUrl = pngMatch.group(1)?.replaceAll('\\"', '');
         }
 
@@ -765,12 +792,9 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
           showLog = false;
         });
 
-        if(!isForeground) {
+        if (!isForeground) {
           notification.showNotification(
-            title: '绘画',
-            body: '绘画完成！',
-            showAvator: false
-          );
+              title: '绘画', body: '绘画完成！', showAvator: false);
         }
         return;
       }
@@ -786,7 +810,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if(state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed) {
       isForeground = true;
     } else {
       isForeground = false;
@@ -826,6 +850,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _generationOperation++;
+    _promptOperation++;
     cancelToken.cancel();
     super.dispose();
   }
@@ -844,7 +870,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
               TextField(
                 controller: promptController,
                 decoration: InputDecoration(
-                  labelText: gptBusy ? I18n.t('generating_prompt') : I18n.t('prompt'),
+                  labelText:
+                      gptBusy ? I18n.t('generating_prompt') : I18n.t('prompt'),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.refresh),
@@ -865,7 +892,8 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                   readOnly: true,
                   decoration: InputDecoration(
                     border: const OutlineInputBorder(),
-                    labelText: I18n.t('log'),),
+                    labelText: I18n.t('log'),
+                  ),
                   style: const TextStyle(fontSize: 12),
                 ),
             ] else ...[
@@ -903,6 +931,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver{
                   if (sdBusy)
                     TextButton(
                       onPressed: () {
+                        _generationOperation++;
                         cancelToken.cancel();
                         cancelToken = CancelToken();
                         setState(() {

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:shared_preferences/shared_preferences.dart';  // ignore: depend_on_referenced_packages
+import 'package:shared_preferences/shared_preferences.dart'; // ignore: depend_on_referenced_packages
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'chatview.dart';
 import 'configpage.dart';
@@ -27,7 +27,8 @@ import 'aidrawconfig.dart';
 import 'i18n.dart';
 import 'chatview.dart' show displaySettings;
 
-final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.system);
+final ValueNotifier<ThemeMode> themeModeNotifier =
+    ValueNotifier(ThemeMode.system);
 final ValueNotifier<int> displaySettingsVersion = ValueNotifier(0);
 
 main() async {
@@ -47,8 +48,10 @@ main() async {
   displaySettings.textColorHex = prefs.getString('display_text_color') ?? '';
   displaySettings.nameColorHex = prefs.getString('display_name_color') ?? '';
   displaySettings.textOutline = prefs.getBool('display_text_outline') ?? true;
-  displaySettings.outlineWidth = prefs.getDouble('display_outline_width') ?? 2.0;
-  displaySettings.outlineColorHex = prefs.getString('display_outline_color') ?? '';
+  displaySettings.outlineWidth =
+      prefs.getDouble('display_outline_width') ?? 2.0;
+  displaySettings.outlineColorHex =
+      prefs.getString('display_outline_color') ?? '';
   // NotificationHelper notificationHelper = NotificationHelper();
   // await notificationHelper.initialize();
   runApp(const MoetalkApp());
@@ -116,6 +119,100 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   List<List<String>> students = [];
   final Map<String, ImageProvider> _avatarImageCache = {};
   final Map<String, String> _voiceCache = {};
+  final Map<String, Future<String?>> _voiceRequests = {};
+  Future<void> _tempHistoryWrite = Future<void>.value();
+  Future<void> _characterSwitchWrite = Future<void>.value();
+  int _conversationVersion = 0;
+  int _replyOperation = 0;
+  int _inspireOperation = 0;
+  int _drawOperation = 0;
+  int _statusOperation = 0;
+  int _welcomeOperation = 0;
+  int _voiceOperation = 0;
+  int _historyRefreshOperation = 0;
+  int _studentRefreshOperation = 0;
+  int _characterSwitchOperation = 0;
+  bool _isInspiring = false;
+  bool _isDrawing = false;
+  bool _isGettingStatus = false;
+  bool _isWelcoming = false;
+
+  List<Message> _copyMessages(Iterable<Message> source) => source
+      .map((message) => Message(message: message.message, type: message.type))
+      .toList();
+
+  void _invalidateConversation() {
+    _conversationVersion++;
+    _replyOperation++;
+    _inspireOperation++;
+    _drawOperation++;
+    _statusOperation++;
+    _welcomeOperation++;
+    _voiceOperation++;
+    unawaited(stopAudio());
+    inputLock = false;
+    _isInspiring = false;
+    _isDrawing = false;
+    _isGettingStatus = false;
+    _isWelcoming = false;
+    _characterStatus = I18n.t('no_status');
+  }
+
+  bool _isCurrentConversation(int version) =>
+      mounted && version == _conversationVersion;
+
+  Future<void> _saveTempHistory() {
+    final snapshot = msgListToJson(_copyMessages(messages));
+    _tempHistoryWrite = _tempHistoryWrite.catchError((Object error) {
+      debugPrint('Previous temporary history write failed: $error');
+    }).then((_) => setTempHistory(snapshot));
+    return _tempHistoryWrite;
+  }
+
+  Future<Route<dynamic>> _showProgressDialog(String message) {
+    final routeReady = Completer<Route<dynamic>>();
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final route = ModalRoute.of(dialogContext)!;
+        if (!routeReady.isCompleted) routeReady.complete(route);
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(message),
+            ],
+          ),
+        );
+      },
+    ));
+    return routeReady.future;
+  }
+
+  void _closeDialogRoute(Route<dynamic>? route) {
+    if (route != null && route.isActive && mounted) {
+      Navigator.of(context, rootNavigator: true).removeRoute(route);
+    }
+  }
+
+  Future<void> _refreshHistoryList() async {
+    final operation = ++_historyRefreshOperation;
+    final results = await getHistorys();
+    if (!mounted || operation != _historyRefreshOperation) return;
+    results.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+    setState(() => historys = results);
+  }
+
+  Future<void> _refreshStudentList() async {
+    final operation = ++_studentRefreshOperation;
+    final results = await getStudents();
+    if (!mounted || operation != _studentRefreshOperation) return;
+    results.sort((a, b) => a[0].compareTo(b[0]));
+    setState(() => students = results);
+  }
 
   @override
   void initState() {
@@ -127,10 +224,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           I18n.locale = lang;
           _characterStatus = I18n.t('no_status');
         });
-        clearMsg(true);
         getTempHistory().then((msg) {
+          if (!mounted) return;
           if (msg != null) {
             loadHistory(msg);
+          } else {
+            clearMsg(true);
           }
         });
         getApiConfigs().then((configs) {
@@ -183,125 +282,129 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setState) {
-            return Scaffold(
-              body: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Color(0xfff2a0ac),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          I18n.t('welcome'),
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                offset: Offset(0, 2),
-                                blurRadius: 4.0,
-                                color: Color.fromARGB(64, 0, 0, 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          child: Image.asset(
-                            "assets/moetalk.png",
-                            width: 200,
-                            height: 200,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          I18n.t('no_model_config'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.white70,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 60),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xfff2a0ac),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+        builder: (context) => StatefulBuilder(builder: (context, setState) {
+          return Scaffold(
+            body: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xfff2a0ac),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        I18n.t('welcome'),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 2),
+                              blurRadius: 4.0,
+                              color: Color.fromARGB(64, 0, 0, 0),
                             ),
-                            elevation: 4,
-                          ),
-                          child: Text(
-                            I18n.t('start_config'),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: 40,
-                    right: 20,
-                    child: IconButton(
-                      icon: const Icon(Icons.language, color: Colors.white),
-                      onPressed: () {
-                        showDialog(context: context, builder: (context) {
-                          return SimpleDialog(
-                            title: Text(I18n.t('language')),
-                            children: [
-                              SimpleDialogOption(
-                                onPressed: () {
-                                  setLanguage('zh');
-                                  this.setState(() {
-                                    I18n.locale = 'zh';
-                                  });
-                                  setState(() {});
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('中文'),
-                              ),
-                              SimpleDialogOption(
-                                onPressed: () {
-                                  setLanguage('en');
-                                  this.setState(() {
-                                    I18n.locale = 'en';
-                                  });
-                                  setState(() {});
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('English'),
-                              ),
-                            ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Image.asset(
+                          "assets/moetalk.png",
+                          width: 200,
+                          height: 200,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        I18n.t('no_model_config'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 60),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ConfigPage(
+                                  updateFunc: updateConfig,
+                                  currentConfig: config),
+                            ),
                           );
-                        });
-                      },
-                    ),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xfff2a0ac),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: Text(
+                          I18n.t('start_config'),
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }
-        ),
+                ),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: const Icon(Icons.language, color: Colors.white),
+                    onPressed: () {
+                      showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SimpleDialog(
+                              title: Text(I18n.t('language')),
+                              children: [
+                                SimpleDialogOption(
+                                  onPressed: () {
+                                    setLanguage('zh');
+                                    this.setState(() {
+                                      I18n.locale = 'zh';
+                                    });
+                                    setState(() {});
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('中文'),
+                                ),
+                                SimpleDialogOption(
+                                  onPressed: () {
+                                    setLanguage('en');
+                                    this.setState(() {
+                                      I18n.locale = 'en';
+                                    });
+                                    setState(() {});
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('English'),
+                                ),
+                              ],
+                            );
+                          });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
@@ -329,7 +432,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    final bottom = WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
+    final bottom = WidgetsBinding
+        .instance.platformDispatcher.views.first.viewInsets.bottom;
     if (bottom > 10 && !keyboardOn) {
       debugPrint("keyboard on");
       keyboardOn = true;
@@ -343,14 +447,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   void updateConfig(Config c) {
-    config = c;
+    setState(() {
+      _invalidateConversation();
+      config = c;
+    });
     debugPrint("update config: ${c.toString()}");
   }
 
   void onMsgPressed(int index, LongPressStartDetails details) {
     HapticFeedback.heavyImpact();
     if (messages[index].type == Message.assistant) {
-      assistantPopup(context, messages[index].message, details, studentName, (String edited) {
+      assistantPopup(context, messages[index].message, details, studentName,
+          (String edited) {
         debugPrint("edited: $edited");
         edited = edited.replaceAll("\n", "\\");
         if (edited == "DRAW") {
@@ -367,16 +475,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           List<String> msgs = splitString(msg, [var1, var2]);
           debugPrint("msgs: $msgs");
           setState(() {
+            _invalidateConversation();
             messages.removeAt(index);
             for (int i = 0; i < msgs.length; i++) {
               if (msgs[i].startsWith(var1)) {
-                messages.insert(index + i, Message(
-                  message: msgs[i].substring(var1.length),
-                  type: Message.assistant));
+                messages.insert(
+                    index + i,
+                    Message(
+                        message: msgs[i].substring(var1.length),
+                        type: Message.assistant));
               } else if (msgs[i].startsWith(var2)) {
-                messages.insert(index + i, Message(
-                  message: msgs[i].substring(var2.length).replaceAll("\\\\", "\\"),
-                  type: Message.user));
+                messages.insert(
+                    index + i,
+                    Message(
+                        message: msgs[i]
+                            .substring(var2.length)
+                            .replaceAll("\\\\", "\\"),
+                        type: Message.user));
               }
             }
           });
@@ -384,16 +499,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
         if (edited == "DELETE") {
           setState(() {
+            _invalidateConversation();
             messages.removeRange(index, messages.length);
           });
           return;
         }
         setState(() {
+          _invalidateConversation();
           messages[index].message = edited;
         });
       });
     } else if (messages[index].type == Message.user) {
-      userPopup(context, messages[index].message, details, (String edited, bool isResend) {
+      userPopup(context, messages[index].message, details,
+          (String edited, bool isResend) {
         debugPrint("edited: $edited");
         if (edited == "DRAW") {
           getDraw(beforeIndex: index);
@@ -402,11 +520,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         edited = edited.replaceAll("\n", "\\");
         if (edited.isEmpty) {
           setState(() {
+            _invalidateConversation();
             messages.removeRange(index, messages.length);
           });
           return;
         }
         setState(() {
+          _invalidateConversation();
           messages[index].message = edited;
         });
         if (mounted) {
@@ -416,21 +536,27 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
       });
     } else if (messages[index].type == Message.timestamp) {
-      timePopup(context, int.parse(messages[index].message), details, (bool ifTransfer, DateTime? newTime) {
+      timePopup(context, int.parse(messages[index].message), details,
+          (bool ifTransfer, DateTime? newTime) {
         if (ifTransfer) {
           setState(() {
+            _invalidateConversation();
             messages[index].type = Message.system;
-            messages[index].message = timestampToSystemMsg(messages[index].message);
+            messages[index].message =
+                timestampToSystemMsg(messages[index].message);
           });
         } else {
           debugPrint(newTime.toString());
           setState(() {
-            messages[index].message = newTime!.millisecondsSinceEpoch.toString();
+            _invalidateConversation();
+            messages[index].message =
+                newTime!.millisecondsSinceEpoch.toString();
           });
         }
       });
     } else if (messages[index].type == Message.system) {
-      systemPopup(context, messages[index].message, (String edited, bool isSend) {
+      systemPopup(context, messages[index].message,
+          (String edited, bool isSend) {
         debugPrint("edited: $edited");
         if (edited == "DRAW") {
           getDraw(beforeIndex: index);
@@ -438,10 +564,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
         if (edited.isEmpty) {
           setState(() {
+            _invalidateConversation();
             messages.removeAt(index);
           });
         } else {
           setState(() {
+            _invalidateConversation();
             messages[index].message = edited;
           });
           if (isSend) {
@@ -469,8 +597,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
         if (edited == 1) {
           setState(() {
+            _invalidateConversation();
             messages.removeAt(index);
           });
+          unawaited(_saveTempHistory());
         }
       });
     }
@@ -478,60 +608,76 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   void loadHistory(String msg) {
     List<Message> msgs = jsonToMsg(msg);
-    messages.clear();
-    messages.addAll(msgs);
-    _singleViewIndex = 0;
-    _isListViewMode = false;
+    setState(() {
+      _invalidateConversation();
+      messages
+        ..clear()
+        ..addAll(msgs);
+      _voiceCache.clear();
+      _voiceRequests.clear();
+      _singleViewIndex = 0;
+      _isListViewMode = false;
+    });
+    unawaited(_saveTempHistory());
   }
 
   void updateResponse(String response) {
     setState(() {
-      response = response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
+      response =
+          response.replaceAll(RegExp(r'[\\]+'), r'\'); // make all \\ count as 1
       for (var m in response.split("\\")) {
         if (m.isEmpty) continue;
         debugPrint("response chunk: $m");
         messages.add(Message(message: m, type: Message.assistant));
       }
+      _conversationVersion++;
     });
   }
 
-  void clearMsg(bool clear) {
+  Future<void> clearMsg(bool clear) async {
+    late final int version;
     setState(() {
+      _invalidateConversation();
+      version = _conversationVersion;
       if (clear) messages.clear();
       _voiceCache.clear();
-      getUserName().then((name) {
-        userName = name;
-      });
-      getStudentName().then((name) {
-        studentName = name;
-      });
-      getAvatar().then((avt) {
-        avatar = avt;
-        setState(() {
-          backgroundImage = DecorationImage(
-            image: (avatar.isNotEmpty && avatar.startsWith('http'))
-                ? NetworkImage(avatar)
-                : avatar.startsWith('data:image/')
-                  ? MemoryImage(base64Decode(avatar.split(',')[1]))
-                  : const AssetImage("assets/avatar.png") as ImageProvider,
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.white.withOpacity(0.8),
-              BlendMode.dstATop,
-            ),
-          );
-        });
-      });
-      getOriginalMsg().then((originalMsg) {
+      _voiceRequests.clear();
+    });
+
+    final values = await Future.wait<String>([
+      getUserName(),
+      getStudentName(),
+      getAvatar(),
+      getOriginalMsg(),
+    ]);
+    if (!_isCurrentConversation(version)) return;
+
+    setState(() {
+      userName = values[0];
+      studentName = values[1];
+      avatar = values[2];
+      backgroundImage = DecorationImage(
+        image: (avatar.isNotEmpty && avatar.startsWith('http'))
+            ? NetworkImage(avatar)
+            : avatar.startsWith('data:image/')
+                ? MemoryImage(base64Decode(avatar.split(',')[1]))
+                : const AssetImage("assets/avatar.png") as ImageProvider,
+        fit: BoxFit.cover,
+        colorFilter: ColorFilter.mode(
+          Colors.white.withOpacity(0.8),
+          BlendMode.dstATop,
+        ),
+      );
+      if (clear) {
+        final originalMsg = values[3];
         for (var m in originalMsg.split("\\")) {
           messages.add(Message(message: m, type: Message.assistant));
         }
-        setState(() {
-          _singleViewIndex = 0;
-        });
-        setTempHistory(msgListToJson(messages));
-      });
+        _conversationVersion++;
+        _singleViewIndex = 0;
+      }
     });
+    await _saveTempHistory();
   }
 
   void logMsg(List<List<String>> msg) {
@@ -548,7 +694,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     if (!forceSend) {
       if ((!realSend) || (realSend && textController.text.isNotEmpty)) {
         setState(() {
-          if (messages.last.type == Message.user) {
+          _invalidateConversation();
+          if (messages.isNotEmpty && messages.last.type == Message.user) {
             userMsg = "$userMsg\\${textController.text}";
             messages.last.message = userMsg;
           } else {
@@ -562,55 +709,71 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           _singleViewIndex = messages.isNotEmpty ? messages.length - 1 : 0;
         });
         if (!realSend) {
+          unawaited(_saveTempHistory());
           return;
         }
       }
       userMsg = "";
     }
+    late final int requestVersion;
+    late final int operation;
     setState(() {
       inputLock = true;
+      operation = ++_replyOperation;
+      requestVersion = _conversationVersion;
       debugPrint("inputLocked");
     });
-    List<List<String>> msg = await parseMsg(
-      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getEndPrompt(), type: Message.system)]
-    );
-    logMsg(msg);
+    final requestMessages = _copyMessages(messages);
+
+    void unlockInput() {
+      if (mounted && operation == _replyOperation && inputLock) {
+        setState(() => inputLock = false);
+        debugPrint("inputUnlocked");
+      }
+    }
+
     try {
-      String response = "";
-      await completion(config, msg,
-        (String resp) async {
-          resp = resp.replaceAll(RegExp(r'[\n\\]+'), r'\');
-          resp = randomizeBackslashes(resp);
-          response += resp;
-        }, () async {
-          updateResponse(response.replaceAll(RegExp(await getResponseRegex()), ''));
-          debugPrint("done.");
-          setState(() {
-            inputLock = false;
-          });
-          debugPrint("inputUnlocked");
-          setTempHistory(msgListToJson(messages));
-          if (_isAutoDraw) {
-            await getDraw();
-          }
-          if (_isAutoStatus) {
-            await getStatus(forceGet: true, silent: true);
-          }
-        }, (err) {
-          setState(() {
-            inputLock = false;
-          });
-          debugPrint("inputUnlocked");
-          snackBarAlert(context, err.toString());
-        });
+      final msg = await parseMsg(
+          requestMessages,
+          currentStory != null ? jsonToMsg(currentStory![2]) : [],
+          [Message(message: await getEndPrompt(), type: Message.system)]);
+      if (!_isCurrentConversation(requestVersion) ||
+          operation != _replyOperation) {
+        return;
+      }
+      logMsg(msg);
+      String response = await collectCompletion(config, msg);
+      if (!_isCurrentConversation(requestVersion) ||
+          operation != _replyOperation) {
+        return;
+      }
+      response = response.replaceAll(RegExp(r'[\n\\]+'), r'\');
+      response = randomizeBackslashes(response);
+      response = response.replaceAll(RegExp(await getResponseRegex()), '');
+      if (!_isCurrentConversation(requestVersion) ||
+          operation != _replyOperation) {
+        return;
+      }
+
+      updateResponse(response);
+      debugPrint("done.");
+      await _saveTempHistory();
+      unlockInput();
+
+      if (_isAutoDraw) {
+        await getDraw();
+      }
+      if (_isAutoStatus) {
+        await getStatus(forceGet: true, silent: true);
+      }
     } catch (e) {
-      setState(() {
-        inputLock = false;
-      });
-      debugPrint("inputUnlocked");
       debugPrint(e.toString());
-      if (!mounted) return;
-      snackBarAlert(context, e.toString());
+      if (_isCurrentConversation(requestVersion) &&
+          operation == _replyOperation) {
+        snackBarAlert(context, e.toString());
+      }
+    } finally {
+      unlockInput();
     }
   }
 
@@ -620,294 +783,323 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       return;
     }
 
+    final operation = ++_voiceOperation;
+    final conversationVersion = _conversationVersion;
+
     if (_voiceCache.containsKey(text)) {
       try {
-        await playAudio(context, _voiceCache[text]!);
+        if (operation == _voiceOperation) {
+          await playAudio(context, _voiceCache[text]!);
+        }
         return;
       } catch (e) {
         _voiceCache.remove(text);
       }
     }
 
+    var request = _voiceRequests[text];
+    if (request == null) {
+      request = getAudio(context, text);
+      _voiceRequests[text] = request;
+    }
+
     try {
-      String? path = await queryAndPlayAudio(context, text);
-      if (path != "") {
+      final path = await request;
+      if (path != null &&
+          path.isNotEmpty &&
+          _isCurrentConversation(conversationVersion)) {
         _voiceCache[text] = path;
       }
-      if (!context.mounted) return;
+      if (path != null &&
+          path.isNotEmpty &&
+          operation == _voiceOperation &&
+          _isCurrentConversation(conversationVersion)) {
+        await playAudio(context, path);
+      }
     } catch (e) {
       if (!context.mounted) return;
       snackBarAlert(context, "${I18n.t('voice_gen_failed')}: $e");
+    } finally {
+      if (identical(_voiceRequests[text], request)) {
+        _voiceRequests.remove(text);
+      }
     }
   }
 
   Future<void> getMsg() async {
-    List<List<String>> msg = await parseMsg(
-      messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getInspirePrompt(), type: Message.system)]
-    );
-
-    String result = "";
-    for (var m in msg) {
-      debugPrint("${m[0]}: ${m[1]}");
-    }
-    debugPrint("model: ${config.model}");
-
-    // 显示加载对话框
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(I18n.t('gen_candidate_resp')),
-            ],
-          ),
-        );
-      },
-    );
-
+    if (_isInspiring) return;
+    final operation = ++_inspireOperation;
+    final conversationVersion = _conversationVersion;
+    setState(() => _isInspiring = true);
+    Route<dynamic>? progressRoute;
     try {
-      await completion(config, msg, (chunk) async {
-        result += chunk;
-      }, () async {
-        debugPrint("done.");
-        Navigator.of(context).pop(); // 关闭加载对话框
+      final requestMessages = _copyMessages(messages);
+      final msg = await parseMsg(
+        requestMessages,
+        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        [Message(message: await getInspirePrompt(), type: Message.system)],
+      );
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _inspireOperation) {
+        return;
+      }
 
-        // 解析生成的候选项
-        List<String> candidates = result
-            .replaceAll(RegExp(await getResponseRegex()), '')
-            .split('||')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+      logMsg(msg);
+      progressRoute = await _showProgressDialog(I18n.t('gen_candidate_resp'));
+      final result = await collectCompletion(config, msg);
+      _closeDialogRoute(progressRoute);
+      progressRoute = null;
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _inspireOperation) {
+        return;
+      }
 
-        if (candidates.isEmpty) {
-          candidates = [result.replaceAll(RegExp(await getResponseRegex()), '').trim()];
+      final responseRegex = RegExp(await getResponseRegex());
+      List<String> candidates = result
+          .replaceAll(responseRegex, '')
+          .split('||')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (candidates.isEmpty) {
+        final fallback = result.replaceAll(responseRegex, '').trim();
+        if (fallback.isNotEmpty) {
+          candidates = [fallback];
         }
+      }
+      if (candidates.isEmpty) {
+        throw Exception(I18n.t('msg_empty'));
+      }
 
-        // 显示候选项选择对话框
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(I18n.t('select_reply')),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: candidates.length,
-                  itemBuilder: (context, index) {
-                    return Card(
-                      child: ListTile(
-                        title: Text(
-                          '${I18n.t('option')} ${index + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(candidates[index]),
-                        onTap: () {
-                          textController.text = candidates[index];
-                          Navigator.of(context).pop();
-                          sendMsg(true);
-                        },
-                        onLongPress: () {
-                          textController.text = candidates[index];
-                          Navigator.of(context).pop();
-                          FocusScope.of(context).requestFocus(fn);
-                        },
-                      ),
-                    );
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(I18n.t('select_reply')),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: candidates.length,
+              itemBuilder: (context, index) => Card(
+                child: ListTile(
+                  title: Text(
+                    '${I18n.t('option')} ${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(candidates[index]),
+                  onTap: () {
+                    if (_isCurrentConversation(conversationVersion)) {
+                      textController.text = candidates[index];
+                    }
+                    Navigator.of(dialogContext).pop();
+                    if (_isCurrentConversation(conversationVersion)) {
+                      sendMsg(true);
+                    }
+                  },
+                  onLongPress: () {
+                    if (_isCurrentConversation(conversationVersion)) {
+                      textController.text = candidates[index];
+                      FocusScope.of(context).requestFocus(fn);
+                    }
+                    Navigator.of(dialogContext).pop();
                   },
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(I18n.t('cancel')),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 重新生成
-                    Navigator.of(context).pop();
-                    getMsg();
-                  },
-                  child: Text(I18n.t('regenerate')),
-                ),
-              ],
-            );
-          },
-        );
-      }, (e) {
-        Navigator.of(context).pop(); // 关闭加载对话框
-        snackBarAlert(context, e.toString());
-      });
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(I18n.t('cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (_isCurrentConversation(conversationVersion)) {
+                  _isInspiring = false;
+                  getMsg();
+                }
+              },
+              child: Text(I18n.t('regenerate')),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      Navigator.of(context).pop(); // 关闭加载对话框
-      snackBarAlert(context, e.toString());
+      if (_isCurrentConversation(conversationVersion) &&
+          operation == _inspireOperation) {
+        snackBarAlert(context, e.toString());
+      }
+    } finally {
+      _closeDialogRoute(progressRoute);
+      if (mounted && operation == _inspireOperation) {
+        setState(() => _isInspiring = false);
+      }
     }
   }
 
   Future<void> getWelcomeMsg() async {
+    if (_isWelcoming) return;
+    final operation = ++_welcomeOperation;
+    final conversationVersion = _conversationVersion;
+    setState(() => _isWelcoming = true);
+    Route<dynamic>? progressRoute;
+
     // 获取当前日期和时间
     final now = DateTime.now();
     final dateStr = '${now.year}年${now.month}月${now.day}日';
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    // 获取欢迎语提示词并替换变量
-    String welcomePrompt = await getWelcomePrompt();
-    welcomePrompt = welcomePrompt.replaceAll('{{date}}', dateStr).replaceAll('{{time}}', timeStr);
-
-    List<List<String>> msg = await parseMsg(
-      [], currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: welcomePrompt, type: Message.system)]
-    );
-
-    String result = "";
-    for (var m in msg) {
-      debugPrint("${m[0]}: ${m[1]}");
-    }
-    debugPrint("model: ${config.model}");
-
-    // 显示加载对话框
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(I18n.t('gen_candidate_resp')),
-            ],
-          ),
-        );
-      },
-    );
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     try {
-      await completion(config, msg, (chunk) async {
-        result += chunk;
-      }, () async {
-        debugPrint("done.");
-        Navigator.of(context).pop(); // 关闭加载对话框
+      // 获取欢迎语提示词并替换变量
+      String welcomePrompt = await getWelcomePrompt();
+      welcomePrompt = welcomePrompt
+          .replaceAll('{{date}}', dateStr)
+          .replaceAll('{{time}}', timeStr);
+      final msg = await parseMsg(
+        const <Message>[],
+        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        [Message(message: welcomePrompt, type: Message.system)],
+      );
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _welcomeOperation) {
+        return;
+      }
+      logMsg(msg);
 
-        // 解析生成的候选项
-        List<String> candidates = result
-            .replaceAll(RegExp(await getResponseRegex()), '')
-            .split('||')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+      progressRoute = await _showProgressDialog(I18n.t('gen_candidate_resp'));
+      final result = await collectCompletion(config, msg);
+      _closeDialogRoute(progressRoute);
+      progressRoute = null;
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _welcomeOperation) {
+        return;
+      }
 
-        if (candidates.isEmpty) {
-          candidates = [result.replaceAll(RegExp(await getResponseRegex()), '').trim()];
-        }
+      final responseRegex = RegExp(await getResponseRegex());
+      List<String> candidates = result
+          .replaceAll(responseRegex, '')
+          .split('||')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (candidates.isEmpty) {
+        final fallback = result.replaceAll(responseRegex, '').trim();
+        if (fallback.isNotEmpty) candidates = [fallback];
+      }
 
-        // 显示候选项选择对话框
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(I18n.t('welcome')),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: candidates.length,
-                  itemBuilder: (context, index) {
-                    return Card(
-                      child: ListTile(
-                        title: Text(
-                          '${I18n.t('option')} ${index + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(candidates[index]),
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          // 替换messages内容，参考clearMsg
-                          setState(() {
-                            messages.clear();
-                            _voiceCache.clear();
-                            getUserName().then((name) {
-                              userName = name;
-                            });
-                            getStudentName().then((name) {
-                              studentName = name;
-                            });
-                            getAvatar().then((avt) {
-                              avatar = avt;
-                              setState(() {
-                                backgroundImage = DecorationImage(
-                                  image: (avatar.isNotEmpty && avatar.startsWith('http'))
-                                      ? NetworkImage(avatar)
-                                      : avatar.startsWith('data:image/')
-                                        ? MemoryImage(base64Decode(avatar.split(',')[1]))
-                                        : const AssetImage("assets/avatar.png") as ImageProvider,
-                                  fit: BoxFit.cover,
-                                  colorFilter: ColorFilter.mode(
-                                    Colors.white.withOpacity(0.8),
-                                    BlendMode.dstATop,
-                                  ),
-                                );
-                              });
-                            });
-                            // 添加欢迎语作为消息，如果有反斜杠则分段
-                            for (var m in candidates[index].split("\\")) {
-                              messages.add(Message(message: m, type: Message.assistant));
-                            }
-                            setState(() {
-                              _singleViewIndex = 0;
-                            });
-                            setTempHistory(msgListToJson(messages));
-                          });
-                        },
-                      ),
-                    );
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(I18n.t('welcome')),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: candidates.length,
+              itemBuilder: (context, index) => Card(
+                child: ListTile(
+                  title: Text(
+                    '${I18n.t('option')} ${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(candidates[index]),
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();
+                    if (!_isCurrentConversation(conversationVersion)) return;
+                    setState(() {
+                      _invalidateConversation();
+                      messages.clear();
+                      _voiceCache.clear();
+                      _voiceRequests.clear();
+                      for (final part in candidates[index].split("\\")) {
+                        if (part.isNotEmpty) {
+                          messages.add(Message(
+                            message: part,
+                            type: Message.assistant,
+                          ));
+                        }
+                      }
+                      _conversationVersion++;
+                      _singleViewIndex = 0;
+                    });
+                    unawaited(_saveTempHistory());
                   },
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(I18n.t('cancel')),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 重新生成
-                    Navigator.of(context).pop();
-                    getWelcomeMsg();
-                  },
-                  child: Text(I18n.t('regenerate')),
-                ),
-              ],
-            );
-          },
-        );
-      }, (e) {
-        Navigator.of(context).pop(); // 关闭加载对话框
-        snackBarAlert(context, e.toString());
-      });
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(I18n.t('cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (_isCurrentConversation(conversationVersion)) {
+                  _isWelcoming = false;
+                  getWelcomeMsg();
+                }
+              },
+              child: Text(I18n.t('regenerate')),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      Navigator.of(context).pop(); // 关闭加载对话框
-      snackBarAlert(context, e.toString());
+      if (_isCurrentConversation(conversationVersion) &&
+          operation == _welcomeOperation) {
+        snackBarAlert(context, e.toString());
+      }
+    } finally {
+      _closeDialogRoute(progressRoute);
+      if (mounted && operation == _welcomeOperation) {
+        setState(() => _isWelcoming = false);
+      }
     }
   }
 
   Future<void> getDraw({int? beforeIndex}) async {
+    if (_isDrawing) return;
+    final operation = ++_drawOperation;
+    final conversationVersion = _conversationVersion;
+    setState(() => _isDrawing = true);
+    try {
+      await _runDraw(
+        beforeIndex: beforeIndex,
+        conversationVersion: conversationVersion,
+        operation: operation,
+      );
+    } catch (error) {
+      if (_isCurrentConversation(conversationVersion) &&
+          operation == _drawOperation) {
+        snackBarAlert(context, "${I18n.t('error')} $error");
+      }
+    } finally {
+      if (mounted && operation == _drawOperation) {
+        setState(() => _isDrawing = false);
+      }
+    }
+  }
+
+  Future<void> _runDraw({
+    int? beforeIndex,
+    required int conversationVersion,
+    required int operation,
+  }) async {
     final List<Message> drawMessages = beforeIndex == null
-        ? List<Message>.from(messages)
-        : messages.take(beforeIndex).toList();
+        ? _copyMessages(messages)
+        : _copyMessages(messages.take(beforeIndex));
     List<List<String>> msg = await parseMsg(
-      drawMessages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getDrawPrompt(), type: Message.system)]
-    );
+        drawMessages,
+        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        [Message(message: await getDrawPrompt(), type: Message.system)]);
+    if (!_isCurrentConversation(conversationVersion) ||
+        operation != _drawOperation) {
+      return;
+    }
     // If auto-draw mode enabled, do not show dialog — generate prompt and image directly with retries.
     if (_isAutoDraw) {
       final SdConfig sdConfig = await getSdConfig();
@@ -919,30 +1111,32 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       bool promptOk = false;
       String lastPromptError = '';
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        if (!_isCurrentConversation(conversationVersion) ||
+            operation != _drawOperation) {
+          return;
+        }
         try {
           final Completer<String> promptCompleter = Completer<String>();
           String result = '';
           final Config? aidrawCfg = await getAidrawApiConfig();
           final Config configToUse = aidrawCfg ?? config;
-          completion(
-            configToUse,
-            msg,
-            (String data) {
-              result += data.replaceAll("\n", " ");
-            },
-            () {
-                final cand = result.split('||').last.replaceAll(RegExp(responseRegex), '').trim();
-              if (!promptCompleter.isCompleted) {
-                promptCompleter.complete(cand);
-              }
-            },
-            (String error) {
-              lastPromptError = error;
-              if (!promptCompleter.isCompleted) {
-                promptCompleter.completeError(error);
-              }
+          completion(configToUse, msg, (String data) {
+            result += data.replaceAll("\n", " ");
+          }, () {
+            final cand = result
+                .split('||')
+                .last
+                .replaceAll(RegExp(responseRegex), '')
+                .trim();
+            if (!promptCompleter.isCompleted) {
+              promptCompleter.complete(cand);
             }
-          );
+          }, (String error) {
+            lastPromptError = error;
+            if (!promptCompleter.isCompleted) {
+              promptCompleter.completeError(error);
+            }
+          });
           final String cand = await promptCompleter.future.timeout(
             const Duration(minutes: 2),
             onTimeout: () {
@@ -964,7 +1158,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       }
 
       if (!promptOk) {
-        if (mounted) snackBarAlert(context, "${I18n.t('draw_prompt_failed')}: $lastPromptError");
+        if (mounted) {
+          snackBarAlert(
+              context, "${I18n.t('draw_prompt_failed')}: $lastPromptError");
+        }
+        return;
+      }
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _drawOperation) {
         return;
       }
 
@@ -972,6 +1173,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       String? finalUrl;
       bool genOk = false;
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        if (!_isCurrentConversation(conversationVersion) ||
+            operation != _drawOperation) {
+          return;
+        }
         try {
           snackBarAlert(context, I18n.t('generating'));
           finalUrl = await generateImageTask(
@@ -992,7 +1197,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         return;
       }
 
-      if (mounted) {
+      if (_isCurrentConversation(conversationVersion) &&
+          operation == _drawOperation) {
         if (!isForeground) {
           notification.showNotification(
             title: '绘画',
@@ -1011,19 +1217,25 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
           );
           messages.add(Message(message: finalUrlNonNull, type: Message.image));
+          _conversationVersion++;
         });
-        setTempHistory(msgListToJson(messages));
+        await _saveTempHistory();
       }
       return;
     }
 
     var result = await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AiDraw(msg: msg, config: config)
-    );
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AiDraw(msg: msg, config: config));
 
-    if (result is Map && (result['action'] == 'start' || result['action'] == 'redraw')) {
+    if (!_isCurrentConversation(conversationVersion) ||
+        operation != _drawOperation) {
+      return;
+    }
+
+    if (result is Map &&
+        (result['action'] == 'start' || result['action'] == 'redraw')) {
       String prompt = result['prompt'];
       SdConfig sdConfig = result['sdConfig'];
 
@@ -1035,80 +1247,27 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           sdConfig: sdConfig,
         );
 
-        if (finalUrl != null && mounted) {
-           if (!isForeground) {
-              notification.showNotification(
-                title: '绘画',
-                body: '绘画完成！',
-                showAvator: false
-              );
-           }
-
-           var previewResult = await showDialog(
-             context: context,
-             barrierDismissible: false,
-             builder: (context) => AiDraw(msg: null, config: config, initialImageUrl: finalUrl, promptForRedraw: prompt)
-           );
-
-           if (previewResult is String) {
-             setState(() {
-               backgroundImage = DecorationImage(
-                 image: NetworkImage(previewResult),
-                 fit: BoxFit.cover,
-                 colorFilter: ColorFilter.mode(
-                   Colors.white.withOpacity(0.8),
-                   BlendMode.dstATop,
-                 ),
-               );
-               messages.add(Message(message: previewResult, type: Message.image));
-             });
-             setTempHistory(msgListToJson(messages));
-           } else if (previewResult is Map && previewResult['action'] == 'redraw') {
-              // Recursively call getDraw if they want to redraw from preview
-              // We simulate the dialog returning 'redraw' again by calling a helper or simply passing it back to a loop.
-              // A simpler way: just show snackbar and call a handler.
-              handleRedraw(previewResult['prompt'], previewResult['sdConfig']);
-           }
-        }
-      } catch (e) {
-        if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
-      }
-    } else if (result is String) {
-      setState(() {
-        backgroundImage = DecorationImage(
-          image: NetworkImage(result),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.white.withOpacity(0.8),
-            BlendMode.dstATop,
-          ),
-        );
-        messages.add(Message(message: result, type: Message.image));
-      });
-      setTempHistory(msgListToJson(messages));
-    }
-  }
-
-  Future<void> handleRedraw(String prompt, SdConfig sdConfig) async {
-    snackBarAlert(context, I18n.t('generating'));
-    try {
-      String? finalUrl = await generateImageTask(
-        promptText: prompt,
-        sdConfig: sdConfig,
-      );
-      if (finalUrl != null && mounted) {
+        if (finalUrl != null &&
+            _isCurrentConversation(conversationVersion) &&
+            operation == _drawOperation) {
           if (!isForeground) {
             notification.showNotification(
-              title: '绘画',
-              body: '绘画完成！',
-              showAvator: false
-            );
+                title: '绘画', body: '绘画完成！', showAvator: false);
           }
+
           var previewResult = await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AiDraw(msg: null, config: config, initialImageUrl: finalUrl, promptForRedraw: prompt)
-          );
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AiDraw(
+                  msg: null,
+                  config: config,
+                  initialImageUrl: finalUrl,
+                  promptForRedraw: prompt));
+
+          if (!_isCurrentConversation(conversationVersion) ||
+              operation != _drawOperation) {
+            return;
+          }
           if (previewResult is String) {
             setState(() {
               backgroundImage = DecorationImage(
@@ -1119,12 +1278,100 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   BlendMode.dstATop,
                 ),
               );
-              messages.add(Message(message: previewResult, type: Message.image));
+              messages
+                  .add(Message(message: previewResult, type: Message.image));
+              _conversationVersion++;
             });
-            setTempHistory(msgListToJson(messages));
-          } else if (previewResult is Map && previewResult['action'] == 'redraw') {
-            handleRedraw(previewResult['prompt'], previewResult['sdConfig']);
+            await _saveTempHistory();
+          } else if (previewResult is Map &&
+              previewResult['action'] == 'redraw') {
+            // Recursively call getDraw if they want to redraw from preview
+            // We simulate the dialog returning 'redraw' again by calling a helper or simply passing it back to a loop.
+            // A simpler way: just show snackbar and call a handler.
+            await handleRedraw(
+              previewResult['prompt'],
+              previewResult['sdConfig'],
+              conversationVersion: conversationVersion,
+              operation: operation,
+            );
           }
+        }
+      } catch (e) {
+        if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
+      }
+    } else if (result is String &&
+        _isCurrentConversation(conversationVersion) &&
+        operation == _drawOperation) {
+      setState(() {
+        backgroundImage = DecorationImage(
+          image: NetworkImage(result),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.8),
+            BlendMode.dstATop,
+          ),
+        );
+        messages.add(Message(message: result, type: Message.image));
+        _conversationVersion++;
+      });
+      await _saveTempHistory();
+    }
+  }
+
+  Future<void> handleRedraw(
+    String prompt,
+    SdConfig sdConfig, {
+    required int conversationVersion,
+    required int operation,
+  }) async {
+    snackBarAlert(context, I18n.t('generating'));
+    try {
+      String? finalUrl = await generateImageTask(
+        promptText: prompt,
+        sdConfig: sdConfig,
+      );
+      if (finalUrl != null &&
+          _isCurrentConversation(conversationVersion) &&
+          operation == _drawOperation) {
+        if (!isForeground) {
+          notification.showNotification(
+              title: '绘画', body: '绘画完成！', showAvator: false);
+        }
+        var previewResult = await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AiDraw(
+                msg: null,
+                config: config,
+                initialImageUrl: finalUrl,
+                promptForRedraw: prompt));
+        if (!_isCurrentConversation(conversationVersion) ||
+            operation != _drawOperation) {
+          return;
+        }
+        if (previewResult is String) {
+          setState(() {
+            backgroundImage = DecorationImage(
+              image: NetworkImage(previewResult),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                Colors.white.withOpacity(0.8),
+                BlendMode.dstATop,
+              ),
+            );
+            messages.add(Message(message: previewResult, type: Message.image));
+            _conversationVersion++;
+          });
+          await _saveTempHistory();
+        } else if (previewResult is Map &&
+            previewResult['action'] == 'redraw') {
+          await handleRedraw(
+            previewResult['prompt'],
+            previewResult['sdConfig'],
+            conversationVersion: conversationVersion,
+            operation: operation,
+          );
+        }
       }
     } catch (e) {
       if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
@@ -1139,9 +1386,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     double outlineWidth = displaySettings.outlineWidth;
     String outlineColorHex = displaySettings.outlineColorHex;
 
-    final TextEditingController textColorCtrl = TextEditingController(text: textColorHex);
-    final TextEditingController nameColorCtrl = TextEditingController(text: nameColorHex);
-    final TextEditingController outlineColorCtrl = TextEditingController(text: outlineColorHex);
+    final TextEditingController textColorCtrl =
+        TextEditingController(text: textColorHex);
+    final TextEditingController nameColorCtrl =
+        TextEditingController(text: nameColorHex);
+    final TextEditingController outlineColorCtrl =
+        TextEditingController(text: outlineColorHex);
 
     showDialog(
       context: context,
@@ -1156,13 +1406,16 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ===== 字体大小 =====
-                    Text(I18n.t('font_size'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(I18n.t('font_size'),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: () => fontSize > 10 ? setDialogState(() => fontSize -= 1) : null,
+                          onPressed: () => fontSize > 10
+                              ? setDialogState(() => fontSize -= 1)
+                              : null,
                         ),
                         Expanded(
                           child: Slider(
@@ -1171,20 +1424,27 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             max: 48,
                             divisions: 38,
                             label: '${fontSize.round()}',
-                            onChanged: (v) => setDialogState(() => fontSize = v.roundToDouble()),
+                            onChanged: (v) => setDialogState(
+                                () => fontSize = v.roundToDouble()),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.add_circle_outline),
-                          onPressed: () => fontSize < 48 ? setDialogState(() => fontSize += 1) : null,
+                          onPressed: () => fontSize < 48
+                              ? setDialogState(() => fontSize += 1)
+                              : null,
                         ),
                       ],
                     ),
-                    Center(child: Text('${fontSize.round()}px', style: TextStyle(fontSize: fontSize.clamp(12.0, 48.0)))),
+                    Center(
+                        child: Text('${fontSize.round()}px',
+                            style: TextStyle(
+                                fontSize: fontSize.clamp(12.0, 48.0)))),
                     const SizedBox(height: 16),
 
                     // ===== 消息文字颜色 =====
-                    Text(I18n.t('text_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(I18n.t('text_color'),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     _colorRow(ctx, setDialogState, textColorCtrl, textColorHex),
                     const SizedBox(height: 8),
@@ -1195,13 +1455,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         hintText: 'FFDDDD',
                         border: const OutlineInputBorder(),
                         isCollapsed: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     // ===== 名字文字颜色 =====
-                    Text(I18n.t('name_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(I18n.t('name_color'),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     _colorRow(ctx, setDialogState, nameColorCtrl, nameColorHex),
                     const SizedBox(height: 8),
@@ -1212,7 +1474,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         hintText: 'FFCCCC',
                         border: const OutlineInputBorder(),
                         isCollapsed: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -1220,23 +1483,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     // ===== 描边开关 =====
                     Row(
                       children: [
-                        Text(I18n.t('text_outline'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(I18n.t('text_outline'),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         const Spacer(),
                         Switch(
                           value: textOutline,
-                          onChanged: (v) => setDialogState(() => textOutline = v),
+                          onChanged: (v) =>
+                              setDialogState(() => textOutline = v),
                         ),
                       ],
                     ),
                     if (textOutline) ...[
                       const SizedBox(height: 4),
-                      Text(I18n.t('outline_width'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(I18n.t('outline_width'),
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           IconButton(
                             icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: () => outlineWidth > 0.5 ? setDialogState(() => outlineWidth -= 0.5) : null,
+                            onPressed: () => outlineWidth > 0.5
+                                ? setDialogState(() => outlineWidth -= 0.5)
+                                : null,
                           ),
                           Expanded(
                             child: Slider(
@@ -1245,22 +1514,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               max: 6.0,
                               divisions: 11,
                               label: outlineWidth.toStringAsFixed(1),
-                              onChanged: (v) => setDialogState(() => outlineWidth = double.parse(v.toStringAsFixed(1))),
+                              onChanged: (v) => setDialogState(() =>
+                                  outlineWidth =
+                                      double.parse(v.toStringAsFixed(1))),
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.add_circle_outline),
-                            onPressed: () => outlineWidth < 6.0 ? setDialogState(() => outlineWidth += 0.5) : null,
+                            onPressed: () => outlineWidth < 6.0
+                                ? setDialogState(() => outlineWidth += 0.5)
+                                : null,
                           ),
                         ],
                       ),
-                      Center(child: Text('${outlineWidth.toStringAsFixed(1)}px')),
+                      Center(
+                          child: Text('${outlineWidth.toStringAsFixed(1)}px')),
                       const SizedBox(height: 12),
 
                       // ===== 描边颜色 =====
-                      Text(I18n.t('outline_color'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(I18n.t('outline_color'),
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-                      _colorRow(ctx, setDialogState, outlineColorCtrl, outlineColorHex),
+                      _colorRow(ctx, setDialogState, outlineColorCtrl,
+                          outlineColorHex),
                       const SizedBox(height: 8),
                       TextField(
                         controller: outlineColorCtrl,
@@ -1269,7 +1545,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           hintText: '666666',
                           border: const OutlineInputBorder(),
                           isCollapsed: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 12),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1289,14 +1566,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     displaySettings.nameColorHex = nameColorCtrl.text.trim();
                     displaySettings.textOutline = textOutline;
                     displaySettings.outlineWidth = outlineWidth;
-                    displaySettings.outlineColorHex = outlineColorCtrl.text.trim();
+                    displaySettings.outlineColorHex =
+                        outlineColorCtrl.text.trim();
                     SharedPreferences.getInstance().then((prefs) {
                       prefs.setDouble('display_font_size', fontSize);
-                      prefs.setString('display_text_color', textColorCtrl.text.trim());
-                      prefs.setString('display_name_color', nameColorCtrl.text.trim());
+                      prefs.setString(
+                          'display_text_color', textColorCtrl.text.trim());
+                      prefs.setString(
+                          'display_name_color', nameColorCtrl.text.trim());
                       prefs.setBool('display_text_outline', textOutline);
                       prefs.setDouble('display_outline_width', outlineWidth);
-                      prefs.setString('display_outline_color', outlineColorCtrl.text.trim());
+                      prefs.setString('display_outline_color',
+                          outlineColorCtrl.text.trim());
                     });
                     displaySettingsVersion.value++;
                     setState(() => _displaySettingsKey++);
@@ -1312,7 +1593,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _colorRow(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String currentHex) {
+  Widget _colorRow(BuildContext ctx, StateSetter setDialogState,
+      TextEditingController controller, String currentHex) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1328,21 +1610,29 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _colorChip2(BuildContext ctx, StateSetter setDialogState, TextEditingController controller, String hex, String label) {
+  Widget _colorChip2(BuildContext ctx, StateSetter setDialogState,
+      TextEditingController controller, String hex, String label) {
     return GestureDetector(
       onTap: () => setDialogState(() => controller.text = hex),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: hex.isEmpty ? Colors.grey.shade300 : Color(int.parse('FF$hex', radix: 16)),
+          color: hex.isEmpty
+              ? Colors.grey.shade300
+              : Color(int.parse('FF$hex', radix: 16)),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: controller.text == hex ? Colors.blue : Colors.grey.shade400, width: controller.text == hex ? 2 : 1),
+          border: Border.all(
+              color:
+                  controller.text == hex ? Colors.blue : Colors.grey.shade400,
+              width: controller.text == hex ? 2 : 1),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: hex.isEmpty || hex == 'FFFFFF' ? Colors.black87 : Colors.white,
-            fontWeight: controller.text == hex ? FontWeight.bold : FontWeight.normal,
+            color:
+                hex.isEmpty || hex == 'FFFFFF' ? Colors.black87 : Colors.white,
+            fontWeight:
+                controller.text == hex ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),
@@ -1413,12 +1703,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             // 添加到对话
             TextButton(
               onPressed: () {
+                final status = _characterStatus!;
                 Navigator.of(context).pop();
                 setState(() {
-                  messages.add(Message(message: _characterStatus!, type: Message.system));
+                  _invalidateConversation();
+                  messages.add(Message(message: status, type: Message.system));
+                  _conversationVersion++;
                   _singleViewIndex = messages.length - 1;
                 });
-                setTempHistory(msgListToJson(messages));
+                unawaited(_saveTempHistory());
               },
               child: Text(I18n.t('add_to_chat')),
             ),
@@ -1429,69 +1722,63 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> getStatus({bool forceGet = false, bool silent = false}) async {
-    if (forceGet || _characterStatus == null || _characterStatus == I18n.t("no_status")) {
-      List<List<String>> msg = await parseMsg(
-        messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getStatusPrompt(), type: Message.system)]
-      );
-
-      String result = "";
-      for (var m in msg) {
-        debugPrint("${m[0]}: ${m[1]}");
-      }
-      debugPrint("model: ${config.model}");
-
-      // 只在非静默模式下显示加载对话框
-      if (!silent) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(I18n.t('analyzing_status')),
-                ],
-              ),
-            );
-          },
-        );
-      }
-
-      try {
-        await completion(config, msg, (chunk) async {
-          result += chunk;
-        }, () async {
-          debugPrint("done.");
-          if (!silent) {
-            Navigator.of(context).pop(); // 关闭加载对话框
-          }
-          if (result.isNotEmpty) {
-            String cleanResult = result.replaceAll(RegExp(await getResponseRegex()), '');
-            _characterStatus = cleanResult;
-          }
-          // 只在非静默模式下显示对话框
-          if (!silent) {
-            _showStatusDialog();
-          }
-        }, (e) {
-          if (!silent) {
-            Navigator.of(context).pop(); // 关闭加载对话框
-          }
-          snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
-        });
-      } catch (e) {
-        if (!silent) {
-          Navigator.of(context).pop(); // 关闭加载对话框
-        }
-        snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
-      }
-    } else {
-      // 只在非静默模式下显示对话框
+    final needsFetch = forceGet ||
+        _characterStatus == null ||
+        _characterStatus == I18n.t("no_status");
+    if (!needsFetch) {
       if (!silent) {
         _showStatusDialog();
+      }
+      return;
+    }
+    if (_isGettingStatus) return;
+
+    final operation = ++_statusOperation;
+    final conversationVersion = _conversationVersion;
+    setState(() => _isGettingStatus = true);
+    Route<dynamic>? progressRoute;
+    try {
+      final msg = await parseMsg(
+        _copyMessages(messages),
+        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        [Message(message: await getStatusPrompt(), type: Message.system)],
+      );
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _statusOperation) {
+        return;
+      }
+      logMsg(msg);
+
+      if (!silent) {
+        progressRoute = await _showProgressDialog(I18n.t('analyzing_status'));
+      }
+      final result = await collectCompletion(config, msg);
+      _closeDialogRoute(progressRoute);
+      progressRoute = null;
+      if (!_isCurrentConversation(conversationVersion) ||
+          operation != _statusOperation) {
+        return;
+      }
+
+      final cleanResult =
+          result.replaceAll(RegExp(await getResponseRegex()), '').trim();
+      if (cleanResult.isNotEmpty &&
+          _isCurrentConversation(conversationVersion) &&
+          operation == _statusOperation) {
+        setState(() => _characterStatus = cleanResult);
+      }
+      if (!silent && _isCurrentConversation(conversationVersion)) {
+        _showStatusDialog();
+      }
+    } catch (e) {
+      if (_isCurrentConversation(conversationVersion) &&
+          operation == _statusOperation) {
+        snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
+      }
+    } finally {
+      _closeDialogRoute(progressRoute);
+      if (mounted && operation == _statusOperation) {
+        setState(() => _isGettingStatus = false);
       }
     }
   }
@@ -1535,53 +1822,60 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 ),
                 // Edit
                 IconButton(
-                  icon: const Icon(Icons.edit),
-                  color: Colors.white,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MsgEditor(msgs: messages)
-                      )
-                    ).then((msgs) { setState(() {}); });
-                  }
-                ),
+                    icon: const Icon(Icons.edit),
+                    color: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  MsgEditor(msgs: messages))).then((msgs) {
+                        if (!mounted) return;
+                        setState(_invalidateConversation);
+                        unawaited(_saveTempHistory());
+                      });
+                    }),
                 // Save
                 IconButton(
                   icon: const Icon(Icons.save),
                   color: Colors.white,
                   onPressed: () async {
-                      if (!context.mounted) return;
-                      String? value = await namingHistory(
+                    if (!context.mounted) return;
+                    String? value = await namingHistory(
                         context,
                         "",
                         config,
                         await parseMsg(
-                          messages, currentStory != null ? jsonToMsg(currentStory![2]) : [], [Message(message: await getSummaryPrompt(), type: Message.system)]
-                        )
-                      );
-                      if (value != null) {
-                        debugPrint(value);
-                        addHistory(msgListToJson(messages), value);
-                        if (!context.mounted) return;
-                        snackBarAlert(context, I18n.t('saved'));
-                        getHistorys().then((List<List<String>> results) {
-                          setState(() {
-                            historys = results;
-                            historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-                          });
+                            messages,
+                            currentStory != null
+                                ? jsonToMsg(currentStory![2])
+                                : [],
+                            [
+                              Message(
+                                  message: await getSummaryPrompt(),
+                                  type: Message.system)
+                            ]));
+                    if (value != null) {
+                      debugPrint(value);
+                      addHistory(msgListToJson(messages), value);
+                      if (!context.mounted) return;
+                      snackBarAlert(context, I18n.t('saved'));
+                      getHistorys().then((List<List<String>> results) {
+                        setState(() {
+                          historys = results;
+                          historys.sort((a, b) =>
+                              int.parse(b[1]).compareTo(int.parse(a[1])));
                         });
-                      } else {
-                        debugPrint("cancel");
-                      }
+                      });
+                    } else {
+                      debugPrint("cancel");
+                    }
                   },
                 ),
               ],
             ),
       body: Container(
-        decoration: BoxDecoration(
-          image: backgroundImage
-        ),
+        decoration: BoxDecoration(image: backgroundImage),
         child: GestureDetector(
           onTap: () {
             fn.unfocus();
@@ -1600,7 +1894,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           SchedulerBinding.instance.addPostFrameCallback((_) {
                             if (scrollController.hasClients) {
                               scrollController.animateTo(
-                                scrollController.position.maxScrollExtent * _singleViewIndex / (messages.isEmpty ? 1 : messages.length),
+                                scrollController.position.maxScrollExtent *
+                                    _singleViewIndex /
+                                    (messages.isEmpty ? 1 : messages.length),
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOut,
                               );
@@ -1618,10 +1914,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   setState(() {
                                     _isListViewMode = false;
                                     _singleViewIndex = index;
-                                    if (messages[_singleViewIndex].type == Message.image) {
+                                    if (messages[_singleViewIndex].type ==
+                                        Message.image) {
                                       // change background
                                       backgroundImage = DecorationImage(
-                                        image: NetworkImage(messages[_singleViewIndex].message),
+                                        image: NetworkImage(
+                                            messages[_singleViewIndex].message),
                                         fit: BoxFit.cover,
                                         colorFilter: ColorFilter.mode(
                                           Colors.white.withOpacity(0.8),
@@ -1629,7 +1927,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                         ),
                                       );
                                       // skip image
-                                      _singleViewIndex = _singleViewIndex == messages.length - 1
+                                      _singleViewIndex = _singleViewIndex ==
+                                              messages.length - 1
                                           ? _singleViewIndex - 1
                                           : _singleViewIndex + 1;
                                     }
@@ -1652,19 +1951,26 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         }),
                       )
                     : (messages.isEmpty
-                        ? Align(alignment: Alignment.bottomCenter, child: Text(I18n.t('no_messages')))
+                        ? Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Text(I18n.t('no_messages')))
                         : GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
+                              String? autoVoiceText;
+                              bool shouldInspire = false;
                               setState(() {
                                 if (messages.isNotEmpty) {
-                                  _singleViewIndex = _singleViewIndex == messages.length - 1
-                                      ? _singleViewIndex
-                                      : _singleViewIndex + 1;
-                                  if (messages[_singleViewIndex].type == Message.image) {
+                                  _singleViewIndex =
+                                      _singleViewIndex == messages.length - 1
+                                          ? _singleViewIndex
+                                          : _singleViewIndex + 1;
+                                  if (messages[_singleViewIndex].type ==
+                                      Message.image) {
                                     // change background
                                     backgroundImage = DecorationImage(
-                                      image: NetworkImage(messages[_singleViewIndex].message),
+                                      image: NetworkImage(
+                                          messages[_singleViewIndex].message),
                                       fit: BoxFit.cover,
                                       colorFilter: ColorFilter.mode(
                                         Colors.white.withOpacity(0.8),
@@ -1672,64 +1978,78 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                       ),
                                     );
                                     // skip image
-                                    _singleViewIndex = _singleViewIndex == messages.length - 1
-                                        ? _singleViewIndex - 1
-                                        : _singleViewIndex + 1;
+                                    _singleViewIndex =
+                                        _singleViewIndex == messages.length - 1
+                                            ? _singleViewIndex - 1
+                                            : _singleViewIndex + 1;
                                   }
-                                  if (_isAutoVoice && messages[_singleViewIndex].type == Message.assistant) {
-                                    getVoice(messages[_singleViewIndex].message);
+                                  if (_isAutoVoice &&
+                                      messages[_singleViewIndex].type ==
+                                          Message.assistant) {
+                                    autoVoiceText =
+                                        messages[_singleViewIndex].message;
                                   }
                                   // 自动灵感：当到达最后一个非图片消息时触发
                                   if (_isAutoInspire) {
                                     bool hasMoreNonImage = false;
-                                    for (int i = _singleViewIndex + 1; i < messages.length; i++) {
+                                    for (int i = _singleViewIndex + 1;
+                                        i < messages.length;
+                                        i++) {
                                       if (messages[i].type != Message.image) {
                                         hasMoreNonImage = true;
                                         break;
                                       }
                                     }
                                     if (!hasMoreNonImage) {
-                                      getMsg();
+                                      shouldInspire = true;
                                     }
                                   }
                                 }
                               });
+                              if (autoVoiceText != null) {
+                                unawaited(getVoice(autoVoiceText!));
+                              }
+                              if (shouldInspire) {
+                                unawaited(getMsg());
+                              }
                             },
                             onLongPress: () {
                               setState(() {
                                 _isListViewMode = true;
                               });
                             },
-                            child: Column(
-                              children: [
-                                const Spacer(),
-                                Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: SingleChildScrollView(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: ChatElement(
-                                        message: messages[_singleViewIndex].message,
-                                        type: messages[_singleViewIndex].type,
-                                        userName: userName,
-                                        stuName: studentName,
-                                      ),
+                            child: Column(children: [
+                              const Spacer(),
+                              Align(
+                                alignment: Alignment.bottomCenter,
+                                child: SingleChildScrollView(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: ChatElement(
+                                      message:
+                                          messages[_singleViewIndex].message,
+                                      type: messages[_singleViewIndex].type,
+                                      userName: userName,
+                                      stuName: studentName,
                                     ),
                                   ),
                                 ),
-                              ]
-                            )
-                          )),
+                              ),
+                            ]))),
               ),
               // 折叠/展开输入栏按钮（backlog时用暗色背景）
               Container(
                 padding: EdgeInsets.zero,
-                color: _isListViewMode ? Colors.black.withOpacity(0.3) : Colors.transparent,
+                color: _isListViewMode
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.transparent,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      icon: Icon(_showInputBar ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
+                      icon: Icon(_showInputBar
+                          ? Icons.keyboard_arrow_down
+                          : Icons.keyboard_arrow_up),
                       color: const Color(0xffff899e),
                       onPressed: () {
                         setState(() {
@@ -1747,52 +2067,60 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               ),
               // 输入栏（折叠时全部隐藏）
               Container(
-                padding: _showInputBar ? const EdgeInsets.all(8.0) : EdgeInsets.zero,
-                color: _showInputBar ? Theme.of(context).colorScheme.surfaceBright : Colors.transparent,
-                child: _showInputBar ? Row(
-                  children: [
-                    // text input field
-                    Expanded(
-                        child: TextField(
-                            focusNode: fn,
-                            controller: textController,
-                            onEditingComplete: () {
-                              if (textController.text.isEmpty && userMsg.isNotEmpty) {
-                                sendMsg(true);
-                              } else if (textController.text.isNotEmpty) {
-                                sendMsg(false);
-                              }
+                padding:
+                    _showInputBar ? const EdgeInsets.all(8.0) : EdgeInsets.zero,
+                color: _showInputBar
+                    ? Theme.of(context).colorScheme.surfaceBright
+                    : Colors.transparent,
+                child: _showInputBar
+                    ? Row(
+                        children: [
+                          // text input field
+                          Expanded(
+                              child: TextField(
+                                  focusNode: fn,
+                                  controller: textController,
+                                  onEditingComplete: () {
+                                    if (textController.text.isEmpty &&
+                                        userMsg.isNotEmpty) {
+                                      sendMsg(true);
+                                    } else if (textController.text.isNotEmpty) {
+                                      sendMsg(false);
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    border: const OutlineInputBorder(),
+                                    isCollapsed: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    hintText: inputLock
+                                        ? I18n.t('replying')
+                                        : I18n.t('enter_message'),
+                                  ))),
+                          const SizedBox(width: 5),
+                          // tools button
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _isToolsExpanded = !_isToolsExpanded;
+                              });
                             },
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              isCollapsed: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              hintText: inputLock ? I18n.t('replying') : I18n.t('enter_message'),
-                            ))),
-                    const SizedBox(width: 5),
-                    // tools button
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _isToolsExpanded = !_isToolsExpanded;
-                        });
-                      },
-                      icon: const Icon(Icons.add_circle),
-                      color: const Color(0xffff899e),
-                    ),
-                    const SizedBox(width: 5),
-                    // send button
-                    IconButton(
-                      onPressed: () => sendMsg(true),
-                      onLongPress: () => getMsg(),
-                      icon: const Icon(Icons.send),
-                      color: const Color(0xffff899e),
-                    )
-                  ],
-                ) : const SizedBox.shrink(),
+                            icon: const Icon(Icons.add_circle),
+                            color: const Color(0xffff899e),
+                          ),
+                          const SizedBox(width: 5),
+                          // send button
+                          IconButton(
+                            onPressed: () => sendMsg(true),
+                            onLongPress: () => getMsg(),
+                            icon: const Icon(Icons.send),
+                            color: const Color(0xffff899e),
+                          )
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
               // 工具栏展开区域
               if (_isToolsExpanded)
@@ -1805,8 +2133,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildToolButton(
-                        icon: _isAutoStatus ? Icons.monitor_heart : Icons.monitor_heart_outlined,
-                        label: _isAutoStatus ? I18n.t('auto_status') : I18n.t('manual_status'),
+                        icon: _isAutoStatus
+                            ? Icons.monitor_heart
+                            : Icons.monitor_heart_outlined,
+                        label: _isAutoStatus
+                            ? I18n.t('auto_status')
+                            : I18n.t('manual_status'),
                         onTap: () {
                           setState(() {
                             _isAutoStatus = !_isAutoStatus;
@@ -1817,7 +2149,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: _isAutoDraw ? Icons.brush : Icons.brush_outlined,
-                        label: _isAutoDraw ? I18n.t('auto_draw') : I18n.t('manual_draw'),
+                        label: _isAutoDraw
+                            ? I18n.t('auto_draw')
+                            : I18n.t('manual_draw'),
                         onTap: () {
                           setState(() {
                             _isAutoDraw = !_isAutoDraw;
@@ -1828,7 +2162,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ),
                       _buildToolButton(
                         icon: _isAutoVoice ? Icons.volume_up : Icons.volume_off,
-                        label: _isAutoVoice ? I18n.t('auto_voice') : I18n.t('manual_voice'),
+                        label: _isAutoVoice
+                            ? I18n.t('auto_voice')
+                            : I18n.t('manual_voice'),
                         onTap: () {
                           setState(() {
                             _isAutoVoice = !_isAutoVoice;
@@ -1838,8 +2174,12 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         },
                       ),
                       _buildToolButton(
-                        icon: _isAutoInspire ? Icons.auto_awesome : Icons.lightbulb_outline,
-                        label: _isAutoInspire ? I18n.t('auto_inspire') : I18n.t('manual_inspire'),
+                        icon: _isAutoInspire
+                            ? Icons.auto_awesome
+                            : Icons.lightbulb_outline,
+                        label: _isAutoInspire
+                            ? I18n.t('auto_inspire')
+                            : I18n.t('manual_inspire'),
                         onTap: () {
                           setState(() {
                             _isAutoInspire = !_isAutoInspire;
@@ -1853,7 +2193,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         icon: _isFullScreen
                             ? Icons.fullscreen_exit
                             : Icons.fullscreen,
-                        label: _isFullScreen ? I18n.t('exit_fullscreen') : I18n.t('enter_fullscreen'),
+                        label: _isFullScreen
+                            ? I18n.t('exit_fullscreen')
+                            : I18n.t('enter_fullscreen'),
                         onTap: () {
                           setState(() {
                             _isFullScreen = !_isFullScreen;
@@ -1907,30 +2249,26 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   // 分离故事页面
   Widget _buildStoryPage() {
-    // 恢复故事列表
-    getHistorys().then((List<List<String>> results) {
-      setState(() {
-        historys = results;
-        historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-      });
-    });
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(I18n.t('story_list'), style: const TextStyle(color: Colors.white)),
+        title: Text(I18n.t('story_list'),
+            style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xfff2a0ac)
-          ),
+          decoration: const BoxDecoration(color: Color(0xfff2a0ac)),
         ),
       ),
       body: Column(
         children: [
           ListTile(
-            title: Text(I18n.t('story_operations'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('story_operations'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -1944,7 +2282,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       getHistorys().then((List<List<String>> results) {
                         setState(() {
                           historys = results;
-                          historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
+                          historys.sort((a, b) =>
+                              int.parse(b[1]).compareTo(int.parse(a[1])));
                         });
                         snackBarAlert(context, I18n.t('story_imported'));
                       });
@@ -1960,8 +2299,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       return;
                     }
                     List<Message> storyMsgs = jsonToMsg(currentStory![2]);
-                    List<String> msgContents = storyMsgs.map((m) => m.message).toList();
-                    bool success = await downloadHistorytoJson(currentStory![0], msgContents);
+                    List<String> msgContents =
+                        storyMsgs.map((m) => m.message).toList();
+                    bool success = await downloadHistorytoJson(
+                        currentStory![0], msgContents);
                     if (success && context.mounted) {
                       snackBarAlert(context, I18n.t('story_exported'));
                     }
@@ -1973,10 +2314,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const Divider(),
           if (currentStory != null) ...[
             ListTile(
-              title: Text(I18n.t('current_story'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+              title: Text(I18n.t('current_story'),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
               child: Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -1989,6 +2335,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     icon: const Icon(Icons.close),
                     onPressed: () {
                       setState(() {
+                        _invalidateConversation();
                         currentStory = null;
                       });
                       snackBarAlert(context, I18n.t('story_unloaded'));
@@ -2000,7 +2347,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             const Divider(),
           ],
           ListTile(
-            title: Text(I18n.t('story_pool'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('story_pool'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           Expanded(
             child: ListView.builder(
@@ -2008,7 +2359,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               itemCount: historys.length,
               itemBuilder: (context, index) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 4.0),
                   child: Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(
@@ -2026,9 +2378,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         subtitle: Text(historys[index][0]),
                         onTap: () {
                           setState(() {
+                            _invalidateConversation();
                             currentStory = historys[index];
                           });
-                          snackBarAlert(context, I18n.t('set_as_current_story').replaceFirst('...', historys[index][0]));
+                          snackBarAlert(
+                              context,
+                              I18n.t('set_as_current_story')
+                                  .replaceFirst('...', historys[index][0]));
                         },
                         onLongPress: () {
                           showDialog(
@@ -2045,7 +2401,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                       Navigator.pop(context);
                                       loadHistory(historys[index][2]);
                                       setState(() {
-                                        _currentIndex = 0; // Switch to chat page
+                                        _currentIndex =
+                                            0; // Switch to chat page
                                       });
                                     },
                                   ),
@@ -2054,24 +2411,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                     title: Text(I18n.t('edit')),
                                     onTap: () {
                                       Navigator.pop(context);
-                                      List<Message> storyMsgs = jsonToMsg(historys[index][2]);
+                                      List<Message> storyMsgs =
+                                          jsonToMsg(historys[index][2]);
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => MsgEditor(msgs: storyMsgs),
+                                          builder: (context) =>
+                                              MsgEditor(msgs: storyMsgs),
                                         ),
-                                      ).then((editedMsgs) {
+                                      ).then((editedMsgs) async {
                                         if (editedMsgs != null) {
-                                          String newJson = msgListToJson(editedMsgs);
-                                          deleteHistory("history_${historys[index][1]}");
-                                          addHistory(newJson, historys[index][0]).then((_) {
-                                            getHistorys().then((results) {
-                                              setState(() {
-                                                historys = results;
-                                                historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-                                              });
-                                            });
-                                          });
+                                          String newJson =
+                                              msgListToJson(editedMsgs);
+                                          await deleteHistory(
+                                              "history_${historys[index][1]}");
+                                          await addHistory(
+                                              newJson, historys[index][0]);
+                                          await _refreshHistoryList();
                                         }
                                       });
                                     },
@@ -2085,20 +2441,30 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                         context: context,
                                         builder: (context) => AlertDialog(
                                           title: Text(I18n.t('delete_story')),
-                                          content: Text(I18n.t('delete_story_confirm')),
+                                          content: Text(
+                                              I18n.t('delete_story_confirm')),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context),
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
                                               child: Text(I18n.t('cancel')),
                                             ),
                                             TextButton(
-                                              onPressed: () {
-                                                deleteHistory("history_${historys[index][1]}");
-                                                if (currentStory != null && currentStory![1] == historys[index][1]) {
-                                                  currentStory = null;
-                                                }
+                                              onPressed: () async {
+                                                final story = List<String>.from(
+                                                    historys[index]);
+                                                await deleteHistory(
+                                                    "history_${story[1]}");
+                                                if (!mounted) return;
                                                 setState(() {
-                                                  historys.removeAt(index);
+                                                  if (currentStory != null &&
+                                                      currentStory![1] ==
+                                                          story[1]) {
+                                                    _invalidateConversation();
+                                                    currentStory = null;
+                                                  }
+                                                  historys.removeWhere((item) =>
+                                                      item[1] == story[1]);
                                                 });
                                                 Navigator.pop(context);
                                               },
@@ -2128,14 +2494,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   // 分离角色页面
   Widget _buildStudentsPage() {
-    // 恢复角色列表
-    getStudents().then((List<List<String>> results) {
-      setState(() {
-        students = results;
-        students.sort((a, b) => a[0].compareTo(b[0]));
-      });
-    });
-
     ImageProvider getAvatarImage(String avatar) {
       if (_avatarImageCache.containsKey(avatar)) {
         return _avatarImageCache[avatar]!;
@@ -2154,18 +2512,21 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(I18n.t('character_list'), style: const TextStyle(color: Colors.white)),
+        title: Text(I18n.t('character_list'),
+            style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xfff2a0ac)
-          ),
+          decoration: const BoxDecoration(color: Color(0xfff2a0ac)),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         children: [
           ListTile(
-            title: Text(I18n.t('character_operations'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('character_operations'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -2173,69 +2534,72 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.file_upload),
-                  label: Text(I18n.t('import_character')),
-                  onPressed: () async {
-                    // 显示加载对话框
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 16),
-                              Text(I18n.t('importing_character')),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                    await loadCharacterCard(context);
-                    clearMsg(false);
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  }
-                ),
+                    icon: const Icon(Icons.file_upload),
+                    label: Text(I18n.t('import_character')),
+                    onPressed: () async {
+                      // 显示加载对话框
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(I18n.t('importing_character')),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                      await loadCharacterCard(context);
+                      clearMsg(false);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                    }),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.file_download),
-                  label: Text(I18n.t('export_character')),
-                  onPressed: () async {
-                    // 显示加载对话框
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 16),
-                              Text(I18n.t('exporting_character')),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                    await downloadCharacterCard(
-                      context,
-                    );
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  }
-                ),
+                    icon: const Icon(Icons.file_download),
+                    label: Text(I18n.t('export_character')),
+                    onPressed: () async {
+                      // 显示加载对话框
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(I18n.t('exporting_character')),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                      await downloadCharacterCard(
+                        context,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                    }),
               ],
             ),
           ),
           const Divider(),
           ListTile(
-            title: Text(I18n.t('current_character'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('current_character'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
             child: Card(
               elevation: 2,
               clipBehavior: Clip.antiAlias,
@@ -2247,11 +2611,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   image: DecorationImage(
                     image: getAvatarImage(avatar),
                     fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
+                    colorFilter: ColorFilter.mode(
+                        Colors.black.withOpacity(0.4), BlendMode.darken),
                   ),
                 ),
                 child: ListTile(
-                  title: Text(studentName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  title: Text(studentName,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                   subtitle: Text(
                     messages.isNotEmpty ? messages.first.message : "",
                     style: const TextStyle(color: Colors.white70),
@@ -2259,53 +2626,57 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Edit Prompt
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.white),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const PromptEditor(),
-                              ),
-                            ).then((_) {
-                              clearMsg(false);
-                              getStudents().then((List<List<String>> results) {
-                                setState(() {
-                                  students = results;
-                                  students.sort((a, b) => a[0].compareTo(b[0]));
-                                });
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Edit Prompt
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PromptEditor(),
+                            ),
+                          ).then((_) {
+                            clearMsg(false);
+                            getStudents().then((List<List<String>> results) {
+                              setState(() {
+                                students = results;
+                                students.sort((a, b) => a[0].compareTo(b[0]));
                               });
                             });
-                          },
-                        ),
-                        // Save Character
-                        IconButton(
-                          icon: const Icon(Icons.save_as, color: Colors.white),
-                          onPressed: () async {
-                            addStudent(
-                              studentName,
-                              avatar,
-                              await getOriginalMsg(),
-                              await getPrompt(),
-                              await getDrawCharPrompt(),
-                              await getVitsPrompt(),
-                              drawLora: await getDrawLora(),
-                              vitsPromptText: await getVitsPromptText(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                          });
+                        },
+                      ),
+                      // Save Character
+                      IconButton(
+                        icon: const Icon(Icons.save_as, color: Colors.white),
+                        onPressed: () async {
+                          addStudent(
+                            studentName,
+                            avatar,
+                            await getOriginalMsg(),
+                            await getPrompt(),
+                            await getDrawCharPrompt(),
+                            await getVitsPrompt(),
+                            drawLora: await getDrawLora(),
+                            vitsPromptText: await getVitsPromptText(),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
+          ),
           const Divider(),
           ListTile(
-            title: Text(I18n.t('character_pool'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('character_pool'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           ListView.builder(
             shrinkWrap: true,
@@ -2314,7 +2685,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             itemBuilder: (context, index) {
               final studentAvatar = students[index][1];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                 child: Card(
                   elevation: 2,
                   clipBehavior: Clip.antiAlias,
@@ -2326,30 +2698,56 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       image: DecorationImage(
                         image: getAvatarImage(studentAvatar),
                         fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
+                        colorFilter: ColorFilter.mode(
+                            Colors.black.withOpacity(0.4), BlendMode.darken),
                       ),
                     ),
                     child: ListTile(
-                      title: Text(students[index][0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      title: Text(students[index][0],
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                       subtitle: Text(
                         students[index][2],
                         style: const TextStyle(color: Colors.white70),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      onTap: () {
-                        setStudentName(students[index][0]);
-                        setAvatar(students[index][1]);
-                        setOriginalMsg(students[index][2]);
-                        setPrompt(students[index][3]);
-                        setDrawCharPrompt(students[index][5]);
-                        setVitsPrompt(students[index][6]);
-                        setDrawLora(students[index][7]);
-                        setVitsPromptText(students[index][8]);
-                        clearMsg(true);
-                        setState(() {
-                          _currentIndex = 0; // Switch to chat page
+                      onTap: () async {
+                        final student = List<String>.from(students[index]);
+                        final operation = ++_characterSwitchOperation;
+                        _characterSwitchWrite =
+                            _characterSwitchWrite.catchError((Object error) {
+                          debugPrint(
+                              'Previous character switch failed: $error');
+                        }).then((_) async {
+                          if (operation != _characterSwitchOperation) {
+                            return;
+                          }
+                          await Future.wait<void>([
+                            setStudentName(student[0]),
+                            setAvatar(student[1]),
+                            setOriginalMsg(student[2]),
+                            setPrompt(student[3]),
+                            setDrawCharPrompt(student[5]),
+                            setVitsPrompt(student[6]),
+                            setDrawLora(student[7]),
+                            setVitsPromptText(student[8]),
+                          ]);
+                          if (!mounted ||
+                              operation != _characterSwitchOperation) {
+                            return;
+                          }
+                          await clearMsg(true);
+                          if (!mounted ||
+                              operation != _characterSwitchOperation) {
+                            return;
+                          }
+                          setState(() {
+                            _currentIndex = 0; // Switch to chat page
+                          });
                         });
+                        await _characterSwitchWrite;
                       },
                       onLongPress: () => showDialog(
                         context: context,
@@ -2362,10 +2760,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               child: Text(I18n.t('cancel')),
                             ),
                             TextButton(
-                              onPressed: () {
-                                deleteStudent("student_${students[index][4]}_${students[index][0]}");
+                              onPressed: () async {
+                                final key =
+                                    "student_${students[index][4]}_${students[index][0]}";
+                                await deleteStudent(key);
+                                if (!mounted) return;
                                 setState(() {
-                                  students.removeAt(index);
+                                  students.removeWhere((student) =>
+                                      "student_${student[4]}_${student[0]}" ==
+                                      key);
                                 });
                                 Navigator.pop(context);
                               },
@@ -2389,11 +2792,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Widget _buildSettingsPage() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(I18n.t('settings'), style: const TextStyle(color: Colors.white)),
+        title: Text(I18n.t('settings'),
+            style: const TextStyle(color: Colors.white)),
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xfff2a0ac)
-          ),
+          decoration: const BoxDecoration(color: Color(0xfff2a0ac)),
         ),
         actions: [
           ValueListenableBuilder<ThemeMode>(
@@ -2401,7 +2803,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             builder: (context, mode, child) {
               final isDark = mode == ThemeMode.dark ||
                   (mode == ThemeMode.system &&
-                      MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+                      MediaQuery.platformBrightnessOf(context) ==
+                          Brightness.dark);
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
                 color: Colors.white,
@@ -2423,50 +2826,58 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         children: [
           ListTile(
-            title: Text(I18n.t('general_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('general_settings'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.language),
               title: Text(I18n.t('language')),
               onTap: () {
-                showDialog(context: context, builder: (context) {
-                  return SimpleDialog(
-                    title: Text(I18n.t('language')),
-                    children: [
-                      SimpleDialogOption(
-                        onPressed: () {
-                          setLanguage('zh');
-                          setState(() {
-                            I18n.locale = 'zh';
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('中文'),
-                      ),
-                      SimpleDialogOption(
-                        onPressed: () {
-                          setLanguage('en');
-                          setState(() {
-                            I18n.locale = 'en';
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('English'),
-                      ),
-                    ],
-                  );
-                });
+                showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SimpleDialog(
+                        title: Text(I18n.t('language')),
+                        children: [
+                          SimpleDialogOption(
+                            onPressed: () {
+                              setLanguage('zh');
+                              setState(() {
+                                I18n.locale = 'zh';
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('中文'),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () {
+                              setLanguage('en');
+                              setState(() {
+                                I18n.locale = 'en';
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('English'),
+                          ),
+                        ],
+                      );
+                    });
               },
             ),
           ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.backup),
               title: Text(I18n.t('backup_config')),
@@ -2478,9 +2889,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       currentMessages: msgListToJson(messages),
                       onRefresh: (String jsonString) {
                         setState(() {
+                          _invalidateConversation();
                           messages.clear();
                           messages.addAll(jsonToMsg(jsonString));
                         });
+                        unawaited(_saveTempHistory());
                       },
                     ),
                   ),
@@ -2491,7 +2904,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.settings),
               title: Text(I18n.t('model_config')),
@@ -2499,7 +2913,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ConfigPage(updateFunc: updateConfig, currentConfig: config),
+                    builder: (context) => ConfigPage(
+                        updateFunc: updateConfig, currentConfig: config),
                   ),
                 );
               },
@@ -2508,7 +2923,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.format_shapes),
               title: Text(I18n.t('format_config')),
@@ -2525,7 +2941,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.display_settings),
               title: Text(I18n.t('display_settings')),
@@ -2535,12 +2952,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
           ),
           ListTile(
-            title: Text(I18n.t('feature_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('feature_settings'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.draw),
               title: Text(I18n.t('drawing_config')),
@@ -2551,10 +2973,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     builder: (context) => FutureBuilder(
                       future: getSdConfig(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
                         } else if (snapshot.hasError) {
-                          return Center(child: Text('Error: ${snapshot.error}'));
+                          return Center(
+                              child: Text('Error: ${snapshot.error}'));
                         } else {
                           return SdConfigPage(sdConfig: snapshot.data!);
                         }
@@ -2568,7 +2993,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.speaker),
               title: Text(I18n.t('voice_config')),
@@ -2579,10 +3005,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     builder: (context) => FutureBuilder(
                       future: getVitsConfig(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
                         } else if (snapshot.hasError) {
-                          return Center(child: Text('Error: ${snapshot.error}'));
+                          return Center(
+                              child: Text('Error: ${snapshot.error}'));
                         } else {
                           return VitsConfigPage(vitsConfig: snapshot.data!);
                         }
@@ -2594,12 +3023,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
           ),
           ListTile(
-            title: Text(I18n.t('about'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            title: Text(I18n.t('about'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.info),
               title: Text(I18n.t('about')),
@@ -2623,7 +3057,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
               leading: const Icon(Icons.feedback),
               title: Text(I18n.t('feedback')),
@@ -2659,36 +3094,39 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     return Scaffold(
       body: currentPage,
-      bottomNavigationBar: _isFullScreen ? null :
-      BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xfff2a0ac),
-        unselectedItemColor: Colors.grey,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.chat),
-            label: I18n.t('chat'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.book),
-            label: I18n.t('story'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.people),
-            label: I18n.t('role'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.settings),
-            label: I18n.t('settings'),
-          ),
-        ],
-      ),
+      bottomNavigationBar: _isFullScreen
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+                if (index == 1) unawaited(_refreshHistoryList());
+                if (index == 2) unawaited(_refreshStudentList());
+              },
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: const Color(0xfff2a0ac),
+              unselectedItemColor: Colors.grey,
+              items: [
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.chat),
+                  label: I18n.t('chat'),
+                ),
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.book),
+                  label: I18n.t('story'),
+                ),
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.people),
+                  label: I18n.t('role'),
+                ),
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.settings),
+                  label: I18n.t('settings'),
+                ),
+              ],
+            ),
     );
   }
 }
