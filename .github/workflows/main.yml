@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+' # Matches tags like v1.0.0, v2.1.5, etc.
+      - 'v[0-9]+.[0-9]+.[0-9]+*' # Matches tags like v1.0.0 and v2026.8.22.post1.
 
 jobs:
   web:
@@ -21,10 +21,71 @@ jobs:
           name: release-web
           path: build/web
 
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter build apk --release
+      - run: cp build/app/outputs/flutter-apk/app-release.apk build/MisonoTalk-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: build/MisonoTalk-android.apk
+
+  windows:
+    name: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter build windows --release
+      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/MisonoTalk-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: build/MisonoTalk-windows-x64.zip
+
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [web, android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-web
+          path: release-web
+      - run: |
+          mkdir -p release
+          cd release-web
+          zip -r ../release/MisonoTalk-web.zip .
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-android
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/*
+
   deploy:
     name: deploy
     needs: web
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Download artifact
@@ -34,7 +95,7 @@ jobs:
         path: ./build
 
     - name: Deploy to gh-pages
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./build
