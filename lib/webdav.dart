@@ -16,7 +16,13 @@ import 'non_web_utils.dart'
 class WebdavPage extends StatefulWidget {
   final String currentMessages;
   final Function(String) onRefresh;
-  const WebdavPage({super.key, required this.currentMessages,required this.onRefresh});
+  final Future<void> Function() onConfigRestored;
+  const WebdavPage({
+    super.key,
+    required this.currentMessages,
+    required this.onRefresh,
+    required this.onConfigRestored,
+  });
   @override
   WebdavPageState createState() => WebdavPageState();
 }
@@ -203,9 +209,9 @@ class WebdavPageState extends State<WebdavPage> {
                 ElevatedButton(
                   child: Text(I18n.t('file_restore')),
                   onPressed: () async {
-                    String? j = await pickFile();
-                    if (j != null) {
-                      try {
+                    try {
+                      String? j = await pickFile();
+                      if (j != null) {
                         bool? confirm = await showDialog<bool>(
                           context: context,
                           builder: (BuildContext context) {
@@ -234,13 +240,32 @@ class WebdavPageState extends State<WebdavPage> {
                           return;
                         }
                         await restoreFromJson(j);
-                        snackBarAlert(context, I18n.t('restore_success'));
-                      } catch (e) {
-                        snackBarAlert(context, I18n.t('restore_failed'));
-                        return;
+                        if (!mounted) return;
+                        await showDialog<void>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text(I18n.t('restore_success')),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text(I18n.t('confirm')),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        if (!mounted) return;
+                        await widget.onConfigRestored();
+                      } else {
+                        snackBarAlert(context, I18n.t('no_file_selected'));
                       }
-                    } else {
-                      snackBarAlert(context, I18n.t('no_file_selected'));
+                    } catch (e) {
+                      debugPrint('Failed to restore backup: $e');
+                      if (mounted) {
+                        snackBarAlert(context, I18n.t('restore_failed'));
+                      }
                     }
                   },
                 ),

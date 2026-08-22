@@ -21,6 +21,7 @@ import 'webdav.dart';
 import 'msgeditor.dart';
 import 'aidraw.dart';
 import 'formatconfig.dart';
+import 'display_settings_defaults.dart';
 import 'vitsconfig.dart';
 import 'vits.dart';
 import 'aidrawconfig.dart';
@@ -30,9 +31,15 @@ import 'chatview.dart' show displaySettings;
 final ValueNotifier<ThemeMode> themeModeNotifier =
     ValueNotifier(ThemeMode.system);
 final ValueNotifier<int> displaySettingsVersion = ValueNotifier(0);
+final ValueNotifier<int> appReloadVersion = ValueNotifier(0);
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _loadAppPreferences();
+  runApp(const MoetalkApp());
+}
+
+Future<void> _loadAppPreferences() async {
   final prefs = await SharedPreferences.getInstance();
   // 读取保存的主题设置
   final saved = prefs.getString('theme_mode');
@@ -44,17 +51,23 @@ main() async {
     themeModeNotifier.value = ThemeMode.system;
   }
   // 读取显示设置
-  displaySettings.fontSize = prefs.getDouble('display_font_size') ?? 20.0;
-  displaySettings.textColorHex = prefs.getString('display_text_color') ?? '';
-  displaySettings.nameColorHex = prefs.getString('display_name_color') ?? '';
-  displaySettings.textOutline = prefs.getBool('display_text_outline') ?? true;
+  displaySettings.fontSize =
+      prefs.getDouble('display_font_size') ?? defaultDisplayFontSize;
+  displaySettings.textColorHex =
+      prefs.getString('display_text_color') ?? defaultDisplayTextColorHex;
+  displaySettings.nameColorHex =
+      prefs.getString('display_name_color') ?? defaultDisplayNameColorHex;
+  displaySettings.textOutline =
+      prefs.getBool('display_text_outline') ?? defaultDisplayTextOutline;
   displaySettings.outlineWidth =
-      prefs.getDouble('display_outline_width') ?? 2.0;
+      prefs.getDouble('display_outline_width') ?? defaultDisplayOutlineWidth;
   displaySettings.outlineColorHex =
-      prefs.getString('display_outline_color') ?? '';
-  // NotificationHelper notificationHelper = NotificationHelper();
-  // await notificationHelper.initialize();
-  runApp(const MoetalkApp());
+      prefs.getString('display_outline_color') ?? defaultDisplayOutlineColorHex;
+}
+
+Future<void> reloadApplicationAfterRestore() async {
+  await _loadAppPreferences();
+  appReloadVersion.value++;
 }
 
 class MoetalkApp extends StatelessWidget {
@@ -62,15 +75,21 @@ class MoetalkApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeModeNotifier,
-      builder: (context, mode, child) {
-        return MaterialApp(
-          title: 'MoeTalk',
-          home: const MainPage(),
-          theme: lightTheme,
-          darkTheme: darkTheme,
-          themeMode: mode,
+    return ValueListenableBuilder<int>(
+      valueListenable: appReloadVersion,
+      builder: (context, reloadVersion, child) {
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeModeNotifier,
+          builder: (context, mode, child) {
+            return MaterialApp(
+              key: ValueKey(reloadVersion),
+              title: 'MoeTalk',
+              home: const MainPage(),
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: mode,
+            );
+          },
         );
       },
     );
@@ -1560,25 +1579,25 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   child: Text(I18n.t('cancel')),
                 ),
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final textColor = textColorCtrl.text.trim();
+                    final nameColor = nameColorCtrl.text.trim();
+                    final outlineColor = outlineColorCtrl.text.trim();
+                    await Future.wait<void>([
+                      setDisplayFontSize(fontSize),
+                      setDisplayTextColor(textColor),
+                      setDisplayNameColor(nameColor),
+                      setDisplayTextOutline(textOutline),
+                      setDisplayOutlineWidth(outlineWidth),
+                      setDisplayOutlineColor(outlineColor),
+                    ]);
+                    if (!mounted || !ctx.mounted) return;
                     displaySettings.fontSize = fontSize;
-                    displaySettings.textColorHex = textColorCtrl.text.trim();
-                    displaySettings.nameColorHex = nameColorCtrl.text.trim();
+                    displaySettings.textColorHex = textColor;
+                    displaySettings.nameColorHex = nameColor;
                     displaySettings.textOutline = textOutline;
                     displaySettings.outlineWidth = outlineWidth;
-                    displaySettings.outlineColorHex =
-                        outlineColorCtrl.text.trim();
-                    SharedPreferences.getInstance().then((prefs) {
-                      prefs.setDouble('display_font_size', fontSize);
-                      prefs.setString(
-                          'display_text_color', textColorCtrl.text.trim());
-                      prefs.setString(
-                          'display_name_color', nameColorCtrl.text.trim());
-                      prefs.setBool('display_text_outline', textOutline);
-                      prefs.setDouble('display_outline_width', outlineWidth);
-                      prefs.setString('display_outline_color',
-                          outlineColorCtrl.text.trim());
-                    });
+                    displaySettings.outlineColorHex = outlineColor;
                     displaySettingsVersion.value++;
                     setState(() => _displaySettingsKey++);
                     Navigator.pop(ctx);
@@ -2887,6 +2906,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   MaterialPageRoute(
                     builder: (context) => WebdavPage(
                       currentMessages: msgListToJson(messages),
+                      onConfigRestored: reloadApplicationAfterRestore,
                       onRefresh: (String jsonString) {
                         setState(() {
                           _invalidateConversation();

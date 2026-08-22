@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'display_settings_defaults.dart';
 import 'utils.dart' show Message;
 
 // 全局显示设置（由 main.dart 或 storage 初始化时填充）
@@ -12,12 +13,12 @@ class DisplaySettings {
   String outlineColorHex;
 
   DisplaySettings({
-    this.fontSize = 20.0,
-    this.textColorHex = '',
-    this.nameColorHex = '',
-    this.textOutline = true,
-    this.outlineWidth = 2.0,
-    this.outlineColorHex = '',
+    this.fontSize = defaultDisplayFontSize,
+    this.textColorHex = defaultDisplayTextColorHex,
+    this.nameColorHex = defaultDisplayNameColorHex,
+    this.textOutline = defaultDisplayTextOutline,
+    this.outlineWidth = defaultDisplayOutlineWidth,
+    this.outlineColorHex = defaultDisplayOutlineColorHex,
   });
 }
 

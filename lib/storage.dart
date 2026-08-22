@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 // 用于 Uint8List
 import 'package:image/image.dart' as img; // 导入 image 包并重命名，避免冲突
 import 'utils.dart';
+import 'display_settings_defaults.dart';
 import 'package:http/http.dart' as http;
 import 'non_web_utils.dart' if (dart.library.html) 'web_utils.dart';
 import 'i18n.dart';
@@ -253,7 +254,7 @@ Future<String> convertToJson() async {
   final prefs = await SharedPreferences.getInstance();
   final keys = prefs.getKeys();
 
-  Map<String, dynamic> allPrefs = {};
+  Map<String, dynamic> allPrefs = Map.from(displaySettingsBackupDefaults);
   for (String key in keys) {
     allPrefs[key] = prefs.get(key);
   }
@@ -812,25 +813,33 @@ Future<bool> downloadHistorytoJson(String name, List<String> msgs) async {
 
 Future<String?> pickFile() async {
   FilePickerResult? result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['json'],
-    withData: true,
+    // Some Android 9 document providers do not handle application/json MIME
+    // filters. Pick any openable document and validate its JSON after reading.
+    type: FileType.any,
+    withData: false,
+    withReadStream: true,
   );
   if (result != null) {
     final file = result.files.single;
-    debugPrint("File selected: $file");
-    if (file.bytes != null) {
-      return utf8.decode(file.bytes!);
-    }
-    if (file.path != null) {
-      return File(file.path!).readAsString();
-    }
-    debugPrint('Selected file has no readable data or path.');
-    return null;
+    debugPrint('File selected: ${file.name} (${file.size} bytes)');
+    return readPickedFileContent(file);
   } else {
     debugPrint("No file selected, $result");
     return null;
   }
+}
+
+Future<String> readPickedFileContent(PlatformFile file) async {
+  if (file.readStream != null) {
+    return utf8.decoder.bind(file.readStream!).join();
+  }
+  if (file.bytes != null) {
+    return utf8.decode(file.bytes!);
+  }
+  if (!kIsWeb && file.path != null) {
+    return File(file.path!).readAsString();
+  }
+  throw const FileSystemException('Selected file has no readable content.');
 }
 
 Future<void> loadCharacterCard(context) async {
@@ -1050,7 +1059,7 @@ Future<void> setDisplayFontSize(double size) async {
 
 Future<double> getDisplayFontSize() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getDouble("display_font_size") ?? 20.0;
+  return prefs.getDouble("display_font_size") ?? defaultDisplayFontSize;
 }
 
 Future<void> setDisplayTextColor(String colorHex) async {
@@ -1060,7 +1069,7 @@ Future<void> setDisplayTextColor(String colorHex) async {
 
 Future<String> getDisplayTextColor() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString("display_text_color") ?? "";
+  return prefs.getString("display_text_color") ?? defaultDisplayTextColorHex;
 }
 
 Future<void> setDisplayNameColor(String colorHex) async {
@@ -1070,7 +1079,7 @@ Future<void> setDisplayNameColor(String colorHex) async {
 
 Future<String> getDisplayNameColor() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString("display_name_color") ?? "";
+  return prefs.getString("display_name_color") ?? defaultDisplayNameColorHex;
 }
 
 Future<void> setDisplayTextOutline(bool enable) async {
@@ -1080,7 +1089,7 @@ Future<void> setDisplayTextOutline(bool enable) async {
 
 Future<bool> getDisplayTextOutline() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getBool("display_text_outline") ?? true;
+  return prefs.getBool("display_text_outline") ?? defaultDisplayTextOutline;
 }
 
 Future<void> setDisplayOutlineWidth(double width) async {
@@ -1090,7 +1099,7 @@ Future<void> setDisplayOutlineWidth(double width) async {
 
 Future<double> getDisplayOutlineWidth() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getDouble("display_outline_width") ?? 2.0;
+  return prefs.getDouble("display_outline_width") ?? defaultDisplayOutlineWidth;
 }
 
 Future<void> setDisplayOutlineColor(String colorHex) async {
@@ -1100,5 +1109,6 @@ Future<void> setDisplayOutlineColor(String colorHex) async {
 
 Future<String> getDisplayOutlineColor() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString("display_outline_color") ?? "";
+  return prefs.getString("display_outline_color") ??
+      defaultDisplayOutlineColorHex;
 }
