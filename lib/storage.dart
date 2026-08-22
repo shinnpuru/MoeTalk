@@ -741,12 +741,16 @@ Future<SdConfig> getSdConfig() async {
 Future<void> restoreFromJson(jsonString) async {
   if (jsonString.isEmpty) return;
 
-  final prefs = await SharedPreferences.getInstance();
-  prefs.clear();
-  Map<String, dynamic> allPrefs = jsonDecode(jsonString);
+  final decoded = jsonDecode(jsonString);
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException('Backup must contain a JSON object.');
+  }
 
-  for (String key in allPrefs.keys) {
-    var value = allPrefs[key];
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear();
+
+  for (String key in decoded.keys) {
+    var value = decoded[key];
     if (value is String) {
       await prefs.setString(key, value);
     } else if (value is int) {
@@ -807,12 +811,22 @@ Future<bool> downloadHistorytoJson(String name, List<String> msgs) async {
 }
 
 Future<String?> pickFile() async {
-  FilePickerResult? result = await FilePicker.platform
-      .pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['json'],
+    withData: true,
+  );
   if (result != null) {
-    debugPrint("File selected: ${result.files.single}");
-    String content = utf8.decode(result.files.single.bytes!);
-    return content;
+    final file = result.files.single;
+    debugPrint("File selected: $file");
+    if (file.bytes != null) {
+      return utf8.decode(file.bytes!);
+    }
+    if (file.path != null) {
+      return File(file.path!).readAsString();
+    }
+    debugPrint('Selected file has no readable data or path.');
+    return null;
   } else {
     debugPrint("No file selected, $result");
     return null;
@@ -824,6 +838,7 @@ Future<void> loadCharacterCard(context) async {
   FilePickerResult? result = await FilePicker.platform.pickFiles(
     type: FileType.custom,
     allowedExtensions: ['png', 'json'],
+    withData: true,
   );
 
   if (result != null && result.files.single.bytes != null) {
