@@ -216,13 +216,14 @@ List<String> splitString(String input, List<String> patterns) {
   return result;
 }
 
-void snackBarAlert(BuildContext context, String msg) {
+void snackBarAlert(BuildContext context, String msg, {bool queue = false}) {
   if(!context.mounted) return;
-  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  if (!queue) ScaffoldMessenger.of(context).hideCurrentSnackBar();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       behavior: SnackBarBehavior.floating,
       content: Text(msg),
+      duration: queue ? const Duration(seconds: 2) : const Duration(seconds: 4),
       showCloseIcon: true
     ),
   );

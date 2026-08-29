@@ -142,6 +142,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Future<void> _tempHistoryWrite = Future<void>.value();
   Future<void> _characterSwitchWrite = Future<void>.value();
   int _conversationVersion = 0;
+  // Changes only when the conversation is invalidated, so sibling reply and
+  // draw tasks can append results without cancelling each other.
+  int _conversationEpoch = 0;
   int _replyOperation = 0;
   int _inspireOperation = 0;
   int _drawOperation = 0;
@@ -162,6 +165,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   void _invalidateConversation() {
     _conversationVersion++;
+    _conversationEpoch++;
     _replyOperation++;
     _inspireOperation++;
     _drawOperation++;
@@ -179,6 +183,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   bool _isCurrentConversation(int version) =>
       mounted && version == _conversationVersion;
+
+  bool _isCurrentConversationEpoch(int epoch) =>
+      mounted && epoch == _conversationEpoch;
 
   Future<void> _saveTempHistory() {
     final snapshot = msgListToJson(_copyMessages(messages));
@@ -706,6 +713,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     debugPrint("model: ${config.model}");
   }
 
+  void _showCompletionAlert({
+    required String title,
+    required String message,
+  }) {
+    if (!mounted) return;
+    if (isForeground) {
+      snackBarAlert(context, message, queue: true);
+    } else {
+      unawaited(notification.showNotification(
+        title: title,
+        body: message,
+        showAvator: false,
+      ));
+    }
+  }
+
   Future<void> sendMsg(bool realSend, {bool forceSend = false}) async {
     if (inputLock) {
       return;
@@ -734,15 +757,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       }
       userMsg = "";
     }
-    late final int requestVersion;
+    late final int requestEpoch;
     late final int operation;
     setState(() {
       inputLock = true;
       operation = ++_replyOperation;
-      requestVersion = _conversationVersion;
+      requestEpoch = _conversationEpoch;
       debugPrint("inputLocked");
     });
     final requestMessages = _copyMessages(messages);
+
+    if (_isAutoDraw) {
+      unawaited(getDraw(sourceMessages: requestMessages));
+    }
 
     void unlockInput() {
       if (mounted && operation == _replyOperation && inputLock) {
@@ -756,20 +783,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           requestMessages,
           currentStory != null ? jsonToMsg(currentStory![2]) : [],
           [Message(message: await getEndPrompt(), type: Message.system)]);
-      if (!_isCurrentConversation(requestVersion) ||
+      if (!_isCurrentConversationEpoch(requestEpoch) ||
           operation != _replyOperation) {
         return;
       }
       logMsg(msg);
       String response = await collectCompletion(config, msg);
-      if (!_isCurrentConversation(requestVersion) ||
+      if (!_isCurrentConversationEpoch(requestEpoch) ||
           operation != _replyOperation) {
         return;
       }
       response = response.replaceAll(RegExp(r'[\n\\]+'), r'\');
       response = randomizeBackslashes(response);
       response = response.replaceAll(RegExp(await getResponseRegex()), '');
-      if (!_isCurrentConversation(requestVersion) ||
+      if (!_isCurrentConversationEpoch(requestEpoch) ||
           operation != _replyOperation) {
         return;
       }
@@ -778,16 +805,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       debugPrint("done.");
       await _saveTempHistory();
       unlockInput();
-
-      if (_isAutoDraw) {
-        await getDraw();
+      if (_isCurrentConversationEpoch(requestEpoch) &&
+          operation == _replyOperation) {
+        _showCompletionAlert(
+          title: I18n.t('chat'),
+          message: I18n.t('reply_completed'),
+        );
       }
       if (_isAutoStatus) {
         await getStatus(forceGet: true, silent: true);
       }
     } catch (e) {
       debugPrint(e.toString());
-      if (_isCurrentConversation(requestVersion) &&
+      if (_isCurrentConversationEpoch(requestEpoch) &&
           operation == _replyOperation) {
         snackBarAlert(context, e.toString());
       }
@@ -1080,19 +1110,23 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> getDraw({int? beforeIndex}) async {
+  Future<void> getDraw({
+    int? beforeIndex,
+    List<Message>? sourceMessages,
+  }) async {
     if (_isDrawing) return;
     final operation = ++_drawOperation;
-    final conversationVersion = _conversationVersion;
+    final conversationEpoch = _conversationEpoch;
     setState(() => _isDrawing = true);
     try {
       await _runDraw(
         beforeIndex: beforeIndex,
-        conversationVersion: conversationVersion,
+        sourceMessages: sourceMessages,
+        conversationEpoch: conversationEpoch,
         operation: operation,
       );
     } catch (error) {
-      if (_isCurrentConversation(conversationVersion) &&
+      if (_isCurrentConversationEpoch(conversationEpoch) &&
           operation == _drawOperation) {
         snackBarAlert(context, "${I18n.t('error')} $error");
       }
@@ -1105,22 +1139,27 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> _runDraw({
     int? beforeIndex,
-    required int conversationVersion,
+    List<Message>? sourceMessages,
+    required int conversationEpoch,
     required int operation,
   }) async {
-    final List<Message> drawMessages = beforeIndex == null
-        ? _copyMessages(messages)
-        : _copyMessages(messages.take(beforeIndex));
+    final List<Message> drawMessages = sourceMessages != null
+        ? _copyMessages(sourceMessages)
+        : beforeIndex == null
+            ? _copyMessages(messages)
+            : _copyMessages(messages.take(beforeIndex));
     List<List<String>> msg = await parseMsg(
         drawMessages,
         currentStory != null ? jsonToMsg(currentStory![2]) : [],
         [Message(message: await getDrawPrompt(), type: Message.system)]);
-    if (!_isCurrentConversation(conversationVersion) ||
+    if (!_isCurrentConversationEpoch(conversationEpoch) ||
         operation != _drawOperation) {
       return;
     }
     // If auto-draw mode enabled, do not show dialog — generate prompt and image directly with retries.
     if (_isAutoDraw) {
+      if (!mounted) return;
+      snackBarAlert(context, I18n.t('generating'));
       final SdConfig sdConfig = await getSdConfig();
       const int maxRetries = 4;
       final String responseRegex = await getResponseRegex();
@@ -1130,7 +1169,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       bool promptOk = false;
       String lastPromptError = '';
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        if (!_isCurrentConversation(conversationVersion) ||
+        if (!_isCurrentConversationEpoch(conversationEpoch) ||
             operation != _drawOperation) {
           return;
         }
@@ -1183,7 +1222,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
         return;
       }
-      if (!_isCurrentConversation(conversationVersion) ||
+      if (!_isCurrentConversationEpoch(conversationEpoch) ||
           operation != _drawOperation) {
         return;
       }
@@ -1192,12 +1231,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       String? finalUrl;
       bool genOk = false;
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        if (!_isCurrentConversation(conversationVersion) ||
+        if (!_isCurrentConversationEpoch(conversationEpoch) ||
             operation != _drawOperation) {
           return;
         }
         try {
-          snackBarAlert(context, I18n.t('generating'));
           finalUrl = await generateImageTask(
             promptText: promptText,
             sdConfig: sdConfig,
@@ -1216,15 +1254,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         return;
       }
 
-      if (_isCurrentConversation(conversationVersion) &&
+      if (_isCurrentConversationEpoch(conversationEpoch) &&
           operation == _drawOperation) {
-        if (!isForeground) {
-          notification.showNotification(
-            title: '绘画',
-            body: '绘画完成！',
-            showAvator: false,
-          );
-        }
         final String finalUrlNonNull = finalUrl;
         setState(() {
           backgroundImage = DecorationImage(
@@ -1239,6 +1270,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           _conversationVersion++;
         });
         await _saveTempHistory();
+        if (_isCurrentConversationEpoch(conversationEpoch) &&
+            operation == _drawOperation) {
+          _showCompletionAlert(
+            title: I18n.t('drawing_config'),
+            message: I18n.t('draw_completed'),
+          );
+        }
       }
       return;
     }
@@ -1248,7 +1286,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         barrierDismissible: false,
         builder: (context) => AiDraw(msg: msg, config: config));
 
-    if (!_isCurrentConversation(conversationVersion) ||
+    if (!_isCurrentConversationEpoch(conversationEpoch) ||
         operation != _drawOperation) {
       return;
     }
@@ -1267,7 +1305,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         );
 
         if (finalUrl != null &&
-            _isCurrentConversation(conversationVersion) &&
+            _isCurrentConversationEpoch(conversationEpoch) &&
             operation == _drawOperation) {
           if (!isForeground) {
             notification.showNotification(
@@ -1283,7 +1321,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   initialImageUrl: finalUrl,
                   promptForRedraw: prompt));
 
-          if (!_isCurrentConversation(conversationVersion) ||
+          if (!_isCurrentConversationEpoch(conversationEpoch) ||
               operation != _drawOperation) {
             return;
           }
@@ -1310,7 +1348,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             await handleRedraw(
               previewResult['prompt'],
               previewResult['sdConfig'],
-              conversationVersion: conversationVersion,
+              conversationEpoch: conversationEpoch,
               operation: operation,
             );
           }
@@ -1319,7 +1357,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         if (mounted) snackBarAlert(context, "${I18n.t('error')} $e");
       }
     } else if (result is String &&
-        _isCurrentConversation(conversationVersion) &&
+        _isCurrentConversationEpoch(conversationEpoch) &&
         operation == _drawOperation) {
       setState(() {
         backgroundImage = DecorationImage(
@@ -1340,7 +1378,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Future<void> handleRedraw(
     String prompt,
     SdConfig sdConfig, {
-    required int conversationVersion,
+    required int conversationEpoch,
     required int operation,
   }) async {
     snackBarAlert(context, I18n.t('generating'));
@@ -1350,7 +1388,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         sdConfig: sdConfig,
       );
       if (finalUrl != null &&
-          _isCurrentConversation(conversationVersion) &&
+          _isCurrentConversationEpoch(conversationEpoch) &&
           operation == _drawOperation) {
         if (!isForeground) {
           notification.showNotification(
@@ -1364,7 +1402,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                 config: config,
                 initialImageUrl: finalUrl,
                 promptForRedraw: prompt));
-        if (!_isCurrentConversation(conversationVersion) ||
+        if (!_isCurrentConversationEpoch(conversationEpoch) ||
             operation != _drawOperation) {
           return;
         }
@@ -1387,7 +1425,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           await handleRedraw(
             previewResult['prompt'],
             previewResult['sdConfig'],
-            conversationVersion: conversationVersion,
+            conversationEpoch: conversationEpoch,
             operation: operation,
           );
         }
@@ -1753,7 +1791,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     if (_isGettingStatus) return;
 
     final operation = ++_statusOperation;
-    final conversationVersion = _conversationVersion;
+    final conversationEpoch = _conversationEpoch;
     setState(() => _isGettingStatus = true);
     Route<dynamic>? progressRoute;
     try {
@@ -1762,7 +1800,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         currentStory != null ? jsonToMsg(currentStory![2]) : [],
         [Message(message: await getStatusPrompt(), type: Message.system)],
       );
-      if (!_isCurrentConversation(conversationVersion) ||
+      if (!_isCurrentConversationEpoch(conversationEpoch) ||
           operation != _statusOperation) {
         return;
       }
@@ -1774,7 +1812,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       final result = await collectCompletion(config, msg);
       _closeDialogRoute(progressRoute);
       progressRoute = null;
-      if (!_isCurrentConversation(conversationVersion) ||
+      if (!_isCurrentConversationEpoch(conversationEpoch) ||
           operation != _statusOperation) {
         return;
       }
@@ -1782,15 +1820,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       final cleanResult =
           result.replaceAll(RegExp(await getResponseRegex()), '').trim();
       if (cleanResult.isNotEmpty &&
-          _isCurrentConversation(conversationVersion) &&
+          _isCurrentConversationEpoch(conversationEpoch) &&
           operation == _statusOperation) {
         setState(() => _characterStatus = cleanResult);
       }
-      if (!silent && _isCurrentConversation(conversationVersion)) {
+      if (!silent && _isCurrentConversationEpoch(conversationEpoch)) {
         _showStatusDialog();
       }
     } catch (e) {
-      if (_isCurrentConversation(conversationVersion) &&
+      if (_isCurrentConversationEpoch(conversationEpoch) &&
           operation == _statusOperation) {
         snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
       }
