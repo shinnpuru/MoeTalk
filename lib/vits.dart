@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 import 'civitai_client.dart';
 import 'storage.dart';
 import 'utils.dart';
+import 'voice_reference_service.dart';
 
 AudioPlayer? _activePlayer;
 int _playbackOperation = 0;
@@ -53,20 +54,37 @@ Future<String?> getAudio(BuildContext context, String query) async {
     throw Exception('Civitai API token is not configured');
   }
 
-  final refAudioUrl = await getVitsPrompt();
+  final refAudioSource = await getVitsPrompt();
   final refText = await getVitsPromptText();
   final civitaiClient = CivitaiClient(
     apiToken: apiToken,
     defaultTimeout: const Duration(minutes: 8),
   );
-
-  return civitaiClient.textToSpeech.createVoiceClone(
-    text: query,
-    refAudioUrl: refAudioUrl,
-    refText: refText,
-    language: vitsConfig.language,
-    timeout: const Duration(minutes: 8),
+  final referenceService = VoiceReferenceService(
+    civitaiClient: civitaiClient,
   );
+  var refAudioUrl = await referenceService.resolve(refAudioSource);
+
+  Future<String> submit() => civitaiClient.textToSpeech.createVoiceClone(
+        text: query,
+        refAudioUrl: refAudioUrl,
+        refText: refText,
+        language: vitsConfig.language,
+        timeout: const Duration(minutes: 8),
+      );
+
+  try {
+    return await submit();
+  } on CivitaiException catch (error) {
+    final referenceUnavailable = error.statusCode == 400 &&
+        error.message.toLowerCase().contains('download media');
+    if (!referenceUnavailable || refAudioSource.startsWith('urn:air:')) {
+      rethrow;
+    }
+    await referenceService.invalidate(refAudioSource);
+    refAudioUrl = await referenceService.resolve(refAudioSource);
+    return submit();
+  }
 }
 
 Future<String> queryAndPlayAudio(BuildContext context, String query) async {

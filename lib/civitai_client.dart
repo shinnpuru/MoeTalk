@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 /// Civitai API Client for Flutter/Dart
@@ -40,6 +42,154 @@ class CivitaiClient {
 
   /// Text-to-speech service instance
   TextToSpeechService get textToSpeech => TextToSpeechService(this);
+
+  /// Consumer blob upload and refresh service.
+  BlobService get blobs => BlobService(this);
+}
+
+class CivitaiBlob {
+  final String id;
+  final bool available;
+  final String? url;
+  final DateTime? urlExpiresAt;
+
+  const CivitaiBlob({
+    required this.id,
+    required this.available,
+    this.url,
+    this.urlExpiresAt,
+  });
+
+  String get air => 'urn:air:other:other:orchestrator:blob@$id';
+
+  factory CivitaiBlob.fromJson(Map<String, dynamic> json) {
+    final id = json['id']?.toString() ?? '';
+    if (id.isEmpty) {
+      throw const FormatException(
+          'Civitai blob response did not include an ID');
+    }
+    return CivitaiBlob(
+      id: id,
+      available: json['available'] == true,
+      url: json['url']?.toString(),
+      urlExpiresAt: DateTime.tryParse(json['urlExpiresAt']?.toString() ?? ''),
+    );
+  }
+}
+
+class BlobService {
+  final CivitaiClient _client;
+
+  BlobService(this._client);
+
+  Future<CivitaiBlob> uploadWav(
+    Uint8List wavBytes, {
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    if (wavBytes.isEmpty) {
+      throw ArgumentError('Voice reference audio cannot be empty');
+    }
+
+    var uploadUri = Uri.parse('${_client.baseUrl}/v2/consumer/blobs');
+    var uploadHeaders = <String, String>{
+      'Authorization': 'Bearer ${_client.apiToken}',
+      'Content-Type': 'audio/wav',
+      'Accept': 'application/json',
+    };
+    if (kIsWeb) {
+      final presignResponse = await http
+          .get(
+            Uri.parse('${_client.baseUrl}/v2/consumer/blobs/upload'),
+            headers: _client._headers,
+          )
+          .timeout(timeout);
+      if (presignResponse.statusCode != 200) {
+        throw CivitaiException(
+          presignResponse.statusCode,
+          _blobProblemMessage(
+            presignResponse.body,
+            'Failed to prepare voice reference upload',
+          ),
+        );
+      }
+      final presign = _decodeBlobResponse(presignResponse.body);
+      final uploadUrl = presign['uploadUrl']?.toString() ?? '';
+      if (uploadUrl.isEmpty) {
+        throw const FormatException(
+          'Civitai did not return a voice reference upload URL',
+        );
+      }
+      uploadUri = Uri.parse(uploadUrl);
+      uploadHeaders = const {
+        'Content-Type': 'audio/wav',
+        'Accept': 'application/json',
+      };
+    }
+
+    final response = await http
+        .post(
+          uploadUri,
+          headers: uploadHeaders,
+          body: wavBytes,
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw CivitaiException(
+        response.statusCode,
+        _blobProblemMessage(response.body, 'Failed to upload voice reference'),
+      );
+    }
+    return CivitaiBlob.fromJson(_decodeBlobResponse(response.body));
+  }
+
+  Future<CivitaiBlob> refresh(
+    String blobId, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (blobId.trim().isEmpty) {
+      throw ArgumentError('Blob ID cannot be empty');
+    }
+    final encodedId = Uri.encodeComponent(blobId.trim());
+    final response = await http
+        .post(
+          Uri.parse('${_client.baseUrl}/v2/consumer/blobs/$encodedId/refresh'),
+          headers: _client._headers,
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw CivitaiException(
+        response.statusCode,
+        _blobProblemMessage(response.body, 'Failed to refresh voice reference'),
+      );
+    }
+    return CivitaiBlob.fromJson(_decodeBlobResponse(response.body));
+  }
+
+  static Map<String, dynamic> _decodeBlobResponse(String body) {
+    final decoded = json.decode(body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Civitai returned an invalid blob response');
+    }
+    return decoded;
+  }
+
+  static String _blobProblemMessage(String body, String fallback) {
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map) {
+        final errors = decoded['errors'];
+        if (errors is Map && errors['messages'] is List) {
+          return (errors['messages'] as List).join('; ');
+        }
+        return decoded['detail']?.toString() ??
+            decoded['title']?.toString() ??
+            fallback;
+      }
+    } catch (_) {
+      // Use the stable fallback for non-JSON responses.
+    }
+    return fallback;
+  }
 }
 
 /// Civitai orchestration text-to-speech recipe service.
@@ -267,7 +417,7 @@ class ImageService {
   ImageService(this._client);
 
   /// Create an image generation job
-  /// 
+  ///
   /// [input] - The input configuration for image generation
   /// [wait] - Whether to wait for the job to complete (long polling)
   /// [timeout] - Custom timeout duration (defaults to client's defaultTimeout)
@@ -306,7 +456,9 @@ class ImageService {
       body: json.encode(jobInput),
     );
 
-    if (response.statusCode != 200 && response.statusCode != 201 && response.statusCode != 202) {
+    if (response.statusCode != 200 &&
+        response.statusCode != 201 &&
+        response.statusCode != 202) {
       throw CivitaiException(
         response.statusCode,
         'Failed to create job: ${response.body}',
@@ -376,7 +528,8 @@ class ImageService {
     }
 
     if (lastResponse != null) {
-      print('Warning: Job did not complete within ${timeout.inMinutes} minutes');
+      print(
+          'Warning: Job did not complete within ${timeout.inMinutes} minutes');
       return lastResponse;
     }
 
@@ -564,7 +717,12 @@ class ControlNet {
 
   void validate() {
     if (preprocessor != null) {
-      const validPreprocessors = ['Canny', 'DepthZoe', 'SoftedgePidinet', 'Rembg'];
+      const validPreprocessors = [
+        'Canny',
+        'DepthZoe',
+        'SoftedgePidinet',
+        'Rembg'
+      ];
       if (!validPreprocessors.contains(preprocessor)) {
         throw ArgumentError('Invalid preprocessor: $preprocessor');
       }
@@ -596,9 +754,7 @@ class ImageResponse {
   factory ImageResponse.fromJson(Map<String, dynamic> json) {
     return ImageResponse(
       token: json['token'] ?? '',
-      jobs: (json['jobs'] as List?)
-              ?.map((job) => Job.fromJson(job))
-              .toList() ??
+      jobs: (json['jobs'] as List?)?.map((job) => Job.fromJson(job)).toList() ??
           [],
     );
   }
@@ -679,9 +835,7 @@ class QueryJobsResult {
 
   factory QueryJobsResult.fromJson(Map<String, dynamic> json) {
     return QueryJobsResult(
-      jobs: (json['jobs'] as List?)
-              ?.map((job) => Job.fromJson(job))
-              .toList() ??
+      jobs: (json['jobs'] as List?)?.map((job) => Job.fromJson(job)).toList() ??
           [],
       cursor: json['cursor'],
     );
