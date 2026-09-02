@@ -42,4 +42,67 @@ void main() {
     expect(stored.apiToken, 'voice-token');
     expect(stored.language, 'Chinese');
   });
+
+  test('updates voice fields on the active character card', () async {
+    SharedPreferences.setMockInitialValues({
+      'name': 'Shared name',
+      'active_student_timestamp': 'second',
+      'student_first_Shared name': <String>[
+        'Shared name',
+        'avatar 1',
+        'hello 1',
+        'description 1',
+        'first',
+        'draw 1',
+        'old-1.wav',
+        'lora 1',
+        'old transcript 1',
+      ],
+      'student_second_Shared name': <String>[
+        'Shared name',
+        'avatar 2',
+        'hello 2',
+        'description 2',
+        'second',
+        'draw 2',
+        'old-2.wav',
+        'lora 2',
+        'old transcript 2',
+      ],
+    });
+
+    await updateActiveStudentVoice('new.mp3', 'new transcript');
+
+    final prefs = await SharedPreferences.getInstance();
+    final first = prefs.getStringList('student_first_Shared name')!;
+    final second = prefs.getStringList('student_second_Shared name')!;
+    expect(first[6], 'old-1.wav');
+    expect(first[8], 'old transcript 1');
+    expect(second[6], 'new.mp3');
+    expect(second[8], 'new transcript');
+    expect(await getVitsPrompt(), 'new.mp3');
+    expect(await getVitsPromptText(), 'new transcript');
+  });
+
+  test('updates an existing character by name before a new switch', () async {
+    SharedPreferences.setMockInitialValues({
+      'name': 'Legacy character',
+      'student_123_Legacy character': <String>[
+        'Legacy character',
+        'avatar',
+        'hello',
+        'description',
+        '123',
+        'draw',
+        'old.wav',
+        'lora',
+        'old transcript',
+      ],
+    });
+
+    await updateActiveStudentVoice('updated.wav', 'updated transcript');
+
+    expect(await getVitsPrompt(), 'updated.wav');
+    expect(await getVitsPromptText(), 'updated transcript');
+  });
 }

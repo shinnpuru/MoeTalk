@@ -185,12 +185,19 @@ Future<void> addStudent(String name, String avatar, String firstMes,
     drawLora,
     vitsPromptText
   ]);
+  await prefs.setString('active_student_timestamp', timeStamp);
 }
 
 Future<void> deleteStudent(String key) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   if (prefs.containsKey(key)) {
+    final student = prefs.getStringList(key);
     await prefs.remove(key);
+    if (student != null &&
+        student.length > 4 &&
+        prefs.getString('active_student_timestamp') == student[4]) {
+      await prefs.remove('active_student_timestamp');
+    }
   } else {
     debugPrint("key not found: $key");
   }
@@ -342,15 +349,25 @@ Future<String> getVitsPrompt({bool isDefault = false}) async {
 
   // 1. 先尝试获取当前角色的 vits_prompt
   if (!isDefault) {
+    final activeTimestamp = prefs.getString('active_student_timestamp');
     final currentName = await getStudentName();
     final students = await getStudents();
-    for (final student in students) {
-      if (student.isNotEmpty && student[0] == currentName) {
-        // 索引 6 是 vits_prompt
-        if (student.length > 6 && student[6].isNotEmpty) {
-          return student[6];
+    if (activeTimestamp != null && activeTimestamp.isNotEmpty) {
+      for (final student in students) {
+        if (student.length > 6 && student[4] == activeTimestamp) {
+          if (student[6].isNotEmpty) return student[6];
+          break;
         }
-        break;
+      }
+    } else {
+      for (final student in students) {
+        if (student.isNotEmpty && student[0] == currentName) {
+          // 索引 6 是 vits_prompt
+          if (student.length > 6 && student[6].isNotEmpty) {
+            return student[6];
+          }
+          break;
+        }
       }
     }
   }
@@ -368,18 +385,74 @@ Future<void> setVitsPromptText(String text) async {
   await prefs.setString("vits_prompt_text", text);
 }
 
+Future<void> setActiveStudentTimestamp(String timestamp) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('active_student_timestamp', timestamp);
+}
+
+Future<void> updateActiveStudentVoice(
+    String vitsPrompt, String vitsPromptText) async {
+  final prefs = await SharedPreferences.getInstance();
+  final activeTimestamp = prefs.getString('active_student_timestamp');
+  final activeName = prefs.getString('name');
+  String? fallbackKey;
+
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith('student_')) continue;
+    final student = prefs.getStringList(key);
+    if (student == null || student.isEmpty) continue;
+    while (student.length < 9) {
+      student.add('');
+    }
+
+    if (activeTimestamp != null &&
+        activeTimestamp.isNotEmpty &&
+        student[4] == activeTimestamp) {
+      student[6] = vitsPrompt;
+      student[8] = vitsPromptText;
+      await prefs.setStringList(key, student);
+      return;
+    }
+    if (fallbackKey == null && activeName != null && student[0] == activeName) {
+      fallbackKey = key;
+    }
+  }
+
+  // Older installs do not have an active timestamp until the next character
+  // switch. Matching by name preserves editing for those existing sessions.
+  if (fallbackKey != null) {
+    final student = prefs.getStringList(fallbackKey)!;
+    while (student.length < 9) {
+      student.add('');
+    }
+    student[6] = vitsPrompt;
+    student[8] = vitsPromptText;
+    await prefs.setStringList(fallbackKey, student);
+  }
+}
+
 Future<String> getVitsPromptText({bool isDefault = false}) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
 
   if (!isDefault) {
+    final activeTimestamp = prefs.getString('active_student_timestamp');
     final currentName = await getStudentName();
     final students = await getStudents();
-    for (final student in students) {
-      if (student.isNotEmpty && student[0] == currentName) {
-        if (student.length > 8 && student[8].isNotEmpty) {
-          return student[8];
+    if (activeTimestamp != null && activeTimestamp.isNotEmpty) {
+      for (final student in students) {
+        if (student.length > 8 && student[4] == activeTimestamp) {
+          if (student[8].isNotEmpty) return student[8];
+          break;
         }
-        break;
+      }
+    } else {
+      for (final student in students) {
+        if (student.isNotEmpty && student[0] == currentName) {
+          if (student.length > 8 && student[8].isNotEmpty) {
+            return student[8];
+          }
+          break;
+        }
       }
     }
   }
@@ -900,6 +973,7 @@ Future<void> loadCharacterCard(context) async {
 
     final prefs = await SharedPreferences.getInstance();
     if (allPrefs.containsKey("data")) {
+      await prefs.remove('active_student_timestamp');
       Map<String, dynamic> data = allPrefs["data"];
       for (String key in data.keys) {
         if (key == "name" ||

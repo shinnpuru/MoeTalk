@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'storage.dart';
 import 'i18n.dart';
 import 'openai.dart';
+import 'avatar_image.dart';
 
 class PromptEditor extends StatefulWidget {
   const PromptEditor({super.key});
@@ -87,9 +88,8 @@ class PromptEditorState extends State<PromptEditor> {
 
   Future<void> _pickAvatar() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']
-    );
+        type: FileType.custom,
+        allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']);
 
     if (result != null && result.files.single.bytes != null) {
       if (result.files.single.size > 1024 * 1024) {
@@ -116,15 +116,17 @@ class PromptEditorState extends State<PromptEditor> {
       }
 
       String base64Image = base64Encode(result.files.single.bytes!);
-      final base64String = 'data:image/${result.files.single.extension};base64,$base64Image';
+      final base64String =
+          'data:image/${result.files.single.extension};base64,$base64Image';
       setState(() {
         studentAvatarController.text = base64String;
       });
     }
   }
 
-  Future<void> _showEditDialog(BuildContext context, String title,
-      TextEditingController controller, {bool multiLine = false}) async {
+  Future<void> _showEditDialog(
+      BuildContext context, String title, TextEditingController controller,
+      {bool multiLine = false}) async {
     final TextEditingController dialogController =
         TextEditingController(text: controller.text);
     return showDialog<void>(
@@ -206,8 +208,8 @@ class PromptEditorState extends State<PromptEditor> {
       for (final proxy in proxies) {
         try {
           final response = await http.get(proxy.uri).timeout(
-            const Duration(seconds: 8),
-          );
+                const Duration(seconds: 8),
+              );
           if (response.statusCode >= 200 &&
               response.statusCode < 300 &&
               response.body.isNotEmpty) {
@@ -232,7 +234,8 @@ class PromptEditorState extends State<PromptEditor> {
           options: Options(
             responseType: ResponseType.plain,
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             },
           ),
         );
@@ -401,7 +404,8 @@ class PromptEditorState extends State<PromptEditor> {
       }
 
       debugPrint('[AI Generate] 即将发送给 LLM 的内容长度: ${userContent.length}');
-      debugPrint('[AI Generate] 内容预览前500字:\n${userContent.length > 500 ? userContent.substring(0, 500) : userContent}');
+      debugPrint(
+          '[AI Generate] 内容预览前500字:\n${userContent.length > 500 ? userContent.substring(0, 500) : userContent}');
 
       // 获取当前 LLM 配置
       final configs = await getApiConfigs();
@@ -412,7 +416,7 @@ class PromptEditorState extends State<PromptEditor> {
 
       final config = configs.first;
 
-            final String systemPrompt = await getCharacterGenPrompt();
+      final String systemPrompt = await getCharacterGenPrompt();
 
       final messages = [
         ['system', systemPrompt],
@@ -426,7 +430,8 @@ class PromptEditorState extends State<PromptEditor> {
         responseBuffer.write(chunk);
         debugPrint('[AI Generate] 接收到 LLM chunk: $chunk');
       }, () {
-        debugPrint('[AI Generate] onDone 触发, context.mounted=${context.mounted}');
+        debugPrint(
+            '[AI Generate] onDone 触发, context.mounted=${context.mounted}');
         if (finished) return;
         finished = true;
         if (mounted) setState(() => _isGenerating = false);
@@ -439,7 +444,8 @@ class PromptEditorState extends State<PromptEditor> {
             return;
           }
           // 尝试提取 ```json 代码块
-          final jsonMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(raw);
+          final jsonMatch =
+              RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(raw);
           if (jsonMatch != null) {
             raw = jsonMatch.group(1)!.trim();
           }
@@ -447,7 +453,8 @@ class PromptEditorState extends State<PromptEditor> {
           debugPrint('[AI Generate] 解析后的 JSON: $result');
 
           setState(() {
-            if (result['name'] != null && result['name'].toString().isNotEmpty) {
+            if (result['name'] != null &&
+                result['name'].toString().isNotEmpty) {
               studentNameController.text = result['name'].toString();
             }
             if (result['first_mes'] != null) {
@@ -457,7 +464,8 @@ class PromptEditorState extends State<PromptEditor> {
               controller.text = result['description'].toString();
             }
             if (result['draw_char_prompt'] != null) {
-              drawCharPromptController.text = result['draw_char_prompt'].toString();
+              drawCharPromptController.text =
+                  result['draw_char_prompt'].toString();
             }
           });
 
@@ -468,7 +476,8 @@ class PromptEditorState extends State<PromptEditor> {
           }
         } catch (e) {
           final rawStr = responseBuffer.toString();
-          final preview = rawStr.length > 500 ? rawStr.substring(0, 500) : rawStr;
+          final preview =
+              rawStr.length > 500 ? rawStr.substring(0, 500) : rawStr;
           showDialogMsg('解析返回数据失败：$e\n\n原始返回：\n$preview');
         }
       }, (err) {
@@ -500,12 +509,18 @@ class PromptEditorState extends State<PromptEditor> {
                 icon: const Icon(Icons.refresh),
                 onPressed: () async {
                   controller.text = await getPrompt(isDefault: true);
-                  studentNameController.text = await getStudentName(isDefault: true);
-                  originMsgController.text = await getOriginalMsg(isDefault: true);
-                  studentAvatarController.text = await getAvatar(isDefault: true);
-                  drawCharPromptController.text = await getDrawCharPrompt(isDefault: true);
-                  vitsPromptController.text = await getVitsPrompt(isDefault: true);
-                  vitsPromptTextController.text = await getVitsPromptText(isDefault: true);
+                  studentNameController.text =
+                      await getStudentName(isDefault: true);
+                  originMsgController.text =
+                      await getOriginalMsg(isDefault: true);
+                  studentAvatarController.text =
+                      await getAvatar(isDefault: true);
+                  drawCharPromptController.text =
+                      await getDrawCharPrompt(isDefault: true);
+                  vitsPromptController.text =
+                      await getVitsPrompt(isDefault: true);
+                  vitsPromptTextController.text =
+                      await getVitsPromptText(isDefault: true);
                   drawLoraController.text = await getDrawLora(isDefault: true);
                   setState(() {});
                 },
@@ -513,16 +528,22 @@ class PromptEditorState extends State<PromptEditor> {
               // 保存
               IconButton(
                 icon: const Icon(Icons.save),
-                onPressed: () {
-                  setPrompt(controller.text);
-                  setStudentName(studentNameController.text);
-                  setOriginalMsg(originMsgController.text);
-                  setAvatar(studentAvatarController.text);
-                  setDrawCharPrompt(drawCharPromptController.text);
-                  setVitsPrompt(vitsPromptController.text);
-                  setVitsPromptText(vitsPromptTextController.text);
-                  setDrawLora(drawLoraController.text);
-                  Navigator.pop(context);
+                onPressed: () async {
+                  await updateActiveStudentVoice(
+                    vitsPromptController.text,
+                    vitsPromptTextController.text,
+                  );
+                  await Future.wait<void>([
+                    setPrompt(controller.text),
+                    setStudentName(studentNameController.text),
+                    setOriginalMsg(originMsgController.text),
+                    setAvatar(studentAvatarController.text),
+                    setDrawCharPrompt(drawCharPromptController.text),
+                    setVitsPrompt(vitsPromptController.text),
+                    setVitsPromptText(vitsPromptTextController.text),
+                    setDrawLora(drawLoraController.text),
+                  ]);
+                  if (context.mounted) Navigator.pop(context);
                 },
               ),
             ],
@@ -538,11 +559,8 @@ class PromptEditorState extends State<PromptEditor> {
                 child: Center(
                   child: CircleAvatar(
                     radius: 50,
-                    backgroundImage: studentAvatarController.text.startsWith('http')
-                    ? NetworkImage(studentAvatarController.text)
-                    : studentAvatarController.text.startsWith('data:image/')
-                      ? MemoryImage(base64Decode(studentAvatarController.text.split(',')[1]))
-                      : const AssetImage("assets/avatar.png")
+                    backgroundImage:
+                        avatarImageProvider(studentAvatarController.text),
                   ),
                 ),
               ),
@@ -553,8 +571,8 @@ class PromptEditorState extends State<PromptEditor> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                onTap: () =>
-                    _showEditDialog(context, I18n.t('character_name'), studentNameController),
+                onTap: () => _showEditDialog(
+                    context, I18n.t('character_name'), studentNameController),
               ),
               ListTile(
                 title: Text(I18n.t('initial_dialogue')),
@@ -563,7 +581,8 @@ class PromptEditorState extends State<PromptEditor> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                onTap: () => _showEditDialog(context, I18n.t('initial_dialogue'), originMsgController,
+                onTap: () => _showEditDialog(
+                    context, I18n.t('initial_dialogue'), originMsgController,
                     multiLine: true),
               ),
               ListTile(
@@ -574,8 +593,9 @@ class PromptEditorState extends State<PromptEditor> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontFamily: "Courier"),
                 ),
-                onTap: () =>
-                    _showEditDialog(context, I18n.t('setting_prompt'), controller, multiLine: true),
+                onTap: () => _showEditDialog(
+                    context, I18n.t('setting_prompt'), controller,
+                    multiLine: true),
               ),
               ListTile(
                 title: Text(I18n.t('draw_prompt')),
@@ -584,23 +604,30 @@ class PromptEditorState extends State<PromptEditor> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                onTap: () => _showEditDialog(context, I18n.t('draw_prompt'), drawCharPromptController,
+                onTap: () => _showEditDialog(
+                    context, I18n.t('draw_prompt'), drawCharPromptController,
                     multiLine: true),
               ),
               ListTile(
                 title: const Text('LoRA'),
                 subtitle: Text(
-                  drawLoraController.text.isEmpty 
-                    ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>' 
-                    : drawLoraController.text,
+                  drawLoraController.text.isEmpty
+                      ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>'
+                      : drawLoraController.text,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: drawLoraController.text.isEmpty ? Colors.grey : null,
-                    fontStyle: drawLoraController.text.isEmpty ? FontStyle.italic : null,
+                    fontStyle: drawLoraController.text.isEmpty
+                        ? FontStyle.italic
+                        : null,
                   ),
                 ),
-                onTap: () => _showEditDialog(context, 'LoRA (Single or <URN:weight>,<URN:weight>)', drawLoraController, multiLine: true),
+                onTap: () => _showEditDialog(
+                    context,
+                    'LoRA (Single or <URN:weight>,<URN:weight>)',
+                    drawLoraController,
+                    multiLine: true),
               ),
               ListTile(
                 title: Text(I18n.t('voice_ref')),
@@ -609,7 +636,8 @@ class PromptEditorState extends State<PromptEditor> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                onTap: () => _showEditDialog(context, I18n.t('voice_ref'), vitsPromptController,
+                onTap: () => _showEditDialog(
+                    context, I18n.t('voice_ref'), vitsPromptController,
                     multiLine: true),
               ),
               ListTile(
@@ -619,8 +647,9 @@ class PromptEditorState extends State<PromptEditor> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                onTap: () => _showEditDialog(context, I18n.t('voice_ref_text'),
-                    vitsPromptTextController, multiLine: true),
+                onTap: () => _showEditDialog(
+                    context, I18n.t('voice_ref_text'), vitsPromptTextController,
+                    multiLine: true),
               ),
             ],
           ),

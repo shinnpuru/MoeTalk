@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -27,6 +26,7 @@ import 'vits.dart';
 import 'aidrawconfig.dart';
 import 'i18n.dart';
 import 'chatview.dart' show displaySettings;
+import 'avatar_image.dart';
 
 final ValueNotifier<ThemeMode> themeModeNotifier =
     ValueNotifier(ThemeMode.system);
@@ -683,11 +683,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       studentName = values[1];
       avatar = values[2];
       backgroundImage = DecorationImage(
-        image: (avatar.isNotEmpty && avatar.startsWith('http'))
-            ? NetworkImage(avatar)
-            : avatar.startsWith('data:image/')
-                ? MemoryImage(base64Decode(avatar.split(',')[1]))
-                : const AssetImage("assets/avatar.png") as ImageProvider,
+        image: avatarImageProvider(avatar),
         fit: BoxFit.cover,
         colorFilter: ColorFilter.mode(
           Colors.white.withOpacity(0.8),
@@ -2555,14 +2551,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       if (_avatarImageCache.containsKey(avatar)) {
         return _avatarImageCache[avatar]!;
       }
-      final ImageProvider imageProvider;
-      if (avatar.isNotEmpty && avatar.startsWith('http')) {
-        imageProvider = NetworkImage(avatar);
-      } else if (avatar.startsWith('data:image/')) {
-        imageProvider = MemoryImage(base64Decode(avatar.split(',')[1]));
-      } else {
-        imageProvider = const AssetImage("assets/avatar.png");
-      }
+      final imageProvider = avatarImageProvider(avatar);
       _avatarImageCache[avatar] = imageProvider;
       return imageProvider;
     }
@@ -2790,6 +2779,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                             setVitsPrompt(student[6]),
                             setDrawLora(student[7]),
                             setVitsPromptText(student[8]),
+                            setActiveStudentTimestamp(student[4]),
                           ]);
                           if (!mounted ||
                               operation != _characterSwitchOperation) {
