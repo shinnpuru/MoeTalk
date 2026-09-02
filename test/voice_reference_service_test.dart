@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moetalk/civitai_client.dart';
-import 'package:moetalk/voice_audio_normalizer.dart';
 import 'package:moetalk/voice_reference_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -200,29 +199,7 @@ void main() {
     expect(refreshes, 1);
   });
 
-  test('accepts WAV bytes without transcoding', () async {
-    final wav = Uint8List.fromList([
-      ...ascii.encode('RIFF'),
-      0,
-      0,
-      0,
-      0,
-      ...ascii.encode('WAVE'),
-    ]);
-
-    expect(identical(await prepareVoiceReferenceWav(wav), wav), isTrue);
-  });
-
-  test('rejects non-WAV references while transcoding is disabled', () {
-    final ogg = Uint8List.fromList(ascii.encode('OggS'));
-
-    expect(
-      () => prepareVoiceReferenceWav(ogg),
-      throwsA(isA<FormatException>()),
-    );
-  });
-
-  test('does not upload a downloaded non-WAV reference', () async {
+  test('does not upload a downloaded unsupported reference', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     var uploads = 0;

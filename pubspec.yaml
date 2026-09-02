@@ -40,6 +40,7 @@ dependencies:
   eventflux: ^2.2.0
   cupertino_icons: ^1.0.6
   dio: ^5.7.0
+  glint_audio_pure: ^0.6.2
   http: ^1.5.0
   crypto: ^3.0.6
   uuid: ^4.5.1

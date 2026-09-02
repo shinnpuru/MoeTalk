@@ -232,6 +232,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  glint_audio_pure:
+    dependency: "direct main"
+    description:
+      name: glint_audio_pure
+      sha256: "8ea3a95375ef8a3e5ad9100432973ccd0a2331e1d458aff09724a1dc1040d95f"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.6.2"
   http:
     dependency: "direct main"
     description:
@@ -284,7 +292,7 @@ packages:
     dependency: transitive
     description:
       name: leak_tracker
-      sha256: c35baad643ba394b40aac41080300150a4f08fd0fd6a10378f8f7c6bc161acec
+      sha256: c35baad643ba394b40aac41080300150a4f08fd6a10378f8f7c6bc161acec
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "10.0.8"
