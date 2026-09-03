@@ -41,6 +41,25 @@ void main() {
     final stored = await getVitsConfig();
     expect(stored.apiToken, 'voice-token');
     expect(stored.language, 'Chinese');
+    expect(stored.backend, TtsBackend.civitai);
+    expect(stored.audioCppBaseUrl, 'http://127.0.0.1:8080');
+  });
+
+  test('stores audio.cpp connection settings', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    await setVitsConfig(VitsConfig(
+      backend: TtsBackend.audioCpp,
+      language: 'Chinese',
+      audioCppBaseUrl: 'http://192.168.1.20:8080',
+      audioCppModel: 'qwen3-tts',
+    ));
+
+    final stored = await getVitsConfig();
+    expect(stored.backend, TtsBackend.audioCpp);
+    expect(stored.language, 'Chinese');
+    expect(stored.audioCppBaseUrl, 'http://192.168.1.20:8080');
+    expect(stored.audioCppModel, 'qwen3-tts');
   });
 
   test('updates voice fields on the active character card', () async {

@@ -3,6 +3,7 @@
         android:label="moetalk"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true"
         android:resizeableActivity="true">
         <activity

@@ -14,9 +14,79 @@ typedef VoiceAudioNormalizer = Future<Uint8List> Function(Uint8List bytes);
 typedef VoiceBlobUploader = Future<CivitaiBlob> Function(Uint8List wavBytes);
 typedef VoiceBlobRefresher = Future<CivitaiBlob> Function(String blobId);
 
+class VoiceReferenceLoader {
+  static const _maximumDownloadBytes = 16 * 1024 * 1024;
+
+  final VoiceAudioDownloader? downloader;
+  final VoiceAudioNormalizer normalizer;
+
+  const VoiceReferenceLoader({
+    this.downloader,
+    this.normalizer = prepareVoiceReferenceWav,
+  });
+
+  Future<Uint8List> loadWav(String source) async {
+    final trimmedSource = source.trim();
+    if (trimmedSource.isEmpty) {
+      throw ArgumentError('Voice reference audio is not configured');
+    }
+    final uri = Uri.tryParse(trimmedSource);
+    if (uri == null) {
+      throw ArgumentError.value(
+          source, 'source', 'Invalid voice reference URI');
+    }
+    Uint8List bytes;
+    if (uri.scheme == 'data') {
+      final data = UriData.fromUri(uri);
+      if (!data.mimeType.toLowerCase().startsWith('audio/')) {
+        throw ArgumentError('Voice reference data URI must contain audio');
+      }
+      bytes = Uint8List.fromList(data.contentAsBytes());
+      _checkDownloadSize(bytes.length);
+    } else if (uri.scheme == 'http' || uri.scheme == 'https') {
+      bytes = await (downloader ?? _downloadAudio)(uri);
+    } else {
+      throw ArgumentError(
+        'Voice reference must be an HTTP(S) or audio data URI',
+      );
+    }
+    return normalizer(bytes);
+  }
+
+  static Future<Uint8List> _downloadAudio(Uri uri) async {
+    final client = http.Client();
+    try {
+      final response = await client
+          .send(http.Request('GET', uri))
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw http.ClientException(
+          'Voice reference download failed with HTTP ${response.statusCode}',
+          uri,
+        );
+      }
+      final contentLength = response.contentLength;
+      if (contentLength != null) _checkDownloadSize(contentLength);
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in response.stream) {
+        builder.add(chunk);
+        _checkDownloadSize(builder.length);
+      }
+      return builder.takeBytes();
+    } finally {
+      client.close();
+    }
+  }
+
+  static void _checkDownloadSize(int bytes) {
+    if (bytes > _maximumDownloadBytes) {
+      throw ArgumentError('Voice reference exceeds the 16 MB size limit');
+    }
+  }
+}
+
 class VoiceReferenceService {
   static const _cacheKey = 'civitai_voice_blob_cache_v1';
-  static const _maximumDownloadBytes = 16 * 1024 * 1024;
   static final Map<String, Future<String>> _pendingResolutions = {};
 
   final CivitaiClient civitaiClient;
@@ -101,8 +171,10 @@ class VoiceReferenceService {
       }
     }
 
-    final sourceBytes = await _loadSource(source);
-    final wavBytes = await normalizer(sourceBytes);
+    final wavBytes = await VoiceReferenceLoader(
+      downloader: downloader,
+      normalizer: normalizer,
+    ).loadWav(source);
     final contentHash = sha256.convert(wavBytes).toString();
     final blobKey = '$accountKey:$contentHash';
     final contentCached = _mapValue(blobs[blobKey]);
@@ -149,60 +221,6 @@ class VoiceReferenceService {
       return blob.air;
     } catch (_) {
       return null;
-    }
-  }
-
-  Future<Uint8List> _loadSource(String source) async {
-    final uri = Uri.tryParse(source);
-    if (uri == null) {
-      throw ArgumentError.value(
-          source, 'source', 'Invalid voice reference URI');
-    }
-    if (uri.scheme == 'data') {
-      final data = UriData.fromUri(uri);
-      if (!data.mimeType.toLowerCase().startsWith('audio/')) {
-        throw ArgumentError('Voice reference data URI must contain audio');
-      }
-      final bytes = Uint8List.fromList(data.contentAsBytes());
-      _checkDownloadSize(bytes.length);
-      return bytes;
-    }
-    if (uri.scheme != 'http' && uri.scheme != 'https') {
-      throw ArgumentError(
-        'Voice reference must be an HTTP(S), data, or Civitai AIR URI',
-      );
-    }
-    return (downloader ?? _downloadAudio)(uri);
-  }
-
-  static Future<Uint8List> _downloadAudio(Uri uri) async {
-    final client = http.Client();
-    try {
-      final response = await client
-          .send(http.Request('GET', uri))
-          .timeout(const Duration(seconds: 30));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw http.ClientException(
-          'Voice reference download failed with HTTP ${response.statusCode}',
-          uri,
-        );
-      }
-      final contentLength = response.contentLength;
-      if (contentLength != null) _checkDownloadSize(contentLength);
-      final builder = BytesBuilder(copy: false);
-      await for (final chunk in response.stream) {
-        builder.add(chunk);
-        _checkDownloadSize(builder.length);
-      }
-      return builder.takeBytes();
-    } finally {
-      client.close();
-    }
-  }
-
-  static void _checkDownloadSize(int bytes) {
-    if (bytes > _maximumDownloadBytes) {
-      throw ArgumentError('Voice reference exceeds the 16 MB size limit');
     }
   }
 

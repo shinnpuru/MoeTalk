@@ -672,6 +672,9 @@ Future<void> setVitsConfig(VitsConfig config) async {
   await prefs.setStringList("civitai_tts_config", [
     config.apiToken ?? '',
     config.language,
+    config.backend.name,
+    config.audioCppBaseUrl,
+    config.audioCppModel,
   ]);
 }
 
@@ -679,7 +682,15 @@ Future<VitsConfig> getVitsConfig() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   final configList = prefs.getStringList("civitai_tts_config");
   final sharedCivitaiToken = await getCivitaiApiToken();
+  var backend = TtsBackend.civitai;
+  if (configList != null && configList.length > 2) {
+    backend = TtsBackend.values.firstWhere(
+      (value) => value.name == configList[2],
+      orElse: () => TtsBackend.civitai,
+    );
+  }
   return VitsConfig(
+    backend: backend,
     apiToken:
         configList != null && configList.isNotEmpty && configList[0].isNotEmpty
             ? configList[0]
@@ -688,6 +699,12 @@ Future<VitsConfig> getVitsConfig() async {
         configList != null && configList.length > 1 && configList[1].isNotEmpty
             ? configList[1]
             : 'Auto',
+    audioCppBaseUrl:
+        configList != null && configList.length > 3 && configList[3].isNotEmpty
+            ? configList[3]
+            : 'http://127.0.0.1:8080',
+    audioCppModel:
+        configList != null && configList.length > 4 ? configList[4] : '',
   );
 }
 

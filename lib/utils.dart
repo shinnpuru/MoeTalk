@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:moetalk/storage.dart';
 
-
 // type 1:asstant 2:user 3:system 4:timestamp
 class Message {
   String message;
@@ -43,26 +42,39 @@ class Config {
   String? presencePenalty;
   String? maxTokens;
 
-  Config({required this.name, required this.baseUrl, 
-    required this.apiKey, required this.model,
-    this.temperature, this.frequencyPenalty, 
-    this.presencePenalty, this.maxTokens});
+  Config(
+      {required this.name,
+      required this.baseUrl,
+      required this.apiKey,
+      required this.model,
+      this.temperature,
+      this.frequencyPenalty,
+      this.presencePenalty,
+      this.maxTokens});
 
   @override
   String toString() {
     return 'Config{name: $name, baseUrl: $baseUrl, apiKey: $apiKey, model: $model, '
-    'temperature: $temperature, frequencyPenalty: $frequencyPenalty, '
-    'presencePenalty: $presencePenalty, maxTokens: $maxTokens}';
+        'temperature: $temperature, frequencyPenalty: $frequencyPenalty, '
+        'presencePenalty: $presencePenalty, maxTokens: $maxTokens}';
   }
 }
 
+enum TtsBackend { civitai, audioCpp }
+
 class VitsConfig {
-  String? apiToken;
-  String language;
+  final TtsBackend backend;
+  final String? apiToken;
+  final String language;
+  final String audioCppBaseUrl;
+  final String audioCppModel;
 
   VitsConfig({
+    this.backend = TtsBackend.civitai,
     this.apiToken,
     this.language = 'Auto',
+    this.audioCppBaseUrl = 'http://127.0.0.1:8080',
+    this.audioCppModel = '',
   });
 }
 
@@ -101,7 +113,8 @@ class SdConfig {
 }
 
 String msgListToJson(List<Message> messages) {
-  List<Map<String, dynamic>> jsonList = messages.map((message) => message.toJson()).toList();
+  List<Map<String, dynamic>> jsonList =
+      messages.map((message) => message.toJson()).toList();
   return jsonEncode(jsonList);
 }
 
@@ -113,17 +126,17 @@ List<Message> jsonToMsg(String jsonString) {
 String timestampToSystemMsg(String timestr) {
   DateTime t = DateTime.fromMillisecondsSinceEpoch(int.parse(timestr));
   const weekday = ["", "一", "二", "三", "四", "五", "六", "日"];
-  var result =
-      "${t.year}年${t.month}月${t.day}日星期${weekday[t.weekday]}"
-      "${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}";
+  var result = "${t.year}年${t.month}月${t.day}日星期${weekday[t.weekday]}"
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
   return "下面的对话开始于 $result";
 }
 
-Future<List<List<String>>> parseMsg(List<Message> messages, List<Message> story, List<Message> function) async {
+Future<List<List<String>>> parseMsg(
+    List<Message> messages, List<Message> story, List<Message> function) async {
   final List<Message> template = await getContextTemplate();
 
   final List<List<String>> msg = [];
-  
+
   for (var t in template) {
     if (t.message == "charDescription") {
       final prompt = await getPrompt();
@@ -131,14 +144,14 @@ Future<List<List<String>>> parseMsg(List<Message> messages, List<Message> story,
     } else if (t.message == "chatHistory") {
       for (var m in messages) {
         if (m.type == Message.assistant) {
-          msg.add(["assistant",m.message]);
+          msg.add(["assistant", m.message]);
         } else if (m.type == Message.user) {
-          msg.add(["user",m.message]);
+          msg.add(["user", m.message]);
         } else if (m.type == Message.system) {
-          msg.add(["system",m.message]);
+          msg.add(["system", m.message]);
         } else if (m.type == Message.timestamp) {
           var timestr = timestampToSystemMsg(m.message);
-          msg.add(["system","下面的对话开始于$timestr"]);
+          msg.add(["system", "下面的对话开始于$timestr"]);
         }
       }
     } else if (t.message == "worldInfo") {
@@ -148,8 +161,8 @@ Future<List<List<String>>> parseMsg(List<Message> messages, List<Message> story,
     } else if (t.message == "callFunction") {
       for (var m in function) {
         msg.add(["user", m.message]);
-      } 
-    }else {
+      }
+    } else {
       String role = "system";
       if (t.type == Message.user) {
         role = "user";
@@ -191,7 +204,7 @@ String randomizeBackslashes(String resp) {
 
 List<String> splitString(String input, List<String> patterns) {
   String var1 = patterns[0], var2 = patterns[1];
-    List<String> result = [];
+  List<String> result = [];
   int i = 0;
   while (i < input.length) {
     if (input.startsWith(var1, i)) {
@@ -202,8 +215,7 @@ List<String> splitString(String input, List<String> patterns) {
       }
       result.add(input.substring(i, nextIndex));
       i = nextIndex;
-    }
-    else if (input.startsWith(var2, i)) {
+    } else if (input.startsWith(var2, i)) {
       int nextIndex = input.indexOf(var1, i);
       if (nextIndex == -1) {
         result.add(input.substring(i));
@@ -217,15 +229,15 @@ List<String> splitString(String input, List<String> patterns) {
 }
 
 void snackBarAlert(BuildContext context, String msg, {bool queue = false}) {
-  if(!context.mounted) return;
+  if (!context.mounted) return;
   if (!queue) ScaffoldMessenger.of(context).hideCurrentSnackBar();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      behavior: SnackBarBehavior.floating,
-      content: Text(msg),
-      duration: queue ? const Duration(seconds: 2) : const Duration(seconds: 4),
-      showCloseIcon: true
-    ),
+        behavior: SnackBarBehavior.floating,
+        content: Text(msg),
+        duration:
+            queue ? const Duration(seconds: 2) : const Duration(seconds: 4),
+        showCloseIcon: true),
   );
 }
 

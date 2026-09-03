@@ -9,6 +9,22 @@ import 'package:moetalk/voice_reference_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('loads and normalizes an audio data URI without Civitai', () async {
+    final source = Uint8List.fromList([1, 2, 3]);
+    final loader = VoiceReferenceLoader(
+      normalizer: (bytes) async {
+        expect(bytes, source);
+        return Uint8List.fromList([4, 5, 6]);
+      },
+    );
+
+    final wav = await loader.loadWav(
+      'data:audio/wav;base64,${base64Encode(source)}',
+    );
+
+    expect(wav, [4, 5, 6]);
+  });
+
   test('uploads WAV bytes with the Civitai blob API', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final received = Completer<void>();

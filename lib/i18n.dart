@@ -1,9 +1,9 @@
-
 class I18n {
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'welcome': 'Welcome',
-      'no_model_config': 'No model configuration detected.\nPlease configure to use normally.',
+      'no_model_config':
+          'No model configuration detected.\nPlease configure to use normally.',
       'start_config': 'Start Configuration',
       'no_status': 'No Status',
       'msg_empty': 'Current message is empty',
@@ -66,7 +66,8 @@ class I18n {
       'current_character': 'Current Character',
       'character_pool': 'Character Pool',
       'delete_character': 'Delete Character',
-      'delete_character_confirm': 'Are you sure you want to delete this character?',
+      'delete_character_confirm':
+          'Are you sure you want to delete this character?',
       'settings': 'Settings',
       'general_settings': 'General Settings',
       'backup_config': 'Backup Config',
@@ -75,6 +76,15 @@ class I18n {
       'feature_settings': 'Feature Settings',
       'drawing_config': 'Drawing Config',
       'voice_config': 'Voice Config',
+      'tts_backend': 'Voice Backend',
+      'audio_cpp_server': 'audio.cpp Server URL',
+      'audio_cpp_server_hint': 'For example: http://127.0.0.1:8080',
+      'audio_cpp_model': 'audio.cpp Model ID',
+      'audio_cpp_model_hint': 'The id configured in server.json',
+      'audio_cpp_test_connection': 'Test connection and find models',
+      'audio_cpp_connected': 'Connected; available models',
+      'audio_cpp_no_models': 'no configured models',
+      'audio_cpp_connect_failed': 'Connection failed',
       'about': 'About',
       'feedback': 'Feedback',
       'display_settings': 'Display Settings',
@@ -127,7 +137,8 @@ class I18n {
       'common_prompt': 'Common Prompt',
       'user_name': 'User Name',
       'context_template': 'Context Template',
-      'context_template_hint': 'Hint: Use {{user}} for user name and {{char}} for character name in prompts.',
+      'context_template_hint':
+          'Hint: Use {{user}} for user name and {{char}} for character name in prompts.',
       'output_regex': 'Output Regex Filter',
       'edit_title': 'Edit ',
       'chat_prompt': 'Chat Prompt',
@@ -160,7 +171,8 @@ class I18n {
       'voice_ref_text': 'Voice Reference Transcript',
       'base_config': 'Base Config',
       'civitai_api_token': 'Civitai API Token',
-      'tts_token_hint': 'Used by Civitai voice synthesis; the drawing token is used as a fallback.',
+      'tts_token_hint':
+          'Used by Civitai voice synthesis; the drawing token is used as a fallback.',
       'tts_language': 'Speech Language',
       'emotion_params': 'Emotion Parameters',
       'happy': 'Happy',
@@ -178,13 +190,15 @@ class I18n {
       'steps': 'Steps',
       'cfg': 'CFG',
       'prompt_config': 'Prompt Config',
-      'positive_prompt': 'Positive Prompt (Enter VERB as action placeholder, CHAR as character placeholder)',
+      'positive_prompt':
+          'Positive Prompt (Enter VERB as action placeholder, CHAR as character placeholder)',
       'negative_prompt': 'Negative Prompt',
       'local_backup_restore': 'Local Backup & Restore',
       'download_config': 'Download Config',
       'file_restore': 'Restore from File',
       'confirm_restore': 'Confirm Restore',
-      'restore_confirm_msg': 'This will overwrite current configuration, continue?',
+      'restore_confirm_msg':
+          'This will overwrite current configuration, continue?',
       'download_success': 'Download Successful',
       'download_failed': 'Download Failed',
       'restore_success': 'Restore Successful',
@@ -208,7 +222,8 @@ class I18n {
       'chara_metadata_not_found': "Error: 'chara' metadata not found.",
       'json_empty': 'Error: JSON string is empty.',
       'import_character_book': 'Import Character Book',
-      'import_character_book_msg': 'Character book detected in character card, import as story?',
+      'import_character_book_msg':
+          'Character book detected in character card, import as story?',
       'character_book_imported': 'Character book imported as story.',
       'download_card_error': 'Error downloading character card: ',
       'ping_ok': 'Ping OK',
@@ -222,23 +237,33 @@ class I18n {
       'time': 'Time',
       'image': 'Image',
       'unknown': '?',
-      'about_text': 'MoeTalk is an open-source Flutter-based chat application that uses Large Language Models for dialogue generation and Diffusion Models for voice and image synthesis.\n\nYour data is stored entirely on your device; this application does not collect any personal information.\n\nCode repository: https://github.com/shinnpuru/MoeTalk',
+      'about_text':
+          'MoeTalk is an open-source Flutter-based chat application that uses Large Language Models for dialogue generation and Diffusion Models for voice and image synthesis.\n\nYour data is stored entirely on your device; this application does not collect any personal information.\n\nCode repository: https://github.com/shinnpuru/MoeTalk',
       'default_user_name': 'Teacher',
       'default_student_name': 'Shinnpuru',
       'default_first_msg': 'Hello, I am Shinnpuru. How can I help you today?',
-      'default_prompt': 'You are an AI assistant named Shinnpuru. You can answer user questions, provide help and advice. Please communicate with the user in English.',
-      'default_draw_prompt': 'Your task is to generate a series of prompts based on {{char}}\'s current state to guide the diffusion model in generating images. The prompts should be a series of descriptive English words or phrases that guide the model to generate an image matching the description, specifically tags from the danbooru dataset. Separate prompts with commas, no newlines. Your response must only contain the image description, do not include any other explanations. The art style should be anime style, but you don\'t need to specify the style in the prompts. Do not include broad terms like 1girl, masterpiece. Example: blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table. Please first summarize the current scene, perspective, composition, clothing, action, expression, etc., and then output the prompts after ||.',
-      'default_inspire_prompt': 'Based on the context, reply to {{char}} in one sentence using {{user}}\'s tone. Generate 3 candidate responses in different styles, separated by ||, without numbering.',
-      'default_welcome_prompt': 'Today is {{date}} {{time}}. As {{char}}, generate 3 creative welcome greetings based on the current date and time. Consider the time of day (morning/afternoon/evening/night), any special dates or holidays, and your character\'s personality. Output only the 3 greetings separated by ||, and \\ for breaking lines, without numbering or other text.',
-      'default_status_prompt': 'Briefly describe the character\'s current status, including affection level, clothing, actions, and inner thoughts. Affection level is out of 100. You can use markdown to draw tables.',
-      'default_summary_prompt': 'Based on the context, summarize the conversation in one sentence using {{char}}\'s tone.',
-      'default_end_prompt': 'Please act as {{char}} and reply with one or more paragraphs to advance the plot, using backslashes to separate them. You can use markdown, use italics for status.',
+      'default_prompt':
+          'You are an AI assistant named Shinnpuru. You can answer user questions, provide help and advice. Please communicate with the user in English.',
+      'default_draw_prompt':
+          'Your task is to generate a series of prompts based on {{char}}\'s current state to guide the diffusion model in generating images. The prompts should be a series of descriptive English words or phrases that guide the model to generate an image matching the description, specifically tags from the danbooru dataset. Separate prompts with commas, no newlines. Your response must only contain the image description, do not include any other explanations. The art style should be anime style, but you don\'t need to specify the style in the prompts. Do not include broad terms like 1girl, masterpiece. Example: blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table. Please first summarize the current scene, perspective, composition, clothing, action, expression, etc., and then output the prompts after ||.',
+      'default_inspire_prompt':
+          'Based on the context, reply to {{char}} in one sentence using {{user}}\'s tone. Generate 3 candidate responses in different styles, separated by ||, without numbering.',
+      'default_welcome_prompt':
+          'Today is {{date}} {{time}}. As {{char}}, generate 3 creative welcome greetings based on the current date and time. Consider the time of day (morning/afternoon/evening/night), any special dates or holidays, and your character\'s personality. Output only the 3 greetings separated by ||, and \\ for breaking lines, without numbering or other text.',
+      'default_status_prompt':
+          'Briefly describe the character\'s current status, including affection level, clothing, actions, and inner thoughts. Affection level is out of 100. You can use markdown to draw tables.',
+      'default_summary_prompt':
+          'Based on the context, summarize the conversation in one sentence using {{char}}\'s tone.',
+      'default_end_prompt':
+          'Please act as {{char}} and reply with one or more paragraphs to advance the plot, using backslashes to separate them. You can use markdown, use italics for status.',
       'backend_type': 'Backend Type',
-      'context_template_system': 'The role-playing game begins now. You are {{char}}. Here is your character setting.',
+      'context_template_system':
+          'The role-playing game begins now. You are {{char}}. Here is your character setting.',
       'context_template_description': 'charDescription',
       'context_template_world': 'Here is the world view.',
       'context_template_world_info': 'worldInfo',
-      'context_template_history': 'Here is the chat history between {{char}} and {{user}}.',
+      'context_template_history':
+          'Here is the chat history between {{char}} and {{user}}.',
       'context_template_chat_history': 'chatHistory',
       'context_template_task': 'Here are the tasks to be completed.',
       'context_template_call_function': 'callFunction',
@@ -317,6 +342,15 @@ class I18n {
       'feature_settings': '功能设置',
       'drawing_config': '绘图配置',
       'voice_config': '语音配置',
+      'tts_backend': '语音后端',
+      'audio_cpp_server': 'audio.cpp Server 地址',
+      'audio_cpp_server_hint': '例如：http://127.0.0.1:8080',
+      'audio_cpp_model': 'audio.cpp 模型 ID',
+      'audio_cpp_model_hint': '填写 server.json 中配置的 id',
+      'audio_cpp_test_connection': '测试连接并获取模型',
+      'audio_cpp_connected': '连接成功，可用模型',
+      'audio_cpp_no_models': '没有已配置模型',
+      'audio_cpp_connect_failed': '连接失败',
       'about': '关于',
       'feedback': '反馈',
       'display_settings': '显示设置',
@@ -464,17 +498,23 @@ class I18n {
       'time': '时间',
       'image': '图像',
       'unknown': '?',
-      'about_text': 'MoeTalk 是一个基于Flutter的开源聊天应用，使用大语言模型进行对话生成，使用扩散模型进行语音和图像合成。\n\n您的数据完全存储在您的设备上，本应用不会收集任何个人信息。\n\n代码地址：https://github.com/shinnpuru/MoeTalk',
+      'about_text':
+          'MoeTalk 是一个基于Flutter的开源聊天应用，使用大语言模型进行对话生成，使用扩散模型进行语音和图像合成。\n\n您的数据完全存储在您的设备上，本应用不会收集任何个人信息。\n\n代码地址：https://github.com/shinnpuru/MoeTalk',
       'default_user_name': '老师',
       'default_student_name': '昕蒲',
       'default_first_msg': '你好，我是昕蒲。请问有什么可以帮助你的吗？',
       'default_prompt': '你是一个AI助手，名叫昕蒲。你可以回答用户的问题，提供帮助和建议。请使用中文与用户交流。',
-      'default_draw_prompt': '你的任务是根据当前{{char}}的状态，生成一系列提示词，以指导扩散模型生成图像。提示词应该是一系列描述性的英语单词或短语，能够引导模型生成符合描述的图像，具体来说，是danbooru数据集中的标签。提示词用逗号分隔，没有换行。你的回复必须仅包含图片描述，不要包含任何其他说明等内容。画风应该是二次元风格，但不需要在提示词中写明画风。不要加入1girl, masterpiece等过于宽泛的词汇。示例：blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table。请先总结当前的场景、视角、构图、服装、动作、表情等描述画面的详细内容，然后在||后面输出提示词。',
-      'default_inspire_prompt': '根据上下文，以{{user}}的口吻用一句话回复{{char}}。生成3个不同风格的候选回复，不需要标号，用||分隔。',
-      'default_welcome_prompt': '今天是{{date}} {{time}}。请你扮演{{char}}，根据当前的日期和时间生成3个创意的欢迎问候语。考虑一天中的时段（早晨/下午/傍晚/夜晚）、是否有特殊日期或节日，以及角色的性格特点。只输出3个问候语，用||分隔不同问候语，用\\换行，不要标号或其他文字。',
-      'default_status_prompt': '简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。',
+      'default_draw_prompt':
+          '你的任务是根据当前{{char}}的状态，生成一系列提示词，以指导扩散模型生成图像。提示词应该是一系列描述性的英语单词或短语，能够引导模型生成符合描述的图像，具体来说，是danbooru数据集中的标签。提示词用逗号分隔，没有换行。你的回复必须仅包含图片描述，不要包含任何其他说明等内容。画风应该是二次元风格，但不需要在提示词中写明画风。不要加入1girl, masterpiece等过于宽泛的词汇。示例：blue sky, cake stand, capelet, chest harness, cloud, cloudy sky, cup, day, dress, flower, food, hair flower, hair ornament, harness, holding, holding cup, leaf, looking at viewer, neckerchief, chair, sitting, sky, solo, table。请先总结当前的场景、视角、构图、服装、动作、表情等描述画面的详细内容，然后在||后面输出提示词。',
+      'default_inspire_prompt':
+          '根据上下文，以{{user}}的口吻用一句话回复{{char}}。生成3个不同风格的候选回复，不需要标号，用||分隔。',
+      'default_welcome_prompt':
+          '今天是{{date}} {{time}}。请你扮演{{char}}，根据当前的日期和时间生成3个创意的欢迎问候语。考虑一天中的时段（早晨/下午/傍晚/夜晚）、是否有特殊日期或节日，以及角色的性格特点。只输出3个问候语，用||分隔不同问候语，用\\换行，不要标号或其他文字。',
+      'default_status_prompt':
+          '简要描述角色当前的状态，包括好感度、服装、动作、心里话，好感度满分为100分。你可以使用markdown语法绘制表格。',
       'default_summary_prompt': '根据上下文，以{{char}}的口吻用一句话总结该对话。',
-      'default_end_prompt': '请你扮演{{char}}用一段或多段话回复并推进剧情，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。',
+      'default_end_prompt':
+          '请你扮演{{char}}用一段或多段话回复并推进剧情，可以使用反斜杠来间隔。你可以使用markdown语法，斜体表示状态。',
       'backend_type': '后端类型',
       'context_template_system': '现在开始角色扮演游戏，你叫{{char}}，下面是你的角色设定。',
       'context_template_description': 'charDescription',
