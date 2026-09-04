@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+
+import 'civitai_client.dart';
 import 'storage.dart';
 import 'utils.dart';
 import 'i18n.dart';
@@ -14,7 +17,8 @@ class SdConfigPage extends StatefulWidget {
 
 class _SdConfigPageState extends State<SdConfigPage> {
   // SD controllers
-  final TextEditingController civitaiApiTokenController = TextEditingController();
+  final TextEditingController civitaiApiTokenController =
+      TextEditingController();
   late final TextEditingController sdPrompt;
   late final TextEditingController sdNegative;
   late final TextEditingController sdModel;
@@ -31,6 +35,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
   List<Config> apiConfigs = [];
   String? aidrawSelectedConfig;
   BackendType selectedBackend = BackendType.civitai;
+  bool _isTestingConnection = false;
 
   @override
   void initState() {
@@ -55,7 +60,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
       if (!mounted) return;
       setState(() {
         apiConfigs = cfgs;
-        aidrawSelectedConfig = name ?? (apiConfigs.isNotEmpty ? apiConfigs.first.name : null);
+        aidrawSelectedConfig =
+            name ?? (apiConfigs.isNotEmpty ? apiConfigs.first.name : null);
       });
     });
   }
@@ -77,6 +83,54 @@ class _SdConfigPageState extends State<SdConfigPage> {
     super.dispose();
   }
 
+  Future<void> _testConnection() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _isTestingConnection = true);
+    try {
+      if (selectedBackend == BackendType.civitai) {
+        await CivitaiClient(
+          apiToken: civitaiApiTokenController.text.trim(),
+        ).checkConnection();
+      } else {
+        await _testGradioConnection(gradioUrlController.text);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(I18n.t('connection_success'))),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${I18n.t('connection_failed')}: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isTestingConnection = false);
+    }
+  }
+
+  Future<void> _testGradioConnection(String value) async {
+    final normalized = value.trim().replaceFirst(RegExp(r'/+$'), '');
+    final uri = Uri.tryParse(normalized);
+    if (normalized.isEmpty ||
+        uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
+      throw ArgumentError('Gradio URL is invalid');
+    }
+
+    final dio = Dio(BaseOptions(
+      baseUrl: '$normalized/',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      sendTimeout: const Duration(seconds: 10),
+    ));
+    try {
+      await dio.get('config');
+    } on DioException {
+      await dio.get('gradio_api/info');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,31 +139,39 @@ class _SdConfigPageState extends State<SdConfigPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: () {
-              if (int.parse(sdWidth.text) % 8 != 0) {
-                sdWidth.text = (int.parse(sdWidth.text) ~/ 8 * 8).toString();
-              }
-              if (int.parse(sdHeight.text) % 8 != 0) {
-                sdHeight.text = (int.parse(sdHeight.text) ~/ 8 * 8).toString();
-              }
-              SdConfig updatedConfig = SdConfig(
-                prompt: sdPrompt.text,
-                negativePrompt: sdNegative.text,
-                model: sdModel.text,
-                sampler: sdSampler.text,
-                width: int.parse(sdWidth.text),
-                height: int.parse(sdHeight.text),
-                steps: int.parse(sdStep.text),
-                cfg: int.parse(sdCFG.text),
-                civitaiApiToken: civitaiApiTokenController.text.isNotEmpty ? civitaiApiTokenController.text : null,
-                seed: int.tryParse(sdSeed.text),
-                clipSkip: int.tryParse(sdClipSkip.text),
-                backendType: selectedBackend,
-                gradioUrl: gradioUrlController.text.isNotEmpty ? gradioUrlController.text : null,
-              );
-              setSdConfig(updatedConfig);
-              Navigator.of(context).pop();
-            },
+            onPressed: _isTestingConnection
+                ? null
+                : () {
+                    if (int.parse(sdWidth.text) % 8 != 0) {
+                      sdWidth.text =
+                          (int.parse(sdWidth.text) ~/ 8 * 8).toString();
+                    }
+                    if (int.parse(sdHeight.text) % 8 != 0) {
+                      sdHeight.text =
+                          (int.parse(sdHeight.text) ~/ 8 * 8).toString();
+                    }
+                    SdConfig updatedConfig = SdConfig(
+                      prompt: sdPrompt.text,
+                      negativePrompt: sdNegative.text,
+                      model: sdModel.text,
+                      sampler: sdSampler.text,
+                      width: int.parse(sdWidth.text),
+                      height: int.parse(sdHeight.text),
+                      steps: int.parse(sdStep.text),
+                      cfg: int.parse(sdCFG.text),
+                      civitaiApiToken: civitaiApiTokenController.text.isNotEmpty
+                          ? civitaiApiTokenController.text
+                          : null,
+                      seed: int.tryParse(sdSeed.text),
+                      clipSkip: int.tryParse(sdClipSkip.text),
+                      backendType: selectedBackend,
+                      gradioUrl: gradioUrlController.text.isNotEmpty
+                          ? gradioUrlController.text
+                          : null,
+                    );
+                    setSdConfig(updatedConfig);
+                    Navigator.of(context).pop();
+                  },
           ),
         ],
       ),
@@ -142,7 +204,9 @@ class _SdConfigPageState extends State<SdConfigPage> {
                         setState(() {
                           aidrawSelectedConfig = newValue;
                         });
-                        if (newValue != null) await setAidrawApiConfig(newValue);
+                        if (newValue != null) {
+                          await setAidrawApiConfig(newValue);
+                        }
                       },
                     ),
                   ),
@@ -214,10 +278,26 @@ class _SdConfigPageState extends State<SdConfigPage> {
                   TextField(
                     controller: sdModel,
                     decoration: InputDecoration(
-                      labelText: selectedBackend == BackendType.civitai ? 'Model URN' : 'Model Name',
+                      labelText: selectedBackend == BackendType.civitai
+                          ? 'Model URN'
+                          : 'Model Name',
                       helperText: selectedBackend == BackendType.civitai
                           ? 'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078'
                           : 'e.g., sd_xl_base_1.0.safetensors',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: _isTestingConnection ? null : _testConnection,
+                      icon: _isTestingConnection
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.wifi_tethering),
+                      label: Text(I18n.t('test_connection')),
                     ),
                   ),
                 ]),
@@ -253,7 +333,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
                       child: TextField(
                         controller: sdHeight,
                         inputFormatters: [DecimalTextInputFormatter()],
-                        decoration: InputDecoration(labelText: I18n.t('height')),
+                        decoration:
+                            InputDecoration(labelText: I18n.t('height')),
                       ),
                     ),
                   ]),
@@ -298,7 +379,6 @@ class _SdConfigPageState extends State<SdConfigPage> {
                   ]),
                 ]),
               ),
-
               ListTile(
                 title: Text(I18n.t('prompt_config'),
                     style: const TextStyle(
@@ -311,13 +391,15 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 child: Column(children: [
                   TextField(
                     controller: sdPrompt,
-                    decoration: InputDecoration(labelText: I18n.t('positive_prompt')),
+                    decoration:
+                        InputDecoration(labelText: I18n.t('positive_prompt')),
                     minLines: 2,
                     maxLines: 4,
                   ),
                   TextField(
                     controller: sdNegative,
-                    decoration: InputDecoration(labelText: I18n.t('negative_prompt')),
+                    decoration:
+                        InputDecoration(labelText: I18n.t('negative_prompt')),
                     minLines: 2,
                     maxLines: 4,
                   ),

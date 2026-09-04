@@ -45,6 +45,16 @@ class CivitaiClient {
 
   /// Consumer blob upload and refresh service.
   BlobService get blobs => BlobService(this);
+
+  /// Verify that the orchestration endpoint is reachable and the token works
+  /// without creating a generation job.
+  Future<void> checkConnection({
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    await jobs.query(
+      queryRequest: const {'limit': 1},
+    ).timeout(timeout);
+  }
 }
 
 class CivitaiBlob {

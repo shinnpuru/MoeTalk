@@ -104,7 +104,7 @@ Future<String?> getAudio(BuildContext context, String query) async {
       text: query,
       referenceWav: referenceWav,
       referenceText: refText,
-      language: vitsConfig.language,
+      language: 'Auto',
     );
     return 'data:audio/wav;base64,${base64Encode(audio)}';
   }
@@ -127,7 +127,7 @@ Future<String?> getAudio(BuildContext context, String query) async {
         text: query,
         refAudioUrl: refAudioUrl,
         refText: refText,
-        language: vitsConfig.language,
+        language: 'Auto',
         timeout: const Duration(minutes: 8),
       );
 

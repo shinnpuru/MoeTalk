@@ -5,6 +5,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moetalk/civitai_client.dart';
 
 void main() {
+  test('checks a Civitai token without creating a generation job', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    String? requestPath;
+    String? authorization;
+    Map<String, dynamic>? requestBody;
+    final serverTask = () async {
+      final request = await server.first;
+      requestPath = request.uri.path;
+      authorization = request.headers.value(HttpHeaders.authorizationHeader);
+      requestBody = jsonDecode(await utf8.decoder.bind(request).join())
+          as Map<String, dynamic>;
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType.json
+        ..write('{"jobs":[]}');
+      await request.response.close();
+    }();
+
+    try {
+      await CivitaiClient(
+        apiToken: 'test-token',
+        baseUrl: 'http://${server.address.address}:${server.port}',
+      ).checkConnection();
+      await serverTask;
+
+      expect(requestPath, '/v1/consumer/jobs/query');
+      expect(authorization, 'Bearer test-token');
+      expect(requestBody, {'limit': 1});
+    } finally {
+      await server.close(force: true);
+      await serverTask;
+    }
+  });
+
   test('submits and polls a Civitai voice clone workflow', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     Map<String, dynamic>? submittedBody;
