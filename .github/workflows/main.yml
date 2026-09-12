@@ -73,9 +73,25 @@ jobs:
           APKSIGNER=$(find "$SDK/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -1)
           APK=build/app/outputs/flutter-apk/app-release.apk
           echo "using $APKSIGNER"
-          "$APKSIGNER" verify --print-certs "$APK"
-          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr -d ':' | tr 'a-f' 'A-F')
+          # The prefix of the certificate lines changes between build-tools
+          # releases ("Signer #1 certificate SHA-256 digest:" up to 36.x,
+          # "V2 Signer: certificate SHA-256 digest:" in 37.x), so never anchor a
+          # match at the start of the line - match the stable suffix instead.
+          set +e
+          OUT=$("$APKSIGNER" verify --print-certs "$APK" 2>&1)
+          RC=$?
+          set -e
+          printf '%s\n' "$OUT" | grep -E 'certificate (DN|SHA-256 digest):' || true
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::apksigner could not verify $APK (exit $RC) - the APK is not correctly signed."
+            exit 1
+          fi
+          ACTUAL=$(printf '%s\n' "$OUT" | sed -n 's/.*certificate SHA-256 digest: *//p' \
+            | head -n1 | tr -d ':' | tr 'a-f' 'A-F')
+          if [ -z "$ACTUAL" ]; then
+            echo "::error::Could not read a signing certificate from $APK - apksigner output had no SHA-256 digest line."
+            exit 1
+          fi
           if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
             echo "::error::APK is signed with an unexpected key ($ACTUAL). Expected the fixed release key - the keystore secret is wrong, or key.properties was not restored, so this build could not be installed over an existing install."
             exit 1
