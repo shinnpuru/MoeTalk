@@ -612,7 +612,7 @@ class PromptEditorState extends State<PromptEditor> {
                 title: const Text('LoRA'),
                 subtitle: Text(
                   drawLoraController.text.isEmpty
-                      ? 'Single: urn:air:lora:civitai:123@456 | Multiple: <urn:air:lora:civitai:123@456:0.8>,<urn:air:lora:civitai:789@012:1.2>'
+                      ? 'Civitai: urn:air:lora:civitai:123@456 or <urn:air:lora:civitai:123@456:0.8> | sd.cpp: <detail:0.8> (LoRA file name under --lora-model-dir)'
                       : drawLoraController.text,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -625,7 +625,7 @@ class PromptEditorState extends State<PromptEditor> {
                 ),
                 onTap: () => _showEditDialog(
                     context,
-                    'LoRA (Single or <URN:weight>,<URN:weight>)',
+                    'LoRA (Civitai URN or <name:weight> for sd.cpp)',
                     drawLoraController,
                     multiLine: true),
               ),

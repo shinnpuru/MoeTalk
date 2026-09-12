@@ -27,6 +27,8 @@ import 'aidrawconfig.dart';
 import 'i18n.dart';
 import 'chatview.dart' show displaySettings;
 import 'avatar_image.dart';
+import 'generation_queue_view.dart';
+import 'media_image.dart';
 
 final ValueNotifier<ThemeMode> themeModeNotifier =
     ValueNotifier(ThemeMode.system);
@@ -609,7 +611,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         if (edited == 0) {
           setState(() {
             backgroundImage = DecorationImage(
-              image: NetworkImage(messages[index].message),
+              image: mediaImageProvider(messages[index].message),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 Colors.white.withOpacity(0.8),
@@ -619,7 +621,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           });
         }
         if (edited == 2) {
-          launchUrlString(messages[index].message);
+          openMediaReference(messages[index].message);
         }
         if (edited == 1) {
           setState(() {
@@ -1255,7 +1257,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         final String finalUrlNonNull = finalUrl;
         setState(() {
           backgroundImage = DecorationImage(
-            image: NetworkImage(finalUrlNonNull),
+            image: mediaImageProvider(finalUrlNonNull),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.white.withOpacity(0.8),
@@ -1324,7 +1326,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           if (previewResult is String) {
             setState(() {
               backgroundImage = DecorationImage(
-                image: NetworkImage(previewResult),
+                image: mediaImageProvider(previewResult),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
                   Colors.white.withOpacity(0.8),
@@ -1357,7 +1359,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         operation == _drawOperation) {
       setState(() {
         backgroundImage = DecorationImage(
-          image: NetworkImage(result),
+          image: mediaImageProvider(result),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.white.withOpacity(0.8),
@@ -1405,7 +1407,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         if (previewResult is String) {
           setState(() {
             backgroundImage = DecorationImage(
-              image: NetworkImage(previewResult),
+              image: mediaImageProvider(previewResult),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 Colors.white.withOpacity(0.8),
@@ -1971,7 +1973,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                         Message.image) {
                                       // change background
                                       backgroundImage = DecorationImage(
-                                        image: NetworkImage(
+                                        image: mediaImageProvider(
                                             messages[_singleViewIndex].message),
                                         fit: BoxFit.cover,
                                         colorFilter: ColorFilter.mode(
@@ -2022,7 +2024,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                       Message.image) {
                                     // change background
                                     backgroundImage = DecorationImage(
-                                      image: NetworkImage(
+                                      image: mediaImageProvider(
                                           messages[_singleViewIndex].message),
                                       fit: BoxFit.cover,
                                       colorFilter: ColorFilter.mode(
@@ -3115,6 +3117,16 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
+          const SizedBox(height: 8),
+          ListTile(
+            title: Text(I18n.t('generation_queue'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
+          ),
+          const SizedBox(height: 8),
+          const GenerationQueuePanel(),
         ],
       ),
     );

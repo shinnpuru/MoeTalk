@@ -78,7 +78,10 @@ class VitsConfig {
   });
 }
 
-enum BackendType { civitai, gradio }
+enum BackendType { civitai, sdcpp }
+
+/// Default endpoint of a locally started stable-diffusion.cpp server.
+const String defaultSdCppBaseUrl = 'http://127.0.0.1:1234';
 
 class SdConfig {
   String prompt;
@@ -93,7 +96,8 @@ class SdConfig {
   int? seed;
   int? clipSkip;
   BackendType backendType;
-  String? gradioUrl;
+  /// Base URL of the stable-diffusion.cpp (`sd-server`) backend.
+  String sdCppBaseUrl;
 
   SdConfig({
     required this.prompt,
@@ -108,7 +112,7 @@ class SdConfig {
     this.seed,
     this.clipSkip,
     this.backendType = BackendType.civitai,
-    this.gradioUrl,
+    this.sdCppBaseUrl = defaultSdCppBaseUrl,
   });
 }
 

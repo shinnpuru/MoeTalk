@@ -8,6 +8,8 @@ import 'package:just_audio/just_audio.dart';
 
 import 'audio_cpp_client.dart';
 import 'civitai_client.dart';
+import 'generation_queue.dart';
+import 'i18n.dart';
 import 'storage.dart';
 import 'utils.dart';
 import 'voice_reference_service.dart';
@@ -93,56 +95,111 @@ Future<String?> getAudio(BuildContext context, String query) async {
   final refText = await getVitsPromptText();
 
   if (vitsConfig.backend == TtsBackend.audioCpp) {
-    final referenceWav = await const VoiceReferenceLoader().loadWav(
-      refAudioSource,
+    final task = GenerationQueue.instance.start(
+      kind: GenerationKind.voice,
+      backend: 'audio.cpp',
+      title: query,
     );
-    final audio = await AudioCppClient(
-      baseUrl: vitsConfig.audioCppBaseUrl,
-      defaultTimeout: const Duration(minutes: 8),
-    ).createVoiceClone(
-      model: vitsConfig.audioCppModel,
-      text: query,
-      referenceWav: referenceWav,
-      referenceText: refText,
-      language: 'Auto',
-    );
-    return 'data:audio/wav;base64,${base64Encode(audio)}';
-  }
+    try {
+      task.note('${I18n.t('generation_note_voice_model')}: '
+          '${vitsConfig.audioCppModel.isEmpty ? '(not configured)' : vitsConfig.audioCppModel}');
+      task.note('${I18n.t('generation_note_reference')}: '
+          '${_describeVoiceReference(refAudioSource)}');
+      task.note(refText.trim().isEmpty
+          ? I18n.t('generation_note_no_transcript')
+          : '${I18n.t('voice_ref_text')}: '
+              '${summarizeGenerationTitle(refText, maxLength: 60)}');
 
-  final apiToken = vitsConfig.apiToken?.trim() ?? '';
-  if (apiToken.isEmpty) {
-    throw Exception('Civitai API token is not configured');
-  }
-
-  final civitaiClient = CivitaiClient(
-    apiToken: apiToken,
-    defaultTimeout: const Duration(minutes: 8),
-  );
-  final referenceService = VoiceReferenceService(
-    civitaiClient: civitaiClient,
-  );
-  var refAudioUrl = await referenceService.resolve(refAudioSource);
-
-  Future<String> submit() => civitaiClient.textToSpeech.createVoiceClone(
-        text: query,
-        refAudioUrl: refAudioUrl,
-        refText: refText,
-        language: 'Auto',
-        timeout: const Duration(minutes: 8),
+      final referenceWav = await const VoiceReferenceLoader().loadWav(
+        refAudioSource,
       );
-
-  try {
-    return await submit();
-  } on CivitaiException catch (error) {
-    final referenceUnavailable = error.statusCode == 400 &&
-        error.message.toLowerCase().contains('download media');
-    if (!referenceUnavailable || refAudioSource.startsWith('urn:air:')) {
+      final audio = await AudioCppClient(
+        baseUrl: vitsConfig.audioCppBaseUrl,
+        defaultTimeout: const Duration(minutes: 8),
+      ).createVoiceClone(
+        model: vitsConfig.audioCppModel,
+        text: query,
+        referenceWav: referenceWav,
+        referenceText: refText,
+        language: 'Auto',
+      );
+      task.complete(
+        detail: '${I18n.t('generation_note_audio_size')}: '
+            '${(audio.length / 1024).round()} KB',
+      );
+      return 'data:audio/wav;base64,${base64Encode(audio)}';
+    } catch (error) {
+      task.fail(error);
       rethrow;
     }
-    await referenceService.invalidate(refAudioSource);
-    refAudioUrl = await referenceService.resolve(refAudioSource);
-    return submit();
   }
+
+  final task = GenerationQueue.instance.start(
+    kind: GenerationKind.voice,
+    backend: 'Civitai',
+    title: query,
+  );
+  try {
+    final apiToken = vitsConfig.apiToken?.trim() ?? '';
+    if (apiToken.isEmpty) {
+      throw Exception('Civitai API token is not configured');
+    }
+    task.note('${I18n.t('generation_note_reference')}: '
+        '${_describeVoiceReference(refAudioSource)}');
+    task.note(refText.trim().isEmpty
+        ? I18n.t('generation_note_no_transcript')
+        : '${I18n.t('voice_ref_text')}: '
+            '${summarizeGenerationTitle(refText, maxLength: 60)}');
+
+    final civitaiClient = CivitaiClient(
+      apiToken: apiToken,
+      defaultTimeout: const Duration(minutes: 8),
+    );
+    final referenceService = VoiceReferenceService(
+      civitaiClient: civitaiClient,
+    );
+    var refAudioUrl = await referenceService.resolve(refAudioSource);
+
+    Future<String> submit() => civitaiClient.textToSpeech.createVoiceClone(
+          text: query,
+          refAudioUrl: refAudioUrl,
+          refText: refText,
+          language: 'Auto',
+          timeout: const Duration(minutes: 8),
+        );
+
+    try {
+      final audio = await submit();
+      task.complete();
+      return audio;
+    } on CivitaiException catch (error) {
+      final referenceUnavailable = error.statusCode == 400 &&
+          error.message.toLowerCase().contains('download media');
+      if (!referenceUnavailable || refAudioSource.startsWith('urn:air:')) {
+        rethrow;
+      }
+      task.note('${I18n.t('generation_note_request_count')}: retry after '
+          're-uploading the reference voice');
+      await referenceService.invalidate(refAudioSource);
+      refAudioUrl = await referenceService.resolve(refAudioSource);
+      final audio = await submit();
+      task.complete();
+      return audio;
+    }
+  } catch (error) {
+    task.fail(error);
+    rethrow;
+  }
+}
+
+/// Short description of the configured reference voice for the task log.
+String _describeVoiceReference(String source) {
+  final trimmed = source.trim();
+  if (trimmed.isEmpty) return '(not configured)';
+  if (trimmed.startsWith('data:')) {
+    return 'inline data URI (${(trimmed.length / 1024).round()} KB)';
+  }
+  return trimmed;
 }
 
 Future<String> queryAndPlayAudio(BuildContext context, String query) async {

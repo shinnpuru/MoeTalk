@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'display_settings_defaults.dart';
+import 'media_image.dart';
 import 'utils.dart' show Message;
 
 // 全局显示设置（由 main.dart 或 storage 初始化时填充）
@@ -294,25 +295,7 @@ class ChatLineImage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: FractionallySizedBox(
                     widthFactor: 0.8,
-                    child: Image.network(imageUrl,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) {
-                          return child;
-                        } else {
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        }
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.error);
-                      },
-                    ),
+                    child: MediaImage(imageUrl),
                   ),
                 ),
               ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 
 import 'civitai_client.dart';
+import 'sdcpp_client.dart';
 import 'storage.dart';
 import 'utils.dart';
 import 'i18n.dart';
@@ -29,7 +29,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
   late final TextEditingController sdCFG;
   late final TextEditingController sdSeed;
   late final TextEditingController sdClipSkip;
-  late final TextEditingController gradioUrlController;
+  late final TextEditingController sdCppServerController;
 
   // Aidraw LLM selection
   List<Config> apiConfigs = [];
@@ -52,7 +52,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdSeed = TextEditingController(text: s.seed?.toString() ?? '');
     sdClipSkip = TextEditingController(text: s.clipSkip?.toString() ?? '');
     civitaiApiTokenController.text = s.civitaiApiToken ?? '';
-    gradioUrlController = TextEditingController(text: s.gradioUrl ?? '');
+    sdCppServerController = TextEditingController(text: s.sdCppBaseUrl);
     selectedBackend = s.backendType;
 
     getApiConfigs().then((cfgs) async {
@@ -79,7 +79,7 @@ class _SdConfigPageState extends State<SdConfigPage> {
     sdCFG.dispose();
     sdSeed.dispose();
     sdClipSkip.dispose();
-    gradioUrlController.dispose();
+    sdCppServerController.dispose();
     super.dispose();
   }
 
@@ -91,43 +91,42 @@ class _SdConfigPageState extends State<SdConfigPage> {
         await CivitaiClient(
           apiToken: civitaiApiTokenController.text.trim(),
         ).checkConnection();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(I18n.t('connection_success'))),
+        );
       } else {
-        await _testGradioConnection(gradioUrlController.text);
+        final capabilities = await SdCppClient(
+          baseUrl: sdCppServerController.text,
+        ).fetchCapabilities();
+        if (!mounted) return;
+        if (!capabilities.supportsImageGeneration) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(I18n.t('sd_cpp_no_image_mode'))),
+          );
+          return;
+        }
+        setState(() {
+          sdModel.text = capabilities.displayModel;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${I18n.t('connection_success')}: '
+                '${capabilities.displayModel} · '
+                '${capabilities.samplers.length} samplers'),
+          ),
+        );
       }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(I18n.t('connection_success'))),
-      );
     } catch (error) {
       if (!mounted) return;
+      final message = selectedBackend == BackendType.sdcpp
+          ? '${I18n.t('sd_cpp_conn_failed')}: $error'
+          : '${I18n.t('connection_failed')}: $error';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${I18n.t('connection_failed')}: $error')),
+        SnackBar(content: Text(message)),
       );
     } finally {
       if (mounted) setState(() => _isTestingConnection = false);
-    }
-  }
-
-  Future<void> _testGradioConnection(String value) async {
-    final normalized = value.trim().replaceFirst(RegExp(r'/+$'), '');
-    final uri = Uri.tryParse(normalized);
-    if (normalized.isEmpty ||
-        uri == null ||
-        (uri.scheme != 'http' && uri.scheme != 'https') ||
-        uri.host.isEmpty) {
-      throw ArgumentError('Gradio URL is invalid');
-    }
-
-    final dio = Dio(BaseOptions(
-      baseUrl: '$normalized/',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      sendTimeout: const Duration(seconds: 10),
-    ));
-    try {
-      await dio.get('config');
-    } on DioException {
-      await dio.get('gradio_api/info');
     }
   }
 
@@ -165,9 +164,9 @@ class _SdConfigPageState extends State<SdConfigPage> {
                       seed: int.tryParse(sdSeed.text),
                       clipSkip: int.tryParse(sdClipSkip.text),
                       backendType: selectedBackend,
-                      gradioUrl: gradioUrlController.text.isNotEmpty
-                          ? gradioUrlController.text
-                          : null,
+                      sdCppBaseUrl: sdCppServerController.text.trim().isEmpty
+                          ? defaultSdCppBaseUrl
+                          : sdCppServerController.text.trim(),
                     );
                     setSdConfig(updatedConfig);
                     Navigator.of(context).pop();
@@ -232,8 +231,8 @@ class _SdConfigPageState extends State<SdConfigPage> {
                             label: Text('Civitai'),
                           ),
                           ButtonSegment(
-                            value: BackendType.gradio,
-                            label: Text('Gradio'),
+                            value: BackendType.sdcpp,
+                            label: Text('sd.cpp'),
                           ),
                         ],
                         selected: {selectedBackend},
@@ -269,23 +268,30 @@ class _SdConfigPageState extends State<SdConfigPage> {
                     )
                   else
                     TextField(
-                      controller: gradioUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Gradio URL',
-                        helperText: 'e.g., http://localhost:7860',
+                      controller: sdCppServerController,
+                      decoration: InputDecoration(
+                        labelText: I18n.t('sd_cpp_server'),
+                        helperText: I18n.t('sd_cpp_server_hint'),
                       ),
                     ),
-                  TextField(
-                    controller: sdModel,
-                    decoration: InputDecoration(
-                      labelText: selectedBackend == BackendType.civitai
-                          ? 'Model URN'
-                          : 'Model Name',
-                      helperText: selectedBackend == BackendType.civitai
-                          ? 'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078'
-                          : 'e.g., sd_xl_base_1.0.safetensors',
+                  if (selectedBackend == BackendType.civitai)
+                    TextField(
+                      controller: sdModel,
+                      decoration: const InputDecoration(
+                        labelText: 'Model URN',
+                        helperText:
+                            'e.g., urn:air:sdxl:checkpoint:civitai:101055@128078',
+                      ),
+                    )
+                  else
+                    TextField(
+                      controller: sdModel,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: I18n.t('sd_cpp_model'),
+                        helperText: I18n.t('sd_cpp_model_hint'),
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -315,9 +321,11 @@ class _SdConfigPageState extends State<SdConfigPage> {
                 child: Column(children: [
                   TextField(
                     controller: sdSampler,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Sampler/Scheduler',
-                      helperText: 'e.g., EulerA, DPM++ 2M Karras, Euler',
+                      helperText: selectedBackend == BackendType.sdcpp
+                          ? 'e.g., Euler a, Euler a Karras, DPM++ 2M, euler_a'
+                          : 'e.g., EulerA, DPM++ 2M Karras, Euler',
                     ),
                   ),
                   Row(children: [

@@ -722,7 +722,7 @@ Future<void> setSdConfig(SdConfig config) async {
     config.seed?.toString() ?? '',
     config.clipSkip?.toString() ?? '',
     config.backendType.name,
-    config.gradioUrl ?? '',
+    config.sdCppBaseUrl,
   ];
   await prefs.setStringList("sd_config", configList);
   if (config.civitaiApiToken != null) {
@@ -792,6 +792,17 @@ Future<SdConfig> getSdConfig() async {
     configList.add('');
   }
   final civitaiToken = await getCivitaiApiToken();
+  // Configurations written before the sd.cpp backend existed stored 'gradio';
+  // they now use the sd.cpp backend. Their old Gradio URL is meaningless for
+  // sd-server, so the default local endpoint is used instead.
+  final storedBackend = configList[10];
+  final wasGradio = storedBackend == 'gradio';
+  final backendType = wasGradio
+      ? BackendType.sdcpp
+      : BackendType.values.firstWhere(
+          (value) => value.name == storedBackend,
+          orElse: () => BackendType.civitai,
+        );
   final memConfig = SdConfig(
     prompt: configList[0],
     negativePrompt: configList[1],
@@ -804,9 +815,10 @@ Future<SdConfig> getSdConfig() async {
     seed: int.tryParse(configList[8]),
     clipSkip: int.tryParse(configList[9]),
     civitaiApiToken: civitaiToken,
-    backendType:
-        configList[10] == 'gradio' ? BackendType.gradio : BackendType.civitai,
-    gradioUrl: configList[11].isNotEmpty ? configList[11] : null,
+    backendType: backendType,
+    sdCppBaseUrl: (!wasGradio && configList[11].isNotEmpty)
+        ? configList[11]
+        : defaultSdCppBaseUrl,
   );
   if (memConfig.prompt.isEmpty) {
     memConfig.prompt =
@@ -816,7 +828,9 @@ Future<SdConfig> getSdConfig() async {
     memConfig.negativePrompt =
         'nsfw, bad quality,worst quality,worst detail,sketch,censor';
   }
-  if (memConfig.model.isEmpty) {
+  // The sd.cpp server decides which checkpoint is loaded, so the model field
+  // keeps whatever the server reported instead of a Civitai URN default.
+  if (memConfig.model.isEmpty && memConfig.backendType == BackendType.civitai) {
     memConfig.model = 'urn:air:sdxl:checkpoint:civitai:827184@2514310';
   }
   if (memConfig.sampler.isEmpty) {
