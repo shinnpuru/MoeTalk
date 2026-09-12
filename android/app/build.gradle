@@ -23,6 +23,18 @@ if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
 
+// Release signing. key.properties is gitignored and must never be committed.
+// See android/key.properties for the required keys (storeFile is resolved
+// relative to this module, i.e. android/app/).
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader("UTF-8") { reader ->
+        keystoreProperties.load(reader)
+    }
+}
+def hasReleaseSigning = keystorePropertiesFile.exists() && keystoreProperties.getProperty("storeFile") != null
+
 android {
     namespace = "com.shinnpuru.moetalk"
     compileSdk = flutter.compileSdkVersion
@@ -51,11 +63,32 @@ android {
         versionName = flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // A fixed signing key is required for Android to allow installing a
+            // new build over an already installed one. Falling back to the
+            // machine-local debug key produces an APK that can never overwrite
+            // anything built anywhere else, so warn loudly instead of failing
+            // silently. CI refuses to publish a debug-signed APK.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            } else {
+                logger.warn("WARNING: android/key.properties not found - release build " +
+                        "falls back to the DEBUG signing key and will NOT install over " +
+                        "an app signed with the release key. See android/key.properties.")
+                signingConfig = signingConfigs.debug
+            }
             shrinkResources false
         }
         debug {

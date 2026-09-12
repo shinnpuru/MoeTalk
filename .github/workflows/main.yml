@@ -35,8 +35,52 @@ jobs:
         with:
           flutter-version: '3.29.0'
           channel: stable
+      - name: Check version code
+        run: |
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}')
+          echo "pubspec version: $VERSION"
+          if [[ "$GITHUB_REF_NAME" =~ ^v([0-9]{4})\.([0-9]{1,2})\.([0-9]{1,2})(\.?post([0-9]+))?$ ]]; then
+            YEAR=$((10#${BASH_REMATCH[1]}))
+            MONTH=$((10#${BASH_REMATCH[2]}))
+            DAY=$((10#${BASH_REMATCH[3]}))
+            POST=$((10#${BASH_REMATCH[5]:-0}))
+            CODE=$(printf '%04d%02d%02d%02d' "$YEAR" "$MONTH" "$DAY" "$POST")
+            echo "tag $GITHUB_REF_NAME implies versionCode $CODE"
+            if [ "${VERSION#*+}" != "$CODE" ]; then
+              echo "::warning::pubspec build number (${VERSION#*+}) does not match tag-derived versionCode ($CODE). Bump 'version:' in pubspec.yaml so local and CI builds stay installable over each other."
+            fi
+          fi
+      - name: Restore release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD secrets are not set. Without them the build would silently fall back to the debug key and produce an APK nobody can install over an existing install."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/moetalk-release.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=moetalk-release.jks\n' \
+            "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" "${KEY_ALIAS:-moetalk}" > android/key.properties
       - run: flutter pub get --enforce-lockfile
       - run: flutter build apk --release --no-pub
+      - name: Verify APK signing key
+        env:
+          EXPECTED_CERT_SHA256: 'E97A6C5F393882565EDFF28D83D4D1A40C448281E16F587DF3E54FAA6A8BCA14'
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          echo "using $APKSIGNER"
+          "$APKSIGNER" verify --print-certs "$APK"
+          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr -d ':' | tr 'a-f' 'A-F')
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK is signed with an unexpected key ($ACTUAL). Expected the fixed release key - the keystore secret is wrong, or key.properties was not restored, so this build could not be installed over an existing install."
+            exit 1
+          fi
+          echo "Release signing key verified: $ACTUAL"
       - run: cp build/app/outputs/flutter-apk/app-release.apk build/MisonoTalk-android.apk
       - uses: actions/upload-artifact@v4
         with:
