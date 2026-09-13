@@ -3110,6 +3110,25 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0)),
             child: ListTile(
+              leading: const Icon(Icons.list_alt),
+              title: Text(I18n.t('generation_queue')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GenerationQueuePage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
+            child: ListTile(
               leading: const Icon(Icons.feedback),
               title: Text(I18n.t('feedback')),
               onTap: () {
@@ -3117,16 +3136,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
               },
             ),
           ),
-          const SizedBox(height: 8),
-          ListTile(
-            title: Text(I18n.t('generation_queue'),
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey)),
-          ),
-          const SizedBox(height: 8),
-          const GenerationQueuePanel(),
         ],
       ),
     );

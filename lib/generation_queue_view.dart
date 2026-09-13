@@ -7,7 +7,29 @@ import 'generation_queue.dart';
 import 'i18n.dart';
 import 'utils.dart' show snackBarAlert;
 
-/// Live queue/log panel shown at the bottom of the settings page.
+/// Dedicated page for the live generation queue and logs.
+class GenerationQueuePage extends StatelessWidget {
+  const GenerationQueuePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(I18n.t('generation_queue')),
+        backgroundColor: const Color(0xfff2a0ac),
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          children: const [GenerationQueuePanel()],
+        ),
+      ),
+    );
+  }
+}
+
+/// Live queue/log panel used by [GenerationQueuePage].
 class GenerationQueuePanel extends StatefulWidget {
   /// Maximum number of tasks rendered (older ones stay available via copy).
   final int visibleTasks;
