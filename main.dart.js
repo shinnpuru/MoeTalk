@@ -125766,22 +125766,18 @@ if(r!=null)s.rl(r)
 if(q.b)s.mj()},
 $S:0}
 A.asN.prototype={
-$0(){var s,r,q,p,o,n=this.b,m=n.k2,l=m.length
-if(l!==0){s=n.f
-s=s===l-1?s:s+1
-n.f=s
-r=m[s]
-if(r.b===5){l=A.yG(r.a)
-n.db=A.n7(new A.kP(A.as(204,B.k.v()>>>16&255,B.k.v()>>>8&255,B.k.v()&255),B.dk),B.cd,l,null)
-l=n.f
-s=m.length
-l=n.f=l===s-1?l-1:l+1}else{q=s
-s=l
-l=q}if(n.w&&m[l].b===1)this.a.a=m[l].a
-if(n.y){o=l+1
-while(!0){if(!(o<s)){p=!1
-break}if(m[o].b!==5){p=!0
-break}++o}if(!p)this.a.b=!0}}},
+$0(){var s,r,q,p=this.b,o=p.k2,n=o.length
+if(n!==0){if(p.y&&o[p.f].b!==5){r=p.f+1
+while(!0){if(!(r<n)){s=!1
+break}if(o[r].b!==5){s=!0
+break}++r}this.a.b=!s}n=p.f
+n=n===o.length-1?n:n+1
+p.f=n
+q=o[n]
+if(q.b===5){n=A.yG(q.a)
+p.db=A.n7(new A.kP(A.as(204,B.k.v()>>>16&255,B.k.v()>>>8&255,B.k.v()&255),B.dk),B.cd,n,null)
+n=p.f
+n=p.f=n===o.length-1?n-1:n+1}if(p.w&&o[n].b===1)this.a.a=o[n].a}},
 $S:0}
 A.at3.prototype={
 $0(){var s=this.a
