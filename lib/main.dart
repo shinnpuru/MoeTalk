@@ -2016,6 +2016,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                               bool shouldInspire = false;
                               setState(() {
                                 if (messages.isNotEmpty) {
+                                  // Wait for one more tap after the last
+                                  // non-image message has been shown.
+                                  if (_isAutoInspire &&
+                                      messages[_singleViewIndex].type !=
+                                          Message.image) {
+                                    bool hasMoreNonImage = false;
+                                    for (int i = _singleViewIndex + 1;
+                                        i < messages.length;
+                                        i++) {
+                                      if (messages[i].type != Message.image) {
+                                        hasMoreNonImage = true;
+                                        break;
+                                      }
+                                    }
+                                    shouldInspire = !hasMoreNonImage;
+                                  }
                                   _singleViewIndex =
                                       _singleViewIndex == messages.length - 1
                                           ? _singleViewIndex
@@ -2043,21 +2059,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                           Message.assistant) {
                                     autoVoiceText =
                                         messages[_singleViewIndex].message;
-                                  }
-                                  // 自动灵感：当到达最后一个非图片消息时触发
-                                  if (_isAutoInspire) {
-                                    bool hasMoreNonImage = false;
-                                    for (int i = _singleViewIndex + 1;
-                                        i < messages.length;
-                                        i++) {
-                                      if (messages[i].type != Message.image) {
-                                        hasMoreNonImage = true;
-                                        break;
-                                      }
-                                    }
-                                    if (!hasMoreNonImage) {
-                                      shouldInspire = true;
-                                    }
                                   }
                                 }
                               });
