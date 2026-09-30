@@ -6,16 +6,26 @@ import 'package:moetalk/generation_queue_view.dart';
 import 'package:moetalk/i18n.dart';
 
 Widget _panel() => const MaterialApp(
-      home: Scaffold(body: SingleChildScrollView(child: GenerationQueuePanel())),
+      home: GenerationQueuePage(),
     );
 
 void main() {
   setUp(() => I18n.locale = 'en');
 
-  testWidgets('shows an empty state before anything runs', (tester) async {
+  testWidgets('shows toolbar actions and no cards before anything runs',
+      (tester) async {
     await tester.pumpWidget(_panel());
     expect(find.text('Queue & Logs'), findsOneWidget);
-    expect(find.text('No drawing or voice task yet.'), findsOneWidget);
+    expect(find.byType(Card), findsNothing);
+    for (final tooltip in ['Copy all logs', 'Clear finished entries']) {
+      final button = find.byTooltip(tooltip);
+      expect(find.descendant(of: find.byType(AppBar), matching: button),
+          findsOneWidget);
+      final iconButton = find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == tooltip,
+      );
+      expect(tester.widget<IconButton>(iconButton).onPressed, isNull);
+    }
 
     // Dispose the panel so its refresh timer is cancelled.
     await tester.pumpWidget(const SizedBox());
@@ -67,7 +77,8 @@ void main() {
       matching: find.byType(ExpansionTile),
     ));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Model: waiIllustriousSDXL_v160'), findsOneWidget);
+    expect(
+        find.textContaining('Model: waiIllustriousSDXL_v160'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
   });
@@ -75,7 +86,8 @@ void main() {
   testWidgets('copies the whole log to the clipboard', (tester) async {
     final queue = GenerationQueue.instance;
     queue
-        .start(kind: GenerationKind.drawing, backend: 'sd.cpp', title: 'copy me')
+        .start(
+            kind: GenerationKind.drawing, backend: 'sd.cpp', title: 'copy me')
         .note('Model: copy-target');
 
     final clipboardCalls = <MethodCall>[];
@@ -108,7 +120,8 @@ void main() {
       (tester) async {
     final queue = GenerationQueue.instance;
     queue
-        .start(kind: GenerationKind.voice, backend: 'Civitai', title: 'finished')
+        .start(
+            kind: GenerationKind.voice, backend: 'Civitai', title: 'finished')
         .complete();
     queue.start(
       kind: GenerationKind.voice,

@@ -113,7 +113,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _isAutoVoice = false;
   bool _isAutoDraw = false;
   bool _isAutoInspire = false;
-  bool _isAutoStatus = false;
   bool _showInputBar = false; // 输入框展开/收起
   int _displaySettingsKey = 0; // 递增以强制重建 chat 页面
 
@@ -134,6 +133,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool isAutoNotification = false;
   bool _isToolsExpanded = false;
   String? _characterStatus;
+  int? _statusConversationVersion;
   List<Message> messages = [];
   List<List<String>> historys = [];
   List<String>? currentStory;
@@ -181,6 +181,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     _isGettingStatus = false;
     _isWelcoming = false;
     _characterStatus = I18n.t('no_status');
+    _statusConversationVersion = null;
   }
 
   bool _isCurrentConversation(int version) =>
@@ -295,11 +296,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         getAutoInspire().then((value) {
           setState(() {
             _isAutoInspire = value;
-          });
-        });
-        getAutoStatus().then((value) {
-          setState(() {
-            _isAutoStatus = value;
           });
         });
       }
@@ -809,9 +805,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           title: I18n.t('chat'),
           message: I18n.t('reply_completed'),
         );
-      }
-      if (_isAutoStatus) {
-        await getStatus(forceGet: true, silent: true);
       }
     } catch (e) {
       debugPrint(e.toString());
@@ -1734,6 +1727,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           if (controller.text.isNotEmpty) {
                             setState(() {
                               _characterStatus = controller.text;
+                              _statusConversationVersion =
+                                  _conversationVersion;
                             });
                           }
                           Navigator.of(context).pop();
@@ -1776,20 +1771,19 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> getStatus({bool forceGet = false, bool silent = false}) async {
+  Future<void> getStatus({bool forceGet = false}) async {
     final needsFetch = forceGet ||
         _characterStatus == null ||
-        _characterStatus == I18n.t("no_status");
+        _characterStatus == I18n.t("no_status") ||
+        _statusConversationVersion != _conversationVersion;
     if (!needsFetch) {
-      if (!silent) {
-        _showStatusDialog();
-      }
+      _showStatusDialog();
       return;
     }
     if (_isGettingStatus) return;
 
     final operation = ++_statusOperation;
-    final conversationEpoch = _conversationEpoch;
+    final conversationVersion = _conversationVersion;
     setState(() => _isGettingStatus = true);
     Route<dynamic>? progressRoute;
     try {
@@ -1798,19 +1792,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         currentStory != null ? jsonToMsg(currentStory![2]) : [],
         [Message(message: await getStatusPrompt(), type: Message.system)],
       );
-      if (!_isCurrentConversationEpoch(conversationEpoch) ||
+      if (!_isCurrentConversation(conversationVersion) ||
           operation != _statusOperation) {
         return;
       }
       logMsg(msg);
 
-      if (!silent) {
-        progressRoute = await _showProgressDialog(I18n.t('analyzing_status'));
-      }
+      progressRoute = await _showProgressDialog(I18n.t('analyzing_status'));
       final result = await collectCompletion(config, msg);
       _closeDialogRoute(progressRoute);
       progressRoute = null;
-      if (!_isCurrentConversationEpoch(conversationEpoch) ||
+      if (!_isCurrentConversation(conversationVersion) ||
           operation != _statusOperation) {
         return;
       }
@@ -1818,15 +1810,18 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       final cleanResult =
           result.replaceAll(RegExp(await getResponseRegex()), '').trim();
       if (cleanResult.isNotEmpty &&
-          _isCurrentConversationEpoch(conversationEpoch) &&
+          _isCurrentConversation(conversationVersion) &&
           operation == _statusOperation) {
-        setState(() => _characterStatus = cleanResult);
+        setState(() {
+          _characterStatus = cleanResult;
+          _statusConversationVersion = conversationVersion;
+        });
       }
-      if (!silent && _isCurrentConversationEpoch(conversationEpoch)) {
+      if (_isCurrentConversation(conversationVersion)) {
         _showStatusDialog();
       }
     } catch (e) {
-      if (_isCurrentConversationEpoch(conversationEpoch) &&
+      if (_isCurrentConversation(conversationVersion) &&
           operation == _statusOperation) {
         snackBarAlert(context, "${I18n.t('get_status_failed')}: $e");
       }
@@ -2189,18 +2184,17 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildToolButton(
-                        icon: _isAutoStatus
-                            ? Icons.monitor_heart
-                            : Icons.monitor_heart_outlined,
-                        label: _isAutoStatus
-                            ? I18n.t('auto_status')
-                            : I18n.t('manual_status'),
+                        icon: Icons.list_alt,
+                        label: I18n.t('generation_queue'),
                         onTap: () {
-                          setState(() {
-                            _isAutoStatus = !_isAutoStatus;
-                            _isToolsExpanded = false;
-                          });
-                          setAutoStatus(_isAutoStatus);
+                          setState(() => _isToolsExpanded = false);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const GenerationQueuePage(),
+                            ),
+                          );
                         },
                       ),
                       _buildToolButton(
@@ -3100,25 +3094,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         child: const Text('OK'),
                       ),
                     ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0)),
-            child: ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: Text(I18n.t('generation_queue')),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const GenerationQueuePage(),
                   ),
                 );
               },

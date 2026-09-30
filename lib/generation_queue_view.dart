@@ -11,13 +11,42 @@ import 'utils.dart' show snackBarAlert;
 class GenerationQueuePage extends StatelessWidget {
   const GenerationQueuePage({super.key});
 
+  Future<void> _copyLog(BuildContext context) async {
+    await Clipboard.setData(
+      ClipboardData(text: GenerationQueue.instance.describe()),
+    );
+    if (!context.mounted) return;
+    snackBarAlert(context, I18n.t('generation_log_copied'));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final queue = GenerationQueue.instance;
     return Scaffold(
       appBar: AppBar(
         title: Text(I18n.t('generation_queue')),
         backgroundColor: const Color(0xfff2a0ac),
         foregroundColor: Colors.white,
+        actions: [
+          ListenableBuilder(
+            listenable: queue,
+            builder: (context, _) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: I18n.t('generation_copy_log'),
+                  icon: const Icon(Icons.copy_all),
+                  onPressed: queue.isEmpty ? null : () => _copyLog(context),
+                ),
+                IconButton(
+                  tooltip: I18n.t('generation_clear_log'),
+                  icon: const Icon(Icons.delete_sweep),
+                  onPressed: queue.isEmpty ? null : queue.clear,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -31,10 +60,7 @@ class GenerationQueuePage extends StatelessWidget {
 
 /// Live queue/log panel used by [GenerationQueuePage].
 class GenerationQueuePanel extends StatefulWidget {
-  /// Maximum number of tasks rendered (older ones stay available via copy).
-  final int visibleTasks;
-
-  const GenerationQueuePanel({super.key, this.visibleTasks = 20});
+  const GenerationQueuePanel({super.key});
 
   @override
   State<GenerationQueuePanel> createState() => _GenerationQueuePanelState();
@@ -60,76 +86,24 @@ class _GenerationQueuePanelState extends State<GenerationQueuePanel> {
     super.dispose();
   }
 
-  Future<void> _copyLog() async {
-    await Clipboard.setData(
-      ClipboardData(text: GenerationQueue.instance.describe()),
-    );
-    if (!mounted) return;
-    snackBarAlert(context, I18n.t('generation_log_copied'));
-  }
-
   @override
   Widget build(BuildContext context) {
     final queue = GenerationQueue.instance;
     return ListenableBuilder(
       listenable: queue,
       builder: (context, _) {
-        final tasks = queue.tasks;
-        final visible = tasks.take(widget.visibleTasks).toList(growable: false);
-        final hidden = tasks.length - visible.length;
-        final active = queue.activeCount;
-
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.list_alt),
-                title: Text(
-                  active > 0
-                      ? '${I18n.t('generation_queue')} · $active '
-                          '${I18n.t('generation_queue_running')}'
-                      : I18n.t('generation_queue'),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final task in queue.tasks)
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
-                subtitle: tasks.isEmpty
-                    ? Text(I18n.t('generation_queue_empty'))
-                    : Text(
-                        '${I18n.t('generation_queue_entries')}: '
-                        '${tasks.length}',
-                      ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: I18n.t('generation_copy_log'),
-                      icon: const Icon(Icons.copy_all),
-                      onPressed: tasks.isEmpty ? null : _copyLog,
-                    ),
-                    IconButton(
-                      tooltip: I18n.t('generation_clear_log'),
-                      icon: const Icon(Icons.delete_sweep),
-                      onPressed: queue.isEmpty ? null : queue.clear,
-                    ),
-                  ],
-                ),
+                child: _GenerationTaskTile(task: task),
               ),
-              if (visible.isNotEmpty) const Divider(height: 1),
-              for (final task in visible) _GenerationTaskTile(task: task),
-              if (hidden > 0)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: Text(
-                    '${I18n.t('generation_queue_more')}: $hidden',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              const SizedBox(height: 4),
-            ],
-          ),
+          ],
         );
       },
     );
@@ -146,7 +120,8 @@ class _GenerationTaskTile extends StatelessWidget {
     final kindLabel = task.kind == GenerationKind.drawing
         ? I18n.t('generation_kind_drawing')
         : I18n.t('generation_kind_voice');
-    final elapsed = '${(task.duration.inMilliseconds / 1000).toStringAsFixed(1)}s';
+    final elapsed =
+        '${(task.duration.inMilliseconds / 1000).toStringAsFixed(1)}s';
     final details = <String>[
       _statusLabel(task.status),
       if (task.detail.isNotEmpty) task.detail,
@@ -156,7 +131,9 @@ class _GenerationTaskTile extends StatelessWidget {
     return ExpansionTile(
       dense: true,
       leading: Icon(
-        task.kind == GenerationKind.drawing ? Icons.image : Icons.record_voice_over,
+        task.kind == GenerationKind.drawing
+            ? Icons.image
+            : Icons.record_voice_over,
         color: _statusColor(task.status),
       ),
       title: Text(
