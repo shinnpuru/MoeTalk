@@ -10,7 +10,8 @@ String removeTailSlash(String input) {
 }
 
 Future<void> completion(Config config, List<List<String>> message,
-    Function onEevent, Function onDone, Function onErr) async {
+    Function onEevent, Function onDone, Function onErr,
+    {Duration? timeout}) async {
   Map<String, dynamic> data = {
     'model': config.model,
     'messages': message
@@ -42,10 +43,12 @@ Future<void> completion(Config config, List<List<String>> message,
   // overwrite each other's state. Give every completion its own SSE client.
   final eventFlux = EventFlux.spawn();
   final terminal = Completer<void>();
+  Timer? timeoutTimer;
   bool finished = false;
   void safeDone() {
     if (!finished) {
       finished = true;
+      timeoutTimer?.cancel();
       try {
         onDone();
       } finally {
@@ -58,6 +61,7 @@ Future<void> completion(Config config, List<List<String>> message,
   void safeErr(dynamic err) {
     if (!finished) {
       finished = true;
+      timeoutTimer?.cancel();
       try {
         onErr(err);
       } finally {
@@ -65,6 +69,13 @@ Future<void> completion(Config config, List<List<String>> message,
         if (!terminal.isCompleted) terminal.complete();
       }
     }
+  }
+
+  if (timeout != null) {
+    timeoutTimer = Timer(
+        timeout,
+        () => safeErr(TimeoutException(
+            'The language model did not respond in time', timeout)));
   }
 
   try {
@@ -82,9 +93,15 @@ Future<void> completion(Config config, List<List<String>> message,
             return;
           }
           stream.listen((data) {
+            if (finished) return;
             try {
-              final content =
-                  json.decode(data.data)["choices"][0]["delta"]["content"];
+              final payload = json.decode(data.data);
+              final error = payload['error'];
+              if (error != null) {
+                safeErr(error is Map ? error['message'] ?? error : error);
+                return;
+              }
+              final content = payload['choices'][0]['delta']['content'];
               if (content != null) {
                 onEevent(content);
               }
@@ -109,8 +126,8 @@ Future<void> completion(Config config, List<List<String>> message,
   await terminal.future;
 }
 
-Future<String> collectCompletion(
-    Config config, List<List<String>> messages) async {
+Future<String> collectCompletion(Config config, List<List<String>> messages,
+    {Duration? timeout}) async {
   final result = StringBuffer();
   Object? requestError;
 
@@ -120,8 +137,24 @@ Future<String> collectCompletion(
     (String chunk) => result.write(chunk),
     () {},
     (dynamic error) => requestError = error,
+    timeout: timeout,
   );
 
   if (requestError != null) throw requestError!;
   return result.toString();
+}
+
+/// Check the same streaming completion endpoint and parameters used by chat.
+Future<void> testModelConnection(Config config,
+    {Duration timeout = const Duration(seconds: 45)}) async {
+  final response = await collectCompletion(
+    config,
+    const [
+      ['user', 'Reply with OK.'],
+    ],
+    timeout: timeout,
+  );
+  if (response.trim().isEmpty) {
+    throw const FormatException('The language model returned no reply');
+  }
 }

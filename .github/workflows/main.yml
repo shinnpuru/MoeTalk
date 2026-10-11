@@ -10,8 +10,25 @@ env:
   PUB_HOSTED_URL: https://pub.flutter-io.cn
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      value: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            VERSION="$GITHUB_REF_NAME"
+          else
+            VERSION="v$(awk '/^version:/ {print $2; exit}' pubspec.yaml)"
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
   web:
     name: web
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,11 +40,14 @@ jobs:
       - run: flutter build web --no-pub
       - uses: actions/upload-artifact@v4
         with:
-          name: release-web
+          name: MoeTalk-web-${{ needs.version.outputs.value }}
           path: build/web
 
   android:
     name: android
+    needs: version
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.value }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,14 +117,17 @@ jobs:
             exit 1
           fi
           echo "Release signing key verified: $ACTUAL"
-      - run: cp build/app/outputs/flutter-apk/app-release.apk build/MisonoTalk-android.apk
+      - run: cp build/app/outputs/flutter-apk/app-release.apk "build/MoeTalk-android-${RELEASE_VERSION}.apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: release-android
-          path: build/MisonoTalk-android.apk
+          name: MoeTalk-android-${{ needs.version.outputs.value }}
+          path: build/MoeTalk-android-${{ needs.version.outputs.value }}.apk
 
   windows:
     name: windows
+    needs: version
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.value }}
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -114,35 +137,37 @@ jobs:
           channel: stable
       - run: flutter pub get --enforce-lockfile
       - run: flutter build windows --release --no-pub
-      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/MisonoTalk-windows-x64.zip
+      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "build/MoeTalk-windows-x64-$env:RELEASE_VERSION.zip"
       - uses: actions/upload-artifact@v4
         with:
-          name: release-windows
-          path: build/MisonoTalk-windows-x64.zip
+          name: MoeTalk-windows-x64-${{ needs.version.outputs.value }}
+          path: build/MoeTalk-windows-x64-${{ needs.version.outputs.value }}.zip
 
   release:
     name: release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [web, android, windows]
+    needs: [version, web, android, windows]
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.value }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: release-web
+          name: MoeTalk-web-${{ needs.version.outputs.value }}
           path: release-web
       - run: |
           mkdir -p release
           cd release-web
-          zip -r ../release/MisonoTalk-web.zip .
+          zip -r "../release/MoeTalk-web-${RELEASE_VERSION}.zip" .
       - uses: actions/download-artifact@v4
         with:
-          name: release-android
+          name: MoeTalk-android-${{ needs.version.outputs.value }}
           path: release
       - uses: actions/download-artifact@v4
         with:
-          name: release-windows
+          name: MoeTalk-windows-x64-${{ needs.version.outputs.value }}
           path: release
       - uses: softprops/action-gh-release@v2
         with:
@@ -151,7 +176,7 @@ jobs:
 
   deploy:
     name: deploy
-    needs: web
+    needs: [version, web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -160,7 +185,7 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v4
       with:
-        name: release-web
+        name: MoeTalk-web-${{ needs.version.outputs.value }}
         path: ./build
 
     - name: Deploy to gh-pages

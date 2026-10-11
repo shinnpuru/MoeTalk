@@ -83,7 +83,7 @@ MoeTalk 是一个渐进式 Web 应用 (PWA)，这意味着你可以将其“安�
 
 ## 💖 感谢
 
-本软件基于[MisonoTalk](https://github.com/k96e/MisonoTalk)进行二次开发。样例声音来自[つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
+MoeTalk 基于 [k96e](https://github.com/k96e) 的开源聊天项目进行二次开发。样例声音来自[つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
 
 ## 📄 许可证
 

@@ -79,7 +79,7 @@ Contributions are welcome! If you have ideas for new features, bug fixes, or imp
 
 ## 💖 Thanks
 
-This software is developed based on [MisonoTalk](https://github.com/k96e/MisonoTalk). Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/).
+MoeTalk is developed based on an open-source chat project by [k96e](https://github.com/k96e). Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/).
 
 ## 📄 License
 
