@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moetalk/configpage.dart';
 import 'package:moetalk/i18n.dart';
+import 'package:moetalk/storage.dart';
 import 'package:moetalk/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,6 +33,66 @@ void main() {
     expect(find.text('Enter a valid HTTP(S) API URL and a model name.'),
         findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('thinking changes save over a preset and reset to defaults',
+      (tester) async {
+    final original = Config(
+      name: 'saved',
+      baseUrl: 'http://localhost:8080/v1',
+      apiKey: '',
+      model: 'local-model',
+      thinkingMode: ThinkingMode.enabled,
+      thinkingEffort: 'high',
+      thinkingApi: ThinkingApi.llamaCpp,
+    );
+    await setApiConfig(original);
+    await tester.pumpWidget(MaterialApp(
+      home: ConfigPage(currentConfig: original, updateFunc: (_) {}),
+    ));
+    await tester.pumpAndSettle();
+    final modeField = find.byType(DropdownButtonFormField<ThinkingMode>);
+    await tester.ensureVisible(modeField);
+    await tester.tap(modeField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Disabled').last);
+    await tester.pumpAndSettle();
+    final effortField = tester.widget<DropdownButtonFormField<String>>(
+        find.byType(DropdownButtonFormField<String>));
+    expect(effortField.onChanged, isNull);
+    final save = find.text('Save Preset');
+    await tester.ensureVisible(save);
+    // Repeated overwrites must neither duplicate the preset nor throw.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+    }
+    final stored = (await getApiConfigs()).single;
+    expect(stored.thinkingMode, ThinkingMode.disabled);
+    expect(stored.thinkingEffort, 'high');
+    expect(stored.thinkingApi, ThinkingApi.llamaCpp);
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<DropdownButtonFormField<ThinkingMode>>(modeField)
+            .initialValue,
+        ThinkingMode.automatic);
+    expect(
+        tester
+            .widget<DropdownButtonFormField<String>>(
+                find.byType(DropdownButtonFormField<String>))
+            .initialValue,
+        'default');
+    expect(
+        tester
+            .widget<DropdownButtonFormField<ThinkingApi>>(
+                find.byType(DropdownButtonFormField<ThinkingApi>))
+            .initialValue,
+        ThinkingApi.automatic);
   });
 
   testWidgets(
@@ -63,8 +124,15 @@ void main() {
     var saved = 0;
     await tester.pumpWidget(MaterialApp(
       home: ConfigPage(
-        currentConfig:
-            Config(name: 'unsaved', baseUrl: '', apiKey: '', model: ''),
+        currentConfig: Config(
+          name: 'unsaved',
+          baseUrl: '',
+          apiKey: '',
+          model: '',
+          thinkingMode: ThinkingMode.enabled,
+          thinkingEffort: 'high',
+          thinkingApi: ThinkingApi.deepseek,
+        ),
         updateFunc: (_) => saved++,
       ),
     ));
@@ -91,9 +159,10 @@ void main() {
     });
     await tester.pump();
     await tester.runAsync(() async {
-      expect(
-          (await received.future.timeout(const Duration(seconds: 5)))['model'],
-          'unsaved-model');
+      final payload = await received.future.timeout(const Duration(seconds: 5));
+      expect(payload['model'], 'unsaved-model');
+      expect(payload['thinking'], {'type': 'enabled'});
+      expect(payload['reasoning_effort'], 'high');
       reply.complete();
     });
     for (var attempt = 0; attempt < 100; attempt++) {

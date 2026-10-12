@@ -66,12 +66,16 @@ Before you start chatting, navigate to the **Settings** page within the app to c
 4.  **Host the app:**
 
     ```sh
-    flutter build web
+    ./scripts/build_web.sh
     docker build -t MoeTalk .
     docker run -d -p 80:80 MoeTalk
     ```
 
 </details>
+
+Web builds produce `build/web` and `build/MoeTalk-web-v<version+build>.zip`. The version comes from `pubspec.yaml` and appears in About. If Flutter is not on PATH, use `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`.
+
+Model settings include a connection test and Thinking default/enabled/disabled with low/medium/high effort. The test uses the current unsaved fields. Auto format detects DeepSeek and OpenRouter by API host; other services use the OpenAI/Gemini format. Proxies and llama.cpp can select a format manually. Supported efforts and whether thinking can be disabled depend on the model.
 
 ## 🤝 Contributing
 

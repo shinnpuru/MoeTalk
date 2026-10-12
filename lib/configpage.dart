@@ -6,7 +6,13 @@ import 'storage.dart';
 import 'i18n.dart';
 import 'openai.dart' show testModelConnection;
 
-import 'utils.dart' show snackBarAlert, Config, DecimalTextInputFormatter;
+import 'utils.dart'
+    show
+        snackBarAlert,
+        Config,
+        DecimalTextInputFormatter,
+        ThinkingMode,
+        ThinkingApi;
 
 class ConfigPage extends StatefulWidget {
   final Function(Config) updateFunc;
@@ -29,6 +35,9 @@ class ConfigPageState extends State<ConfigPage> {
   TextEditingController frequencyPenaltyController = TextEditingController();
   TextEditingController presencePenaltyController = TextEditingController();
   TextEditingController maxTokensController = TextEditingController();
+  ThinkingMode _thinkingMode = ThinkingMode.automatic;
+  String? _thinkingEffort;
+  ThinkingApi _thinkingApi = ThinkingApi.automatic;
   bool _testingConnection = false;
   bool _connectionSuccessful = false;
   String? _connectionResult;
@@ -72,6 +81,9 @@ class ConfigPageState extends State<ConfigPage> {
       frequencyPenalty: frequencyPenaltyController.text,
       presencePenalty: presencePenaltyController.text,
       maxTokens: maxTokensController.text,
+      thinkingMode: _thinkingMode,
+      thinkingEffort: _thinkingEffort,
+      thinkingApi: _thinkingApi,
     );
     final revision = _configRevision;
     setState(() {
@@ -126,7 +138,7 @@ class ConfigPageState extends State<ConfigPage> {
             maxTokens: "8192"));
         value.add(Config(
             name: "gemini",
-            baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+            baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
             apiKey: "",
             model: "gemini-2.5-flash",
             temperature: "1",
@@ -171,6 +183,9 @@ class ConfigPageState extends State<ConfigPage> {
         presencePenaltyController.text =
             widget.currentConfig.presencePenalty ?? "";
         maxTokensController.text = widget.currentConfig.maxTokens ?? "";
+        _thinkingMode = widget.currentConfig.thinkingMode;
+        _thinkingEffort = widget.currentConfig.thinkingEffort;
+        _thinkingApi = widget.currentConfig.thinkingApi;
       });
     });
   }
@@ -232,16 +247,7 @@ class ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  void saveConfig() {
-    if (apiConfigs.isNotEmpty) {
-      for (Config c in apiConfigs) {
-        if (c.name == nameController.text) {
-          // 删除旧配置
-          deleteApiConfig(nameController.text);
-          apiConfigs.remove(c);
-        }
-      }
-    }
+  Future<Config> saveConfig() async {
     Config newConfig = Config(
       name: nameController.text,
       baseUrl: urlController.text,
@@ -258,13 +264,19 @@ class ConfigPageState extends State<ConfigPage> {
           : presencePenaltyController.text,
       maxTokens:
           maxTokensController.text.isEmpty ? null : maxTokensController.text,
+      thinkingMode: _thinkingMode,
+      thinkingEffort: _thinkingEffort,
+      thinkingApi: _thinkingApi,
     );
-    setApiConfig(newConfig);
-    setCurrentApiConfig(nameController.text);
+    await setApiConfig(newConfig);
+    await setCurrentApiConfig(newConfig.name);
+    if (!mounted) return newConfig;
     setState(() {
+      apiConfigs.removeWhere((config) => config.name == newConfig.name);
       apiConfigs.add(newConfig);
-      selectedConfig = nameController.text;
+      selectedConfig = newConfig.name;
     });
+    return newConfig;
   }
 
   @override
@@ -286,32 +298,20 @@ class ConfigPageState extends State<ConfigPage> {
                 frequencyPenaltyController.clear();
                 presencePenaltyController.clear();
                 maxTokensController.clear();
+                _thinkingMode = ThinkingMode.automatic;
+                _thinkingEffort = null;
+                _thinkingApi = ThinkingApi.automatic;
+                _onConfigEdited();
               });
             },
           ),
           // 保存
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: () {
-              saveConfig();
-              widget.updateFunc(Config(
-                name: nameController.text,
-                baseUrl: urlController.text,
-                apiKey: keyController.text,
-                model: modelController.text,
-                temperature: temperatureController.text.isEmpty
-                    ? null
-                    : temperatureController.text,
-                frequencyPenalty: frequencyPenaltyController.text.isEmpty
-                    ? null
-                    : frequencyPenaltyController.text,
-                presencePenalty: presencePenaltyController.text.isEmpty
-                    ? null
-                    : presencePenaltyController.text,
-                maxTokens: maxTokensController.text.isEmpty
-                    ? null
-                    : maxTokensController.text,
-              ));
+            onPressed: () async {
+              final savedConfig = await saveConfig();
+              if (!mounted) return;
+              widget.updateFunc(savedConfig);
               Navigator.pop(context);
             },
           ),
@@ -369,6 +369,10 @@ class ConfigPageState extends State<ConfigPage> {
                                 presencePenaltyController.text =
                                     c.presencePenalty ?? "";
                                 maxTokensController.text = c.maxTokens ?? "";
+                                _thinkingMode = c.thinkingMode;
+                                _thinkingEffort = c.thinkingEffort;
+                                _thinkingApi = c.thinkingApi;
+                                _onConfigEdited();
                                 widget.updateFunc(c);
                                 break;
                               }
@@ -410,6 +414,88 @@ class ConfigPageState extends State<ConfigPage> {
                         controller: modelController,
                         decoration: InputDecoration(labelText: I18n.t('model')),
                       ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<ThinkingMode>(
+                        key: ValueKey('thinking-mode-${_thinkingMode.name}'),
+                        // Flutter 3.29 does not have initialValue yet.
+                        // ignore: deprecated_member_use
+                        value: _thinkingMode,
+                        isExpanded: true,
+                        decoration:
+                            InputDecoration(labelText: I18n.t('thinking_mode')),
+                        items: ThinkingMode.values.map((mode) {
+                          return DropdownMenuItem(
+                            value: mode,
+                            child: Text(I18n.t('thinking_${mode.name}')),
+                          );
+                        }).toList(),
+                        onChanged: (mode) {
+                          if (mode == null) return;
+                          setState(() {
+                            _thinkingMode = mode;
+                            _onConfigEdited();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('thinking-effort-$_thinkingEffort'),
+                        // Flutter 3.29 does not have initialValue yet.
+                        // ignore: deprecated_member_use
+                        value: _thinkingEffort ?? 'default',
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                            labelText: I18n.t('thinking_effort')),
+                        items:
+                            ['default', 'low', 'medium', 'high'].map((effort) {
+                          return DropdownMenuItem(
+                            value: effort,
+                            child: Text(I18n.t('thinking_$effort')),
+                          );
+                        }).toList(),
+                        onChanged: _thinkingMode == ThinkingMode.disabled
+                            ? null
+                            : (effort) {
+                                setState(() {
+                                  _thinkingEffort =
+                                      effort == 'default' ? null : effort;
+                                  _onConfigEdited();
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<ThinkingApi>(
+                        key: ValueKey('thinking-api-${_thinkingApi.name}'),
+                        // Flutter 3.29 does not have initialValue yet.
+                        // ignore: deprecated_member_use
+                        value: _thinkingApi,
+                        isExpanded: true,
+                        decoration:
+                            InputDecoration(labelText: I18n.t('thinking_api')),
+                        items: ThinkingApi.values.map((api) {
+                          return DropdownMenuItem(
+                            value: api,
+                            child: Text(api == ThinkingApi.automatic
+                                ? I18n.t('auto')
+                                : {
+                                    ThinkingApi.openai: 'OpenAI / Gemini',
+                                    ThinkingApi.deepseek: 'DeepSeek',
+                                    ThinkingApi.openrouter: 'OpenRouter',
+                                    ThinkingApi.llamaCpp: 'llama.cpp',
+                                  }[api]!),
+                          );
+                        }).toList(),
+                        onChanged: (api) {
+                          if (api == null) return;
+                          setState(() {
+                            _thinkingApi = api;
+                            _onConfigEdited();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(I18n.t('thinking_hint'),
+                          style: Theme.of(context).textTheme.bodySmall),
                       const SizedBox(height: 10),
                       ElevatedButton.icon(
                         onPressed: _testingConnection ? null : _testConnection,
@@ -497,14 +583,14 @@ class ConfigPageState extends State<ConfigPage> {
                       const SizedBox(height: 10),
                       ElevatedButton(
                         child: Text(I18n.t('save_preset')),
-                        onPressed: () {
+                        onPressed: () async {
                           if (nameController.text.isEmpty ||
                               urlController.text.isEmpty ||
-                              keyController.text.isEmpty ||
                               modelController.text.isEmpty) {
                             snackBarAlert(context, I18n.t('please_fill_all'));
                           } else {
-                            saveConfig();
+                            await saveConfig();
+                            if (!mounted) return;
                             snackBarAlert(context, I18n.t('save_success'));
                           }
                         },

@@ -14,17 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       value: ${{ steps.version.outputs.value }}
+      app_version: ${{ steps.version.outputs.app_version }}
     steps:
       - uses: actions/checkout@v4
       - id: version
         shell: bash
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            VERSION="$GITHUB_REF_NAME"
-          else
-            VERSION="v$(awk '/^version:/ {print $2; exit}' pubspec.yaml)"
-          fi
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          APP_VERSION="$(awk '/^version:/ {print $2; exit}' pubspec.yaml)"
+          echo "value=v$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
 
   web:
     name: web
@@ -37,7 +35,7 @@ jobs:
           flutter-version: '3.29.0'
           channel: stable
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build web --no-pub
+      - run: flutter build web --no-pub --dart-define=APP_VERSION=${{ needs.version.outputs.app_version }}
       - uses: actions/upload-artifact@v4
         with:
           name: MoeTalk-web-${{ needs.version.outputs.value }}
@@ -84,7 +82,7 @@ jobs:
           printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=moetalk-release.jks\n' \
             "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" "${KEY_ALIAS:-moetalk}" > android/key.properties
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build apk --release --no-pub
+      - run: flutter build apk --release --no-pub --dart-define=APP_VERSION=${{ needs.version.outputs.app_version }}
       - name: Verify APK signing key
         env:
           EXPECTED_CERT_SHA256: 'E97A6C5F393882565EDFF28D83D4D1A40C448281E16F587DF3E54FAA6A8BCA14'
@@ -136,7 +134,7 @@ jobs:
           flutter-version: '3.29.0'
           channel: stable
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build windows --release --no-pub
+      - run: flutter build windows --release --no-pub --dart-define=APP_VERSION=${{ needs.version.outputs.app_version }}
       - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "build/MoeTalk-windows-x64-$env:RELEASE_VERSION.zip"
       - uses: actions/upload-artifact@v4
         with:

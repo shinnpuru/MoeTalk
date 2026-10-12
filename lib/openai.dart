@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:eventflux/eventflux.dart';
 import 'utils.dart' show Config;
+import 'model_thinking.dart';
 
 String removeTailSlash(String input) {
   return input.trimRight().endsWith('/')
@@ -9,10 +10,23 @@ String removeTailSlash(String input) {
       : input.trimRight();
 }
 
-Future<void> completion(Config config, List<List<String>> message,
-    Function onEevent, Function onDone, Function onErr,
-    {Duration? timeout}) async {
-  Map<String, dynamic> data = {
+/// Accept existing Gemini presets that predate the OpenAI compatibility path.
+Uri completionEndpoint(String baseUrl) {
+  var base = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+  final uri = Uri.parse(base);
+  if (uri.host == 'generativelanguage.googleapis.com' &&
+      RegExp(r'^/v1(?:beta)?$').hasMatch(uri.path)) {
+    base = '$base/openai';
+  }
+  return Uri.parse('$base/chat/completions');
+}
+
+Map<String, dynamic> completionPayload(
+    Config config, List<List<String>> message) {
+  final endpoint = completionEndpoint(config.baseUrl);
+  final openAiReasoning = endpoint.host == 'api.openai.com' &&
+      RegExp(r'^(o[134](?:-|$)|gpt-5(?:[.-]|$))').hasMatch(config.model);
+  return {
     'model': config.model,
     'messages': message
         .asMap()
@@ -26,18 +40,30 @@ Future<void> completion(Config config, List<List<String>> message,
         .values
         .toList(),
     'stream': true,
-    if (config.temperature != null &&
+    ...thinkingParameters(config),
+    if (!openAiReasoning &&
+        config.temperature != null &&
         double.tryParse(config.temperature!) != null)
       'temperature': double.parse(config.temperature!),
-    if (config.frequencyPenalty != null &&
+    if (!openAiReasoning &&
+        config.frequencyPenalty != null &&
         double.tryParse(config.frequencyPenalty!) != null)
       'frequency_penalty': double.parse(config.frequencyPenalty!),
-    if (config.presencePenalty != null &&
+    if (!openAiReasoning &&
+        config.presencePenalty != null &&
         double.tryParse(config.presencePenalty!) != null)
       'presence_penalty': double.parse(config.presencePenalty!),
     if (config.maxTokens != null && int.tryParse(config.maxTokens!) != null)
-      'max_tokens': int.parse(config.maxTokens!),
+      (openAiReasoning ? 'max_completion_tokens' : 'max_tokens'):
+          int.parse(config.maxTokens!),
   };
+}
+
+Future<void> completion(Config config, List<List<String>> message,
+    Function onEevent, Function onDone, Function onErr,
+    {Duration? timeout}) async {
+  final endpoint = completionEndpoint(config.baseUrl);
+  final data = completionPayload(config, message);
   // EventFlux.instance owns only one client, controller and subscription. Using
   // it for overlapping chat, inspire and draw requests makes those streams
   // overwrite each other's state. Give every completion its own SSE client.
@@ -79,8 +105,7 @@ Future<void> completion(Config config, List<List<String>> message,
   }
 
   try {
-    eventFlux.connect(EventFluxConnectionType.post,
-        "${removeTailSlash(config.baseUrl)}/chat/completions",
+    eventFlux.connect(EventFluxConnectionType.post, endpoint.toString(),
         header: {
           'Authorization': 'Bearer ${config.apiKey}',
           'Content-Type': 'application/json',
@@ -146,7 +171,7 @@ Future<String> collectCompletion(Config config, List<List<String>> messages,
 
 /// Check the same streaming completion endpoint and parameters used by chat.
 Future<void> testModelConnection(Config config,
-    {Duration timeout = const Duration(seconds: 45)}) async {
+    {Duration timeout = const Duration(seconds: 120)}) async {
   final response = await collectCompletion(
     config,
     const [

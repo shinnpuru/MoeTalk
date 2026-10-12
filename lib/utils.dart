@@ -32,6 +32,10 @@ class Message {
   }
 }
 
+enum ThinkingMode { automatic, enabled, disabled }
+
+enum ThinkingApi { automatic, openai, deepseek, openrouter, llamaCpp }
+
 class Config {
   String name;
   String baseUrl;
@@ -41,6 +45,9 @@ class Config {
   String? frequencyPenalty;
   String? presencePenalty;
   String? maxTokens;
+  ThinkingMode thinkingMode;
+  String? thinkingEffort;
+  ThinkingApi thinkingApi;
 
   Config(
       {required this.name,
@@ -50,13 +57,18 @@ class Config {
       this.temperature,
       this.frequencyPenalty,
       this.presencePenalty,
-      this.maxTokens});
+      this.maxTokens,
+      this.thinkingMode = ThinkingMode.automatic,
+      this.thinkingEffort,
+      this.thinkingApi = ThinkingApi.automatic});
 
   @override
   String toString() {
     return 'Config{name: $name, baseUrl: $baseUrl, apiKey: $apiKey, model: $model, '
         'temperature: $temperature, frequencyPenalty: $frequencyPenalty, '
-        'presencePenalty: $presencePenalty, maxTokens: $maxTokens}';
+        'presencePenalty: $presencePenalty, maxTokens: $maxTokens, '
+        'thinkingMode: ${thinkingMode.name}, thinkingEffort: $thinkingEffort, '
+        'thinkingApi: ${thinkingApi.name}}';
   }
 }
 
@@ -96,6 +108,7 @@ class SdConfig {
   int? seed;
   int? clipSkip;
   BackendType backendType;
+
   /// Base URL of the stable-diffusion.cpp (`sd-server`) backend.
   String sdCppBaseUrl;
 

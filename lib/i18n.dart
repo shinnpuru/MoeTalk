@@ -132,7 +132,22 @@ class I18n {
       'test_connection': 'Test connection',
       'llm_test_connection': 'Test language model connection',
       'llm_connection_testing': 'Testing connection…',
-      'llm_connection_fields_required': 'Enter a valid HTTP(S) API URL and a model name.',
+      'llm_connection_fields_required':
+          'Enter a valid HTTP(S) API URL and a model name.',
+      'thinking_mode': 'Thinking mode',
+      'thinking_effort': 'Thinking effort',
+      'thinking_api': 'Thinking API format',
+      'thinking_automatic': 'Provider default',
+      'thinking_default': 'Provider default',
+      'thinking_enabled': 'Enabled',
+      'thinking_disabled': 'Disabled',
+      'thinking_low': 'Low',
+      'thinking_medium': 'Medium',
+      'thinking_high': 'High',
+      'thinking_hint':
+          'Support depends on the model; some models cannot disable thinking. '
+              'Auto detects the API host. For proxies or local services, select a format. '
+              'The connection test sends a short model request using these settings.',
       'connection_success': 'Connection successful',
       'connection_failed': 'Connection failed',
       'about': 'About',
@@ -256,12 +271,17 @@ class I18n {
       'no_file_selected': 'No file selected',
       'webdav_backup_restore': 'WebDAV Backup & Restore (Not supported on Web)',
       'webdav_invalid_data': 'Invalid WebDAV URL or backup file.',
-      'webdav_auth_failed': 'Authentication failed. Check your username and WebDAV app password.',
-      'webdav_forbidden': 'This account does not have permission to access this directory.',
-      'webdav_directory_missing': 'Remote directory not found. Check the URL or create the directory first. For Nutstore, you can use https://dav.jianguoyun.com/dav/.',
-      'webdav_network_error': 'Connection failed or timed out. Check your network and server address.',
+      'webdav_auth_failed':
+          'Authentication failed. Check your username and WebDAV app password.',
+      'webdav_forbidden':
+          'This account does not have permission to access this directory.',
+      'webdav_directory_missing':
+          'Remote directory not found. Check the URL or create the directory first. For Nutstore, you can use https://dav.jianguoyun.com/dav/.',
+      'webdav_network_error':
+          'Connection failed or timed out. Check your network and server address.',
       'webdav_operation_failed': 'WebDAV operation failed. Please try again.',
-      'webdav_backup_description': 'Restore this backup to replace the current configuration, or overwrite this remote file with the current configuration.',
+      'webdav_backup_description':
+          'Restore this backup to replace the current configuration, or overwrite this remote file with the current configuration.',
       'username': 'Username',
       'password': 'Password',
       'test': 'Test',
@@ -451,6 +471,18 @@ class I18n {
       'llm_test_connection': '测试语言模型连通性',
       'llm_connection_testing': '正在测试连接…',
       'llm_connection_fields_required': '请填写有效的 HTTP(S) API 地址和模型名称。',
+      'thinking_mode': '思考模式（Thinking）',
+      'thinking_effort': '思考强度',
+      'thinking_api': 'Thinking 接口格式',
+      'thinking_automatic': '使用服务默认值',
+      'thinking_default': '使用服务默认值',
+      'thinking_enabled': '开启',
+      'thinking_disabled': '关闭',
+      'thinking_low': '低',
+      'thinking_medium': '中',
+      'thinking_high': '高',
+      'thinking_hint': '支持情况取决于模型，部分模型无法关闭思考。自动模式按 API 地址识别；'
+          '代理或本地服务可手动选择格式。连通性测试会使用当前设置发起一次简短的模型请求。',
       'connection_success': '连接成功',
       'connection_failed': '连接失败',
       'about': '关于',
@@ -572,7 +604,8 @@ class I18n {
       'webdav_invalid_data': 'WebDAV 地址或备份文件格式无效。',
       'webdav_auth_failed': '认证失败，请检查用户名和 WebDAV 应用密码。',
       'webdav_forbidden': '当前账号没有访问此目录的权限。',
-      'webdav_directory_missing': '远程目录不存在，请检查地址或先创建对应文件夹。坚果云可使用 https://dav.jianguoyun.com/dav/。',
+      'webdav_directory_missing':
+          '远程目录不存在，请检查地址或先创建对应文件夹。坚果云可使用 https://dav.jianguoyun.com/dav/。',
       'webdav_network_error': '连接失败或超时，请检查网络和服务器地址。',
       'webdav_operation_failed': 'WebDAV 操作失败，请重试。',
       'webdav_backup_description': '恢复此备份将替换当前配置；选择覆盖将用当前配置替换此远程文件。',

@@ -13,7 +13,8 @@ import 'package:http/http.dart' as http;
 import 'non_web_utils.dart' if (dart.library.html) 'web_utils.dart';
 import 'i18n.dart';
 
-// List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty 5:presence_penalty 6:max_tokens
+// List 0:base_url 1:api_key 2:model_name 3:temperature 4:frequency_penalty
+// 5:presence_penalty 6:max_tokens 7:thinking_mode 8:thinking_effort 9:thinking_api
 Future<void> setApiConfig(Config config) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   List<String> configList = [config.baseUrl, config.apiKey, config.model];
@@ -37,6 +38,11 @@ Future<void> setApiConfig(Config config) async {
   } else {
     configList.add('');
   }
+  configList.addAll([
+    config.thinkingMode.name,
+    config.thinkingEffort ?? '',
+    config.thinkingApi.name,
+  ]);
   await prefs.setStringList("api_${config.name}", configList);
   debugPrint("set api ${config.name}: ${config.toString()}");
 }
@@ -67,26 +73,35 @@ Future<Config?> getAidrawApiConfig() async {
   if (key == null || key.isEmpty) return null;
   final List<String>? cfg = prefs.getStringList(key);
   if (cfg == null) return null;
-  if (cfg.length == 3) {
-    return Config(
-      name: key.replaceFirst("api_", ""),
-      baseUrl: cfg[0],
-      apiKey: cfg[1],
-      model: cfg[2],
-    );
-  } else if (cfg.length == 7) {
-    return Config(
-      name: key.replaceFirst("api_", ""),
-      baseUrl: cfg[0],
-      apiKey: cfg[1],
-      model: cfg[2],
-      temperature: cfg[3],
-      frequencyPenalty: cfg[4],
-      presencePenalty: cfg[5],
-      maxTokens: cfg[6],
-    );
-  }
-  return null;
+  return _decodeApiConfig(key, cfg);
+}
+
+// Older backups contain three or seven fields. Missing/new enum values use
+// provider defaults so importing them never silently enables thinking.
+Config? _decodeApiConfig(String key, List<String> fields) {
+  if (fields.length < 3) return null;
+  String? field(int index) =>
+      fields.length > index && fields[index].isNotEmpty ? fields[index] : null;
+  return Config(
+    name: key.replaceFirst('api_', ''),
+    baseUrl: fields[0],
+    apiKey: fields[1],
+    model: fields[2],
+    temperature: field(3),
+    frequencyPenalty: field(4),
+    presencePenalty: field(5),
+    maxTokens: field(6),
+    thinkingMode: ThinkingMode.values.firstWhere(
+      (value) => value.name == field(7),
+      orElse: () => ThinkingMode.automatic,
+    ),
+    thinkingEffort:
+        const ['low', 'medium', 'high'].contains(field(8)) ? field(8) : null,
+    thinkingApi: ThinkingApi.values.firstWhere(
+      (value) => value.name == field(9),
+      orElse: () => ThinkingApi.automatic,
+    ),
+  );
 }
 
 Future<void> deleteApiConfig(String name) async {
@@ -101,50 +116,18 @@ Future<List<Config>> getApiConfigs() async {
   String current = prefs.getString("current_api") ?? "";
   Set<String> keys = prefs.getKeys();
   if (current.isNotEmpty) {
-    if (prefs.getStringList(current) == null) {
-      await prefs.remove("current_api");
+    final fields = prefs.getStringList(current);
+    if (fields == null) {
+      await prefs.remove('current_api');
     } else {
-      List<String> currentConfig =
-          prefs.getStringList(current) ?? ['', '', '', ''];
-      if (currentConfig.length == 3) {
-        configs.add(Config(
-            name: current.replaceFirst("api_", ""),
-            baseUrl: currentConfig[0],
-            apiKey: currentConfig[1],
-            model: currentConfig[2]));
-      } else if (currentConfig.length == 7) {
-        configs.add(Config(
-            name: current.replaceFirst("api_", ""),
-            baseUrl: currentConfig[0],
-            apiKey: currentConfig[1],
-            model: currentConfig[2],
-            temperature: currentConfig[3],
-            frequencyPenalty: currentConfig[4],
-            presencePenalty: currentConfig[5],
-            maxTokens: currentConfig[6]));
-      }
+      final config = _decodeApiConfig(current, fields);
+      if (config != null) configs.add(config);
     }
   }
-  for (String key in keys) {
-    if (key.startsWith("api_") && key != current) {
-      List<String> currentConfig = prefs.getStringList(key) ?? ['', '', '', ''];
-      if (currentConfig.length == 3) {
-        configs.add(Config(
-            name: key.replaceFirst("api_", ""),
-            baseUrl: currentConfig[0],
-            apiKey: currentConfig[1],
-            model: currentConfig[2]));
-      } else if (currentConfig.length == 7) {
-        configs.add(Config(
-            name: key.replaceFirst("api_", ""),
-            baseUrl: currentConfig[0],
-            apiKey: currentConfig[1],
-            model: currentConfig[2],
-            temperature: currentConfig[3],
-            frequencyPenalty: currentConfig[4],
-            presencePenalty: currentConfig[5],
-            maxTokens: currentConfig[6]));
-      }
+  for (final key in keys) {
+    if (key.startsWith('api_') && key != current) {
+      final config = _decodeApiConfig(key, prefs.getStringList(key) ?? []);
+      if (config != null) configs.add(config);
     }
   }
   debugPrint("query api configs: ${configs.toString()}");

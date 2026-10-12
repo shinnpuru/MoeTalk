@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // ignore: depend_o
 import 'package:url_launcher/url_launcher_string.dart' show launchUrlString;
 import 'chatview.dart';
 import 'configpage.dart';
+import 'app_version.dart';
 import 'notifications.dart';
 import 'popups.dart';
 import 'prompteditor.dart';
@@ -3087,7 +3088,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: Text(I18n.t('about')),
-                    content: Text(I18n.t('about_text')),
+                    content: SingleChildScrollView(
+                      child: Text('MoeTalk $appVersion\n\n${I18n.t('about_text')}'),
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
