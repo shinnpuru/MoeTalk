@@ -20,7 +20,8 @@ jobs:
       - id: version
         shell: bash
         run: |
-          APP_VERSION="$(awk '/^version:/ {print $2; exit}' pubspec.yaml)"
+          PACKAGE_VERSION="$(awk '/^version:/ {print $2; exit}' pubspec.yaml)"
+          APP_VERSION="${PACKAGE_VERSION%%+*}"
           echo "value=v$APP_VERSION" >> "$GITHUB_OUTPUT"
           echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
 

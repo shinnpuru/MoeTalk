@@ -73,7 +73,7 @@ Before you start chatting, navigate to the **Settings** page within the app to c
 
 </details>
 
-Web builds produce `build/web` and `build/MoeTalk-web-v<version+build>.zip`. The version comes from `pubspec.yaml` and appears in About. If Flutter is not on PATH, use `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`.
+Web builds produce `build/web` and `build/MoeTalk-web-v<date-version>.zip`. The public version is a date (for example `2026.10.12`), comes from `pubspec.yaml`, and appears in About. If Flutter is not on PATH, use `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`.
 
 Model settings include a connection test and Thinking default/enabled/disabled with low/medium/high effort. The test uses the current unsaved fields. Auto format detects DeepSeek and OpenRouter by API host; other services use the OpenAI/Gemini format. Proxies and llama.cpp can select a format manually. Supported efforts and whether thinking can be disabled depend on the model.
 

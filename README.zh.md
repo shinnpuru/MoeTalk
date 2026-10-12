@@ -77,7 +77,7 @@ MoeTalk 是一个渐进式 Web 应用 (PWA)，这意味着你可以将其“安�
 
 </details>
 
-Web 构建会生成 `build/web` 和 `build/MoeTalk-web-v<版本号+构建号>.zip`；版本号取自 `pubspec.yaml`，并显示在“关于”中。若 Flutter 未加入 PATH，可用 `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`。
+Web 构建会生成 `build/web` 和 `build/MoeTalk-web-v<日期版本号>.zip`；对外版本只使用日期（例如 `2026.10.12`），取自 `pubspec.yaml`，并显示在“关于”中。若 Flutter 未加入 PATH，可用 `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`。
 
 模型设置支持连通性测试，以及 Thinking 默认/开启/关闭与低/中/高强度。测试使用当前未保存的参数。自动格式按 API 地址识别 DeepSeek 和 OpenRouter，其他服务使用 OpenAI/Gemini 格式；代理和 llama.cpp 可手动选择。支持的强度和能否关闭思考取决于模型。
 

@@ -193,6 +193,9 @@ void main() {
 
   test('default display version follows the package version', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
-    expect(pubspec, contains('version: $appVersion'));
+    final packageVersion = RegExp(r'^version: (.+)$', multiLine: true)
+        .firstMatch(pubspec)!
+        .group(1)!;
+    expect(packageVersion.split('+').first, appVersion);
   });
 }
