@@ -1,90 +1,96 @@
 <div align="center">
   <img src="web/favicon.png" width="128" height="128" alt="MoeTalk Logo">
-  
+  <h1>MoeTalk</h1>
+  <p>与你喜欢的角色聊天，让对话拥有声音与画面。</p>
+  <p>简体中文 | <a href="README.en.md">English</a></p>
 </div>
 
-<div align="center">
-<a href="README.zh.md">中文</a> | <a href="README.md">English</a>
-</div>
+MoeTalk 是一款开源 AI 角色聊天应用，支持角色卡、聊天记录、语音合成、AI 绘图和备份恢复。聊天、语音和绘图服务可以分别配置，只想聊天时无需设置其余功能。
 
+## 开始使用
 
-# MoeTalk - Your AI Companion Anywhere
+- **网页版：** 打开 [MoeTalk](https://talk.shinnpuru.site)。浏览器支持时，可使用“安装应用”或“添加到主屏幕”。
+- **Android / Windows：** 前往 [GitHub 最新正式版](https://github.com/shinnpuru/MoeTalk/releases/latest) 下载对应安装包。
+- **确认版本：** 进入“设置 → 关于”，版本以日期显示，例如 `2026.10.12`。
 
-**Bring your favorite characters to life!** MoeTalk is an open-source, privacy-first chat application built with Flutter that lets you converse with AI personalities. Powered by large language models (LLMs) for dialogue and diffusion models for image and voice synthesis, your conversations will be more immersive than ever.
+首次打开时，点击“开始配置”；已进入应用后，可在“设置”中找到“模型配置”“语音配置”和“绘图配置”。
 
-## 📱 Usage
+## 配置聊天
 
-Use now by just clicking the [MoeTalk](https://talk.shinnpuru.online) website! MoeTalk is a Progressive Web App (PWA), which means you can 'install' it on your favorite devices for a native-like, full-screen experience. This works across desktop and mobile platforms.
+1. 打开 **设置 → 模型配置**，选择已有预设，或填写一组新的配置。
+2. 填写以下信息。下面以应用内的 DeepSeek 预设为例，模型名称以服务商实际提供的为准。
 
-**On Desktop (Windows, macOS, Linux):**
-1. Open the [MoeTalk website](https://talk.shinnpuru.online) in a Chromium-based browser (like Google Chrome or Microsoft Edge).
-2. Look for an 'Install' icon in the address bar (it often looks like a screen with a downward arrow).
-3. Click it and follow the prompts to add MoeTalk to your desktop.
+   | 配置项 | 填写内容 |
+   | --- | --- |
+   | 名称 | 自定义预设名称，例如 `DeepSeek` |
+   | API 地址 | `https://api.deepseek.com/v1` |
+   | API 密钥 | 服务商提供的 API Key；无需鉴权的本地服务可留空 |
+   | 模型 | 例如 `deepseek-chat`，需与服务商提供的模型名称一致 |
 
-**On Mobile:**
-- **Android:** Open the website in Chrome, tap the three-dot menu, and select 'Install app' or 'Add to Home screen'.
-- **iOS (iPhone/iPad):** Open the website in Safari, tap the 'Share' button, and scroll down to select 'Add to Home Screen'.
+3. 点击 **测试语言模型连通性**。测试使用页面上当前填写的参数，无需先保存；看到“连接成功”后，点击右上角的 **保存图标** 应用配置。“保存预设”可保留这组参数，方便以后切换。
+4. 在“角色列表”导入角色卡，或点击“当前角色”旁的编辑按钮，设置角色名称、初始对话和设定提示词，然后保存。
+5. 返回聊天页面，输入消息并发送。
 
-Before you start chatting, navigate to the **Settings** page within the app to configure your AI model APIs (LLM, Drawing, Voice).
+**Thinking 调整：** 在“模型”输入框下方，可选择思考模式（使用服务默认值／开启／关闭）和思考强度（默认／低／中／高）。“Thinking 接口格式”通常保持“自动”；代理服务或 llama.cpp 可按实际服务手动选择。不同模型支持的强度不同，部分模型无法关闭思考。修改后可再次测试连接，并点击右上角保存。
 
-## ✨ Features
+**地址怎么填：** 聊天使用 OpenAI 兼容接口，填写 API 基础地址，不要自行追加 `/chat/completions`。例如 Gemini 的兼容地址为 `https://generativelanguage.googleapis.com/v1beta/openai`。
 
-- **🤖 Intelligent Chat:** Engage in dynamic, context-aware conversations.
-- **🎭 Character Management:** Easily create, customize, and switch between different AI characters.
-- **💾 Chat History:** Save, load, and manage your conversation history.
-- **🎨 AI-Powered Tools:**
-    - **Status Analysis:** Get a summary of your character's current state and mood.
-    - **AI Drawing:** Generate images based on the conversation context.
-    - **Voice Synthesis:** Create voice clips for your character's messages.
-    - **Reply Suggestions:** Get AI-generated ideas for your next message.
-- **🔧 Highly Configurable:**
-    - Connect to any compatible LLM API endpoint.
-    - Customize system prompts, character personalities, and response formatting.
-- **🔒 Privacy First:** All your data, including conversations and configurations, is stored locally on your device.
-- **☁️ Backup & Restore:** Use WebDAV to back up and sync your configurations and chat history.
+## 配置语音
 
-## 🚀 Build
-<details>
-<summary>Steps</summary>
+语音需要配置两部分：**合成服务**和**当前角色的参考音频**。
 
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/shinnpuru/MoeTalk.git
-    cd MoeTalk
-    ```
+### 1. 选择合成服务
 
-2.  **Install dependencies:**
-    ```sh
-    flutter pub get
-    ```
+打开 **设置 → 语音配置**，根据使用的服务选择后端。
 
-3.  **Run the app:**
-    ```sh
-    flutter run web
-    ```
+| 后端 | 配置方法 |
+| --- | --- |
+| Civitai | 填写 `Civitai API Token`，点击右上角保存。未填写语音 Token 时，应用会尝试使用绘图配置中的 Token。 |
+| audio.cpp | 准备已运行并加载语音模型的 audio.cpp 服务，填写服务器地址，例如 `http://127.0.0.1:8080`，点击“测试连接”。应用会自动读取并使用返回的第一个模型，确认连接成功后保存。 |
 
-4.  **Host the app:**
+### 2. 设置角色声音
 
-    ```sh
-    ./scripts/build_web.sh
-    docker build -t MoeTalk .
-    docker run -d -p 80:80 MoeTalk
-    ```
+1. 打开 **角色列表 → 当前角色旁的编辑按钮**，进入“角色编辑器”。
+2. 在 **语音参考** 中填写可直接访问的 WAV 或 MP3 音频链接；不要填写音频网页地址或电脑上的文件路径。使用 Civitai 时，也可以填写该服务可用的音频资源 URN。
+3. 在 **语音参考文本** 中填写这段录音实际说出的内容，然后点击右上角保存。audio.cpp 允许留空，留空时会使用无需参考文本的合成模式。
+4. 回到聊天页面，**长按一条角色回复 → 语音**，先试播一条。需要自动朗读时，点击输入框旁的 **＋**，将“手动语音”切换为“自动语音”。
 
-</details>
+参考录音尽量短、清晰且只有一个说话人。MP3 无法读取时可换成 WAV；audio.cpp 的参考音频需满足应用的 5 MiB 大小限制。
 
-Web builds produce `build/web` and `build/MoeTalk-web-v<date-version>.zip`. The public version is a date (for example `2026.10.12`), comes from `pubspec.yaml`, and appears in About. If Flutter is not on PATH, use `FLUTTER_BIN=/path/to/flutter ./scripts/build_web.sh`.
+## 配置绘图
 
-Model settings include a connection test and Thinking default/enabled/disabled with low/medium/high effort. The test uses the current unsaved fields. Auto format detects DeepSeek and OpenRouter by API host; other services use the OpenAI/Gemini format. Proxies and llama.cpp can select a format manually. Supported efforts and whether thinking can be disabled depend on the model.
+1. 打开 **设置 → 绘图配置**。
+2. 在 **绘图提示词模型** 中选择一组可用的聊天模型预设，用来根据对话生成图片描述。
+3. 选择绘图后端并填写连接信息。
 
-## 🤝 Contributing
+   | 后端 | 配置方法 |
+   | --- | --- |
+   | Civitai | 填写 `Civitai API Token` 和服务支持的 `Model URN`，再点击“测试连接”。Model URN 是模型资源标识，不是模型页面的网址。 |
+   | sd.cpp | 使用支持 `/sdcpp/v1` 接口的 sd.cpp 服务，填写服务器地址，例如 `http://127.0.0.1:1234`，点击“测试连接”。模型名称会从服务器自动读取。 |
 
-Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, feel free to open an issue or submit a pull request.
+4. 设置采样器、图片宽高、步数和 CFG。初次使用可先保留默认值；正向提示词中的 `CHAR` 会替换为角色的绘画提示词，`VERB` 会替换为本次图片描述。配置完成后点击右上角保存。
+5. 在 **角色编辑器 → 绘画提示词** 中填写角色外观，例如发色、服装等，需要时再填写 LoRA，并保存。
+6. 返回聊天页面，**长按消息 → 绘图**，在绘图面板中确认或修改提示词，再生成图片。需要随回复自动生成时，点击输入框旁的 **＋**，将“手动绘图”切换为“自动绘图”。
 
-## 💖 Thanks
+绘图和语音的运行进度、失败原因可在 **输入框旁的 ＋ → 生成队列** 中查看。
 
-MoeTalk is developed based on an open-source chat project by [k96e](https://github.com/k96e). Sample voice is from [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/).
+## 常见问题
 
-## 📄 License
+- **没有 Thinking 设置，或“关于”没有版本号：** 从“最新正式版”下载更新；网页版可先尝试强制刷新。
+- **聊天连接失败：** 检查 API 基础地址、密钥和模型名称是否匹配；如果刚调整 Thinking，可先恢复“使用服务默认值”后重试。
+- **手机连不上电脑里的服务：** 手机上的 `127.0.0.1` 指向手机自身。请填写手机能访问的电脑局域网地址，并确认服务允许其他设备访问。
+- **网页版连接本地服务失败：** 浏览器可能限制 HTTPS 页面访问 HTTP 服务或跨域接口。请确认服务的 HTTPS、跨域和浏览器访问权限配置，或使用桌面客户端连接本地服务。
+- **语音连接成功却不能朗读：** 连接测试只检查服务和模型是否可用，还需检查当前角色的参考音频与参考文本。
+- **担心换设备丢失记录：** 在“设置 → 备份配置”中导出本地备份；客户端也可配置 WebDAV 备份与恢复。
 
-This project is licensed under the terms of the [MIT](LICENSE) licence.
+角色、聊天记录和配置默认保存在本机；使用聊天、语音或绘图时，相应请求会发送至你配置的服务。
+
+## 反馈
+
+遇到问题或有功能建议，请提交 [GitHub Issue](https://github.com/shinnpuru/MoeTalk/issues)。
+
+## 致谢与许可证
+
+MoeTalk 基于 [k96e](https://github.com/k96e) 的开源聊天项目进行二次开发。样例声音来自 [つくよみちゃん](https://tyc.rei-yumesaki.net/material/voice/sample-voice/)。
+
+本项目使用 [MIT 许可证](LICENSE)。
