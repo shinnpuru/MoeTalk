@@ -119,24 +119,40 @@ Future<void> completion(Config config, List<List<String>> message,
           }
           stream.listen((data) {
             if (finished) return;
-            try {
-              final payload = json.decode(data.data);
-              final error = payload['error'];
-              if (error != null) {
-                safeErr(error is Map ? error['message'] ?? error : error);
-                return;
-              }
-              final content = payload['choices'][0]['delta']['content'];
-              if (content != null) {
-                onEevent(content);
-              }
-            } catch (e) {
-              if (data.data.contains("DONE")) {
-                safeDone();
-              } else if (e is FormatException) {
-                safeErr("Unexpected response: \n${data.data}");
-              }
+            // EventFlux also emits an empty event for SSE comments such as
+            // Strata's keep-alive and OpenRouter's processing heartbeat.
+            final raw = data.data.trim();
+            if (raw.isEmpty) return;
+            if (raw == '[DONE]') {
+              safeDone();
+              return;
             }
+            dynamic payload;
+            try {
+              payload = json.decode(raw);
+            } on FormatException {
+              safeErr('Unexpected response: \n$raw');
+              return;
+            }
+            if (payload is! Map) {
+              safeErr('Unexpected response: \n$raw');
+              return;
+            }
+            final error = payload['error'];
+            if (error != null) {
+              safeErr(error is Map ? error['message'] ?? error : error);
+              return;
+            }
+            // Providers can send accounting or reasoning-only chunks without
+            // any visible text. They are not errors and do not end the stream.
+            final choices = payload['choices'];
+            if (choices is! List || choices.isEmpty || choices.first is! Map) {
+              return;
+            }
+            final delta = choices.first['delta'];
+            if (delta is! Map) return;
+            final content = delta['content'];
+            if (content is String && content.isNotEmpty) onEevent(content);
           }, onDone: () {
             safeDone();
           }, onError: (e) {

@@ -143,7 +143,8 @@ void main() {
     state.modelController.text = 'unsaved-model';
     final testButton = tester.widget<ElevatedButton>(find.ancestor(
         of: find.text('Test language model connection'),
-        matching: find.byType(ElevatedButton)));
+        matching:
+            find.byWidgetPredicate((widget) => widget is ElevatedButton)));
     await tester.runAsync(() async {
       HttpOverrides.runWithHttpOverrides(testButton.onPressed!, _RealHttp());
       testButton.onPressed!();
@@ -152,7 +153,8 @@ void main() {
     expect(find.text('Testing connection…'), findsOneWidget);
     final busyButton = tester.widget<ElevatedButton>(find.ancestor(
         of: find.text('Testing connection…'),
-        matching: find.byType(ElevatedButton)));
+        matching:
+            find.byWidgetPredicate((widget) => widget is ElevatedButton)));
     expect(busyButton.onPressed, isNull);
     await tester.runAsync(() async {
       await Future<void>.delayed(const Duration(milliseconds: 100));
