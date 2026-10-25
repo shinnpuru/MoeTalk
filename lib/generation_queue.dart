@@ -34,6 +34,7 @@ class GenerationTask {
   String? error;
   DateTime? finishedAt;
   final List<String> log = [];
+  final Map<String, String> imageLinks = {};
 
   bool get isActive =>
       status == GenerationStatus.queued || status == GenerationStatus.running;
@@ -41,8 +42,7 @@ class GenerationTask {
   bool get isFailed => status == GenerationStatus.failed;
 
   /// Time spent so far (or total, once finished).
-  Duration get duration =>
-      (finishedAt ?? DateTime.now()).difference(startedAt);
+  Duration get duration => (finishedAt ?? DateTime.now()).difference(startedAt);
 }
 
 /// Handle returned by [GenerationQueue.start]; the running code reports
@@ -56,7 +56,8 @@ class GenerationTaskHandle {
 
   void queued({String? detail}) => _setStatus(GenerationStatus.queued, detail);
 
-  void running({String? detail}) => _setStatus(GenerationStatus.running, detail);
+  void running({String? detail}) =>
+      _setStatus(GenerationStatus.running, detail);
 
   /// Appends a log line, e.g. the model name or a skipped LoRA.
   void note(String line) {
@@ -64,6 +65,14 @@ class GenerationTaskHandle {
     if (text.isEmpty || _settled) return;
     task.log.add(text);
     _queue.notify();
+  }
+
+  void image(String reference, {String label = 'Image'}) {
+    if (_settled || reference.trim().isEmpty) return;
+    final line =
+        '$label: ${reference.startsWith('data:image/') ? '[inline image]' : reference}';
+    task.imageLinks[line] = reference;
+    note(line);
   }
 
   void complete({String? detail}) =>

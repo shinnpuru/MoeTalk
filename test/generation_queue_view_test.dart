@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moetalk/generation_queue.dart';
 import 'package:moetalk/generation_queue_view.dart';
 import 'package:moetalk/i18n.dart';
+import 'package:moetalk/media_image.dart';
 
 Widget _panel() => const MaterialApp(
       home: GenerationQueuePage(),
@@ -141,4 +142,39 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+
+  for (final reference in [
+    'https://example.com/result.png?token=abc&download=1',
+    r'C:\Generated images\result.png',
+    'data:image/png;base64,invalid',
+  ]) {
+    testWidgets('image log opens preview for $reference', (tester) async {
+      final queue = GenerationQueue.instance;
+      for (final task in queue.tasks.where((task) => task.isActive).toList()) {
+        GenerationTaskHandle(queue, task).cancel();
+      }
+      queue.clear();
+      final task = queue.start(
+          kind: GenerationKind.drawing, backend: 'test', title: 'preview');
+      task.image(reference);
+      task.complete();
+      await tester.pumpWidget(_panel());
+      await tester.tap(find.byType(ExpansionTile));
+      await tester.pumpAndSettle();
+      final link = find.text(reference.startsWith('data:image/')
+          ? 'Image: [inline image]'
+          : 'Image: $reference');
+      expect(link, findsOneWidget);
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(tester.widget<MediaImage>(find.byType(MediaImage)).reference,
+          reference);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 }

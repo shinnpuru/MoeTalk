@@ -207,10 +207,28 @@ Future<void> addHistory(String msg, String name) async {
   await prefs.setStringList("history_$timeStamp", [name, msg]);
 }
 
+Future<List<String>> getEnabledStoryIds() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getStringList('enabled_story_ids') ?? [];
+}
+
+Future<void> setEnabledStoryIds(List<String> ids) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList('enabled_story_ids', ids);
+}
+
+Future<void> updateHistory(String id, String msg, String name) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList('history_$id', [name, msg]);
+}
+
 Future<void> deleteHistory(String key) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   if (prefs.containsKey(key)) {
     await prefs.remove(key);
+    final ids = prefs.getStringList('enabled_story_ids') ?? [];
+    ids.remove(key.replaceFirst('history_', ''));
+    await prefs.setStringList('enabled_story_ids', ids);
   } else {
     debugPrint("key not found: $key");
   }

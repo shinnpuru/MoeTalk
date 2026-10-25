@@ -196,6 +196,10 @@ void main() {
     final packageVersion = RegExp(r'^version: (.+)$', multiLine: true)
         .firstMatch(pubspec)!
         .group(1)!;
-    expect(packageVersion.split('+').first, appVersion);
+    expect(packageVersion.split('+').first, appVersion.split('.post').first);
+    final post =
+        RegExp(r'\.post(\d+)$').firstMatch(appVersion)?.group(1) ?? '0';
+    expect(int.parse(packageVersion.trim().split('+').last.substring(8)),
+        int.parse(post));
   });
 }

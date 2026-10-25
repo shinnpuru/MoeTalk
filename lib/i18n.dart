@@ -2,6 +2,9 @@ class I18n {
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'welcome': 'Welcome',
+      'enabled_stories': 'Enabled stories',
+      'reference_current_character': 'Reference current character card',
+      'open_image_failed': 'Could not open image',
       'no_model_config':
           'No model configuration detected.\nPlease configure to use normally.',
       'start_config': 'Start Configuration',
@@ -347,6 +350,9 @@ class I18n {
     },
     'zh': {
       'welcome': '欢迎使用',
+      'enabled_stories': '已启用的故事',
+      'reference_current_character': '参考当前角色卡',
+      'open_image_failed': '无法打开图片',
       'no_model_config': '检测到您尚未配置模型\n为了正常使用，请先进行配置',
       'start_config': '开始配置',
       'no_status': '暂无状态',

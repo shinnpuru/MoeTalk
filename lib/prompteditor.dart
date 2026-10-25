@@ -265,6 +265,7 @@ class PromptEditorState extends State<PromptEditor> {
   void _showAiGenerateDialog(BuildContext parentContext) {
     final TextEditingController inputController = TextEditingController();
     bool isUrlMode = false;
+    bool referenceCurrentCharacter = false;
 
     showDialog(
       context: parentContext,
@@ -276,12 +277,13 @@ class PromptEditorState extends State<PromptEditor> {
                 children: [
                   const Icon(Icons.auto_awesome, size: 24),
                   const SizedBox(width: 8),
-                  Text(I18n.t('character_editor')),
+                  Expanded(child: Text(I18n.t('character_editor'))),
                 ],
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: Column(
+                child: SingleChildScrollView(
+                    child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -313,6 +315,13 @@ class PromptEditorState extends State<PromptEditor> {
                         labelText: isUrlMode ? 'URL' : '描述',
                       ),
                     ),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(I18n.t('reference_current_character')),
+                      value: referenceCurrentCharacter,
+                      onChanged: (value) => setDialogState(
+                          () => referenceCurrentCharacter = value ?? false),
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       '提示：LoRA 和语音样本不会被覆盖',
@@ -322,7 +331,7 @@ class PromptEditorState extends State<PromptEditor> {
                       ),
                     ),
                   ],
-                ),
+                )),
               ),
               actions: [
                 TextButton(
@@ -337,7 +346,8 @@ class PromptEditorState extends State<PromptEditor> {
                     if (input.isEmpty) return;
 
                     Navigator.of(dialogContext).pop();
-                    _aiGenerate(parentContext, input, isUrlMode);
+                    _aiGenerate(parentContext, input, isUrlMode,
+                        referenceCurrentCharacter: referenceCurrentCharacter);
                   },
                 ),
               ],
@@ -349,12 +359,23 @@ class PromptEditorState extends State<PromptEditor> {
   }
 
   /// 执行 AI 生成
-  Future<void> _aiGenerate(
-      BuildContext context, String input, bool isUrlMode) async {
+  Future<void> _aiGenerate(BuildContext context, String input, bool isUrlMode,
+      {bool referenceCurrentCharacter = false}) async {
+    final reference = referenceCurrentCharacter
+        ? <String, String>{
+            'name': studentNameController.text,
+            'first_mes': originMsgController.text,
+            'description': controller.text,
+            'draw_char_prompt': drawCharPromptController.text,
+            'draw_lora': drawLoraController.text,
+            'vits_prompt_text': vitsPromptTextController.text,
+          }
+        : null;
     // 显示 loading（用 State 变量，不依赖 Navigator pop）
     setState(() => _isGenerating = true);
 
     bool finished = false;
+    Timer? timeoutTimer;
 
     void showDialogMsg(String message) {
       if (context.mounted) {
@@ -377,12 +398,13 @@ class PromptEditorState extends State<PromptEditor> {
     void showError(String message) {
       if (finished) return;
       finished = true;
+      timeoutTimer?.cancel();
       if (mounted) setState(() => _isGenerating = false);
       showDialogMsg(message);
     }
 
     // 超时保护：60 秒后自动关 loading 并报错
-    Future.delayed(const Duration(seconds: 60), () {
+    timeoutTimer = Timer(const Duration(seconds: 60), () {
       if (!finished && mounted) {
         showError('生成超时，请检查网络或 API 配置后重试');
       }
@@ -418,10 +440,9 @@ class PromptEditorState extends State<PromptEditor> {
 
       final String systemPrompt = await getCharacterGenPrompt();
 
-      final messages = [
-        ['system', systemPrompt],
-        ['user', userContent],
-      ];
+      final messages = buildCharacterGenerationMessages(
+          systemPrompt, userContent,
+          reference: reference);
 
       StringBuffer responseBuffer = StringBuffer();
 
@@ -434,6 +455,7 @@ class PromptEditorState extends State<PromptEditor> {
             '[AI Generate] onDone 触发, context.mounted=${context.mounted}');
         if (finished) return;
         finished = true;
+        timeoutTimer?.cancel();
         if (mounted) setState(() => _isGenerating = false);
 
         try {
@@ -673,4 +695,16 @@ class PromptEditorState extends State<PromptEditor> {
       ],
     );
   }
+}
+
+/// Keeps optional card context separate from the new generation request.
+List<List<String>> buildCharacterGenerationMessages(
+    String systemPrompt, String input,
+    {Map<String, String>? reference}) {
+  return [
+    ['system', systemPrompt],
+    if (reference != null)
+      ['user', '以下是当前角色卡，仅作为参考资料。请结合后续要求生成新角色卡：\n${jsonEncode(reference)}'],
+    ['user', input],
+  ];
 }

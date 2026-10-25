@@ -137,7 +137,66 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int? _statusConversationVersion;
   List<Message> messages = [];
   List<List<String>> historys = [];
-  List<String>? currentStory;
+  List<List<String>> currentStories = [];
+  String? _backgroundReference;
+  double _backgroundDragDistance = 0;
+  Future<void> _storySelectionWrite = Future<void>.value();
+
+  List<Message> get storyContext =>
+      currentStories.expand((story) => jsonToMsg(story[2])).toList();
+
+  void _useBackground(String reference, {bool isAvatar = false}) {
+    _backgroundReference = isAvatar ? null : reference;
+    backgroundImage = DecorationImage(
+      image: isAvatar
+          ? avatarImageProvider(reference)
+          : mediaImageProvider(reference),
+      fit: BoxFit.cover,
+      colorFilter: ColorFilter.mode(
+          Colors.white.withValues(alpha: 0.8), BlendMode.dstATop),
+    );
+  }
+
+  void _cycleBackground(int direction) {
+    final images = messages
+        .where((m) => m.type == Message.image)
+        .map((m) => m.message)
+        .where((ref) => ref.trim().isNotEmpty)
+        .toSet()
+        .toList();
+    if (images.isEmpty) return;
+    final current = images.indexOf(_backgroundReference ?? '');
+    final next = current < 0
+        ? (direction > 0 ? 0 : images.length - 1)
+        : (current + direction) % images.length;
+    setState(() => _useBackground(images[next]));
+  }
+
+  int _skipImageMessages(int index) {
+    for (var next = index + 1; next < messages.length; next++) {
+      if (messages[next].type != Message.image) return next;
+    }
+    for (var previous = index - 1; previous >= 0; previous--) {
+      if (messages[previous].type != Message.image) return previous;
+    }
+    return index;
+  }
+
+  void _toggleStory(List<String> story) {
+    setState(() {
+      _invalidateConversation();
+      if (currentStories.any((item) => item[1] == story[1])) {
+        currentStories.removeWhere((item) => item[1] == story[1]);
+      } else {
+        currentStories.add(story);
+      }
+    });
+    final ids = currentStories.map((story) => story[1]).toList();
+    _storySelectionWrite = _storySelectionWrite.catchError((Object error) {
+      debugPrint('Previous story selection write failed: $error');
+    }).then((_) => setEnabledStoryIds(ids));
+  }
+
   List<List<String>> students = [];
   final Map<String, ImageProvider> _avatarImageCache = {};
   final Map<String, String> _voiceCache = {};
@@ -233,7 +292,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     final results = await getHistorys();
     if (!mounted || operation != _historyRefreshOperation) return;
     results.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
-    setState(() => historys = results);
+    setState(() {
+      historys = results;
+      currentStories = [
+        for (final selected in currentStories)
+          for (final story in results)
+            if (story[1] == selected[1]) story
+      ];
+    });
   }
 
   Future<void> _refreshStudentList() async {
@@ -271,8 +337,15 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             });
           }
         });
-        getHistorys().then((List<List<String>> results) {
+        getHistorys().then((List<List<String>> results) async {
+          final ids = await getEnabledStoryIds();
+          if (!mounted) return;
           setState(() {
+            currentStories = [
+              for (final id in ids)
+                for (final story in results)
+                  if (story[1] == id) story
+            ];
             historys = results;
             historys.sort((a, b) => int.parse(b[1]).compareTo(int.parse(a[1])));
           });
@@ -607,14 +680,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       imagePopup(context, details, (int edited) {
         if (edited == 0) {
           setState(() {
-            backgroundImage = DecorationImage(
-              image: mediaImageProvider(messages[index].message),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Colors.white.withOpacity(0.8),
-                BlendMode.dstATop,
-              ),
-            );
+            _useBackground(messages[index].message);
           });
         }
         if (edited == 2) {
@@ -642,6 +708,9 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       _voiceRequests.clear();
       _singleViewIndex = 0;
       _isListViewMode = false;
+      final images = messages.where((m) => m.type == Message.image);
+      _useBackground(images.isEmpty ? avatar : images.last.message,
+          isAvatar: images.isEmpty);
     });
     unawaited(_saveTempHistory());
   }
@@ -681,14 +750,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       userName = values[0];
       studentName = values[1];
       avatar = values[2];
-      backgroundImage = DecorationImage(
-        image: avatarImageProvider(avatar),
-        fit: BoxFit.cover,
-        colorFilter: ColorFilter.mode(
-          Colors.white.withOpacity(0.8),
-          BlendMode.dstATop,
-        ),
-      );
+      _useBackground(avatar, isAvatar: true);
       if (clear) {
         final originalMsg = values[3];
         for (var m in originalMsg.split("\\")) {
@@ -774,9 +836,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
 
     try {
-      final msg = await parseMsg(
-          requestMessages,
-          currentStory != null ? jsonToMsg(currentStory![2]) : [],
+      final msg = await parseMsg(requestMessages, storyContext,
           [Message(message: await getEndPrompt(), type: Message.system)]);
       if (!_isCurrentConversationEpoch(requestEpoch) ||
           operation != _replyOperation) {
@@ -877,7 +937,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       final requestMessages = _copyMessages(messages);
       final msg = await parseMsg(
         requestMessages,
-        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        storyContext,
         [Message(message: await getInspirePrompt(), type: Message.system)],
       );
       if (!_isCurrentConversation(conversationVersion) ||
@@ -1000,7 +1060,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           .replaceAll('{{time}}', timeStr);
       final msg = await parseMsg(
         const <Message>[],
-        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        storyContext,
         [Message(message: welcomePrompt, type: Message.system)],
       );
       if (!_isCurrentConversation(conversationVersion) ||
@@ -1140,9 +1200,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         : beforeIndex == null
             ? _copyMessages(messages)
             : _copyMessages(messages.take(beforeIndex));
-    List<List<String>> msg = await parseMsg(
-        drawMessages,
-        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+    List<List<String>> msg = await parseMsg(drawMessages, storyContext,
         [Message(message: await getDrawPrompt(), type: Message.system)]);
     if (!_isCurrentConversationEpoch(conversationEpoch) ||
         operation != _drawOperation) {
@@ -1250,14 +1308,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           operation == _drawOperation) {
         final String finalUrlNonNull = finalUrl;
         setState(() {
-          backgroundImage = DecorationImage(
-            image: mediaImageProvider(finalUrlNonNull),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.white.withOpacity(0.8),
-              BlendMode.dstATop,
-            ),
-          );
+          _useBackground(finalUrlNonNull);
           messages.add(Message(message: finalUrlNonNull, type: Message.image));
           _conversationVersion++;
         });
@@ -1319,14 +1370,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
           }
           if (previewResult is String) {
             setState(() {
-              backgroundImage = DecorationImage(
-                image: mediaImageProvider(previewResult),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.8),
-                  BlendMode.dstATop,
-                ),
-              );
+              _useBackground(previewResult);
               messages
                   .add(Message(message: previewResult, type: Message.image));
               _conversationVersion++;
@@ -1352,14 +1396,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         _isCurrentConversationEpoch(conversationEpoch) &&
         operation == _drawOperation) {
       setState(() {
-        backgroundImage = DecorationImage(
-          image: mediaImageProvider(result),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.white.withOpacity(0.8),
-            BlendMode.dstATop,
-          ),
-        );
+        _useBackground(result);
         messages.add(Message(message: result, type: Message.image));
         _conversationVersion++;
       });
@@ -1400,14 +1437,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
         }
         if (previewResult is String) {
           setState(() {
-            backgroundImage = DecorationImage(
-              image: mediaImageProvider(previewResult),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Colors.white.withOpacity(0.8),
-                BlendMode.dstATop,
-              ),
-            );
+            _useBackground(previewResult);
             messages.add(Message(message: previewResult, type: Message.image));
             _conversationVersion++;
           });
@@ -1728,8 +1758,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           if (controller.text.isNotEmpty) {
                             setState(() {
                               _characterStatus = controller.text;
-                              _statusConversationVersion =
-                                  _conversationVersion;
+                              _statusConversationVersion = _conversationVersion;
                             });
                           }
                           Navigator.of(context).pop();
@@ -1790,7 +1819,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     try {
       final msg = await parseMsg(
         _copyMessages(messages),
-        currentStory != null ? jsonToMsg(currentStory![2]) : [],
+        storyContext,
         [Message(message: await getStatusPrompt(), type: Message.system)],
       );
       if (!_isCurrentConversation(conversationVersion) ||
@@ -1896,16 +1925,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         context,
                         "",
                         config,
-                        await parseMsg(
-                            messages,
-                            currentStory != null
-                                ? jsonToMsg(currentStory![2])
-                                : [],
-                            [
-                              Message(
-                                  message: await getSummaryPrompt(),
-                                  type: Message.system)
-                            ]));
+                        await parseMsg(messages, storyContext, [
+                          Message(
+                              message: await getSummaryPrompt(),
+                              type: Message.system)
+                        ]));
                     if (value != null) {
                       debugPrint(value);
                       addHistory(msgListToJson(messages), value);
@@ -1928,6 +1952,22 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
       body: Container(
         decoration: BoxDecoration(image: backgroundImage),
         child: GestureDetector(
+          key: const ValueKey('chat-background-gesture'),
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) => _backgroundDragDistance = 0,
+          onHorizontalDragUpdate: (details) =>
+              _backgroundDragDistance += details.delta.dx,
+          onHorizontalDragEnd: (details) {
+            if (_backgroundDragDistance.abs() >= 48 ||
+                details.velocity.pixelsPerSecond.dx.abs() >= 300) {
+              _cycleBackground((_backgroundDragDistance == 0
+                          ? details.velocity.pixelsPerSecond.dx
+                          : _backgroundDragDistance) <
+                      0
+                  ? 1
+                  : -1);
+            }
+          },
           onTap: () {
             fn.unfocus();
             setState(() {
@@ -1968,20 +2008,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                     if (messages[_singleViewIndex].type ==
                                         Message.image) {
                                       // change background
-                                      backgroundImage = DecorationImage(
-                                        image: mediaImageProvider(
-                                            messages[_singleViewIndex].message),
-                                        fit: BoxFit.cover,
-                                        colorFilter: ColorFilter.mode(
-                                          Colors.white.withOpacity(0.8),
-                                          BlendMode.dstATop,
-                                        ),
-                                      );
+                                      _useBackground(
+                                          messages[_singleViewIndex].message);
                                       // skip image
-                                      _singleViewIndex = _singleViewIndex ==
-                                              messages.length - 1
-                                          ? _singleViewIndex - 1
-                                          : _singleViewIndex + 1;
+                                      _singleViewIndex =
+                                          _skipImageMessages(_singleViewIndex);
                                     }
                                   });
                                 },
@@ -2035,20 +2066,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                   if (messages[_singleViewIndex].type ==
                                       Message.image) {
                                     // change background
-                                    backgroundImage = DecorationImage(
-                                      image: mediaImageProvider(
-                                          messages[_singleViewIndex].message),
-                                      fit: BoxFit.cover,
-                                      colorFilter: ColorFilter.mode(
-                                        Colors.white.withOpacity(0.8),
-                                        BlendMode.dstATop,
-                                      ),
-                                    );
+                                    _useBackground(
+                                        messages[_singleViewIndex].message);
                                     // skip image
                                     _singleViewIndex =
-                                        _singleViewIndex == messages.length - 1
-                                            ? _singleViewIndex - 1
-                                            : _singleViewIndex + 1;
+                                        _skipImageMessages(_singleViewIndex);
                                   }
                                   if (_isAutoVoice &&
                                       messages[_singleViewIndex].type ==
@@ -2192,8 +2214,7 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const GenerationQueuePage(),
+                              builder: (context) => const GenerationQueuePage(),
                             ),
                           );
                         },
@@ -2345,16 +2366,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   icon: const Icon(Icons.file_download),
                   label: Text(I18n.t('export_story')),
                   onPressed: () async {
-                    if (currentStory == null) {
+                    if (currentStories.isEmpty) {
                       snackBarAlert(context, I18n.t('no_current_story'));
                       return;
                     }
-                    List<Message> storyMsgs = jsonToMsg(currentStory![2]);
-                    List<String> msgContents =
-                        storyMsgs.map((m) => m.message).toList();
-                    bool success = await downloadHistorytoJson(
-                        currentStory![0], msgContents);
-                    if (success && context.mounted) {
+                    final stories = List<List<String>>.from(currentStories);
+                    for (final story in stories) {
+                      final contents =
+                          jsonToMsg(story[2]).map((m) => m.message).toList();
+                      final success =
+                          await downloadHistorytoJson(story[0], contents);
+                      if (!context.mounted) return;
+                      if (!success) return;
+                    }
+                    if (context.mounted) {
                       snackBarAlert(context, I18n.t('story_exported'));
                     }
                   },
@@ -2363,37 +2388,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
             ),
           ),
           const Divider(),
-          if (currentStory != null) ...[
+          if (currentStories.isNotEmpty) ...[
             ListTile(
-              title: Text(I18n.t('current_story'),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-            ),
+                title: Text(
+                    '${I18n.t('enabled_stories')} (${currentStories.length})')),
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.book, color: Color(0xfff2a0ac)),
-                  title: Text(currentStory![0]),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setState(() {
-                        _invalidateConversation();
-                        currentStory = null;
-                      });
-                      snackBarAlert(context, I18n.t('story_unloaded'));
-                    },
-                  ),
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(spacing: 8, children: [
+                    for (final story in currentStories)
+                      InputChip(
+                          label: Text(story[0]),
+                          onDeleted: () => _toggleStory(story)),
+                  ])),
             ),
             const Divider(),
           ],
@@ -2424,19 +2432,14 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         ),
                       ),
                       child: ListTile(
-                        leading: const Icon(Icons.book),
+                        leading: Checkbox(
+                          value: currentStories
+                              .any((story) => story[1] == historys[index][1]),
+                          onChanged: (_) => _toggleStory(historys[index]),
+                        ),
                         title: Text(getTimeStr(int.parse(historys[index][1]))),
                         subtitle: Text(historys[index][0]),
-                        onTap: () {
-                          setState(() {
-                            _invalidateConversation();
-                            currentStory = historys[index];
-                          });
-                          snackBarAlert(
-                              context,
-                              I18n.t('set_as_current_story')
-                                  .replaceFirst('...', historys[index][0]));
-                        },
+                        onTap: () => _toggleStory(historys[index]),
                         onLongPress: () {
                           showDialog(
                             context: context,
@@ -2462,8 +2465,10 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                     title: Text(I18n.t('edit')),
                                     onTap: () {
                                       Navigator.pop(context);
+                                      final story =
+                                          List<String>.from(historys[index]);
                                       List<Message> storyMsgs =
-                                          jsonToMsg(historys[index][2]);
+                                          jsonToMsg(story[2]);
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
@@ -2474,10 +2479,13 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                         if (editedMsgs != null) {
                                           String newJson =
                                               msgListToJson(editedMsgs);
-                                          await deleteHistory(
-                                              "history_${historys[index][1]}");
-                                          await addHistory(
-                                              newJson, historys[index][0]);
+                                          await updateHistory(
+                                              story[1], newJson, story[0]);
+                                          if (!mounted) return;
+                                          if (currentStories.any(
+                                              (item) => item[1] == story[1])) {
+                                            setState(_invalidateConversation);
+                                          }
                                           await _refreshHistoryList();
                                         }
                                       });
@@ -2504,15 +2512,20 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                               onPressed: () async {
                                                 final story = List<String>.from(
                                                     historys[index]);
+                                                await _storySelectionWrite;
                                                 await deleteHistory(
                                                     "history_${story[1]}");
                                                 if (!mounted) return;
                                                 setState(() {
-                                                  if (currentStory != null &&
-                                                      currentStory![1] ==
-                                                          story[1]) {
+                                                  if (currentStories.any(
+                                                      (item) =>
+                                                          item[1] ==
+                                                          story[1])) {
                                                     _invalidateConversation();
-                                                    currentStory = null;
+                                                    currentStories.removeWhere(
+                                                        (item) =>
+                                                            item[1] ==
+                                                            story[1]);
                                                   }
                                                   historys.removeWhere((item) =>
                                                       item[1] == story[1]);
@@ -3089,7 +3102,8 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   builder: (context) => AlertDialog(
                     title: Text(I18n.t('about')),
                     content: SingleChildScrollView(
-                      child: Text('MoeTalk $appVersion\n\n${I18n.t('about_text')}'),
+                      child: Text(
+                          'MoeTalk $appVersion\n\n${I18n.t('about_text')}'),
                     ),
                     actions: [
                       TextButton(

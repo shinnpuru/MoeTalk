@@ -104,7 +104,7 @@ Future<String?> _generateImageWithCivitai({
       for (var job in response.jobs) {
         final url = job.imageUrl;
         if (url != null && url.isNotEmpty) {
-          task.note('${I18n.t('generation_note_image')}: $url');
+          task.image(url, label: I18n.t('generation_note_image'));
           task.complete();
           return url;
         }
@@ -177,6 +177,7 @@ Future<String?> _generateImageWithSdCpp({
       image.bytes,
       image.extension,
     );
+    task.image(reference, label: I18n.t('generation_note_image'));
     task.complete(
       detail: '${plan.request.width}x${plan.request.height} · '
           '${(image.bytes.length / 1024).round()} KB',
@@ -436,8 +437,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver {
 
       civitaiClient = CivitaiClient(apiToken: sdConfig.civitaiApiToken!);
 
-      logController.text =
-          'Initializing Civitai API...\n${logController.text}';
+      logController.text = 'Initializing Civitai API...\n${logController.text}';
       task.note('${I18n.t('generation_note_model')}: ${sdConfig.model}');
 
       // Get LoRA configuration
@@ -514,7 +514,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver {
           if (url != null && url.isNotEmpty) {
             logController.text =
                 'Image generated successfully!\n${logController.text}';
-            task.note('${I18n.t('generation_note_image')}: $url');
+            task.image(url, label: I18n.t('generation_note_image'));
             task.complete();
             setState(() {
               imageUrl = url;
@@ -621,6 +621,7 @@ class AiDrawState extends State<AiDraw> with WidgetsBindingObserver {
         image.bytes,
         image.extension,
       );
+      task.image(reference, label: I18n.t('generation_note_image'));
       task.complete(
         detail: '${plan.request.width}x${plan.request.height} · '
             '${(image.bytes.length / 1024).round()} KB',

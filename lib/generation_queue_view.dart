@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import 'generation_queue.dart';
 import 'i18n.dart';
+import 'media_image.dart';
 import 'utils.dart' show snackBarAlert;
 
 /// Dedicated page for the live generation queue and logs.
@@ -182,9 +183,45 @@ class _GenerationTaskTile extends StatelessWidget {
         if (task.log.isNotEmpty)
           Align(
             alignment: Alignment.centerLeft,
-            child: SelectableText(
-              task.log.join('\n'),
-              style: const TextStyle(fontSize: 12, fontFamily: 'Courier'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in task.log)
+                  if (task.imageLinks.containsKey(line))
+                    TextButton.icon(
+                      icon: const Icon(Icons.image_outlined, size: 16),
+                      label: Text(line, softWrap: true),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (context) => Dialog(
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: InteractiveViewer(
+                                  minScale: 0.5,
+                                  maxScale: 5,
+                                  child: MediaImage(task.imageLinks[line]!),
+                                ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: IconButton.filledTonal(
+                                  tooltip: I18n.t('cancel'),
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SelectableText(line,
+                        style: const TextStyle(
+                            fontSize: 12, fontFamily: 'Courier')),
+              ],
             ),
           ),
         if (task.error != null)
